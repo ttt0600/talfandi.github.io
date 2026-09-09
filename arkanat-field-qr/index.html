@@ -29,12 +29,12 @@ body *{visibility:hidden!important}
 <body>
 <main><div class="brand">أركانات للحراسات الأمنية</div><div id="subtitle" class="sub">نظام الرصد الميداني السريع</div><section class="card"><div id="app"></div></section></main>
 <script>
-const VERSION='FIELD-QR-V5.4-20260909';
+const VERSION='FIELD-QR-V5.5-20260909';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/guard-control-uat-helper';
 const BASE=location.origin+location.pathname;
 const QKEY='arkanat_field_queue_v5',CKEY='arkanat_field_queue_crypto_v5',RKEY='arkanat_field_retry_v5';
-const qs=new URLSearchParams(location.search);let OPS=qs.get('ops')||null,TOKEN=qs.get('p')||qs.get('field')||null;
-try{if(OPS)sessionStorage.setItem('arkanat_field_ops_v5',OPS);else OPS=sessionStorage.getItem('arkanat_field_ops_v5');if(TOKEN)sessionStorage.setItem('arkanat_field_token_v5',TOKEN);else TOKEN=sessionStorage.getItem('arkanat_field_token_v5');if((OPS||TOKEN)&&location.search)history.replaceState(null,'',BASE)}catch(_){}
+const qs=new URLSearchParams(location.search);let OPS=qs.get('ops')||null,TOKEN=qs.get('p')||qs.get('field')||null,SHARE=qs.get('share')||null;
+try{if(OPS)sessionStorage.setItem('arkanat_field_ops_v5',OPS);else OPS=sessionStorage.getItem('arkanat_field_ops_v5');if(TOKEN)sessionStorage.setItem('arkanat_field_token_v5',TOKEN);else TOKEN=sessionStorage.getItem('arkanat_field_token_v5');if(SHARE)sessionStorage.setItem('arkanat_field_share_v1',SHARE);else SHARE=sessionStorage.getItem('arkanat_field_share_v1');if((OPS||TOKEN||SHARE)&&location.search)history.replaceState(null,'',BASE)}catch(_){}
 const app=document.getElementById('app');
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)}
@@ -137,7 +137,8 @@ function scanView(){
   window.addEventListener('online',async()=>{await flush();show()});
 }
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
-if(OPS)opsView();else if(TOKEN)scanView();else app.innerHTML='<h2>الرابط غير مكتمل</h2><p class="sub">استخدم رابط العمليات أو امسح QR معتمداً.</p>';
+if(OPS)opsView();else if(TOKEN)scanView();else if(SHARE)app.innerHTML='<div class="spin"></div>';else app.innerHTML='<h2>الرابط غير مكتمل</h2><p class="sub">استخدم رابط العمليات أو امسح QR معتمداً.</p>';
 </script>
+<script src="./reprint.js"></script>
 </body>
 </html>
