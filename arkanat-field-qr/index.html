@@ -29,7 +29,7 @@ body *{visibility:hidden!important}
 <body>
 <main><div class="brand">أركانات للحراسات الأمنية</div><div id="subtitle" class="sub">نظام الرصد الميداني السريع</div><section class="card"><div id="app"></div></section></main>
 <script>
-const VERSION='FIELD-QR-V5.3-20260909';
+const VERSION='FIELD-QR-V5.4-20260909';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/guard-control-uat-helper';
 const BASE=location.origin+location.pathname;
 const QKEY='arkanat_field_queue_v5',CKEY='arkanat_field_queue_crypto_v5',RKEY='arkanat_field_retry_v5';
@@ -59,8 +59,83 @@ function opsView(){document.getElementById('subtitle').textContent='إدارة �
 const f=document.getElementById('f'),state=document.getElementById('state');
 f.onsubmit=async e=>{e.preventDefault();const b=document.getElementById('send');b.disabled=true;b.textContent='جارٍ الإنشاء…';state.innerHTML='<div class="spin"></div>';try{if(!await waitQrEngine())throw new Error('محرك QR غير جاهز. حدّث الصفحة ثم حاول مرة أخرى.');const z=await post({action:'create_batch',ops_key:OPS,supervisor_name:document.getElementById('name').value.trim(),national_id:document.getElementById('nid').value.trim(),phone:document.getElementById('phone').value.trim(),qr_count:Number(document.getElementById('count').value),request_id:reqId},45000);if(!Array.isArray(z.qr_tokens)||z.qr_tokens.length!==Number(z.qr_count))throw new Error('لم تصل جميع الأكواد؛ أوقفت الطباعة لمنع ملف ناقص.');await renderQrs(z.qr_tokens,document.getElementById('qrGrid'));f.classList.add('hidden');state.innerHTML='<div class="center"><h2 class="ok">تم إنشاء '+esc(z.qr_count)+' رمز QR</h2><p class="sub">رقم الدفعة: '+esc(z.batch_code||'')+'</p></div>';document.getElementById('printArea').classList.remove('hidden')}catch(e){state.innerHTML='<p class="bad">'+esc(e.message)+'</p>';b.disabled=false;b.textContent='إعادة المحاولة'}};
 document.getElementById('replaceBtn').onclick=async()=>{const btn=document.getElementById('replaceBtn'),rs=document.getElementById('replaceState'),code=document.getElementById('oldCode').value.trim().toUpperCase();if(!/^CP-[0-9]{6}$/.test(code)){rs.innerHTML='<p class="bad">أدخل الرمز بالشكل CP-000123.</p>';return}btn.disabled=true;rs.innerHTML='<div class="spin"></div>';try{if(!await waitQrEngine())throw new Error('محرك QR غير جاهز. حدّث الصفحة ثم حاول مرة أخرى.');const z=await post({action:'replace_qr',ops_key:OPS,old_public_code:code,reason:'lost_or_damaged'},30000);document.getElementById('qrGrid').innerHTML='';await renderQrs([{raw_token:z.raw_token}],document.getElementById('qrGrid'));rs.innerHTML='<p class="ok">تم إنشاء البديل '+esc(z.new_code||'')+'. استخدم زر طباعة / حفظ PDF أعلاه.</p>';document.getElementById('printArea').classList.remove('hidden')}catch(e){rs.innerHTML='<p class="bad">'+esc(e.message)+'</p>';btn.disabled=false}}}
-function scanView(){document.getElementById('subtitle').textContent='إثبات التواجد الميداني';const nonce=uid();app.innerHTML=`<h2>تسجيل التواجد</h2><p class="sub">أدخل رقم الهوية والجوال فقط. الموقع والوقت يجمعان آلياً.</p><div id="gps" class="note">جارٍ تجهيز الموقع…</div><form id="f" autocomplete="off"><label>رقم الهوية</label><input id="nid" inputmode="numeric" maxlength="10" pattern="[12][0-9]{9}" required placeholder="10 أرقام"><label>رقم الجوال</label><input id="phone" inputmode="tel" maxlength="14" required placeholder="05xxxxxxxx"><div class="actions"><button id="send">إرسال وإثبات التواجد</button></div></form><div id="pending" class="pending"></div><div id="state"></div>`;let loc=null,ls='loading';const gps=document.getElementById('gps'),pend=document.getElementById('pending');const show=()=>{const n=pending();pend.textContent=n?'يوجد '+n+' مسحة محفوظة بانتظار المزامنة.':''};show();const ready=new Promise(resolve=>{if(!navigator.geolocation){ls='unsupported';gps.innerHTML='<b class="warn">الموقع غير مدعوم.</b> سيتم تسجيل ذلك.';resolve()}else navigator.geolocation.getCurrentPosition(p=>{loc=p.coords;ls='granted';gps.innerHTML='<b class="ok">تم تجهيز الموقع</b> · الدقة '+Math.round(p.coords.accuracy||0)+' م';resolve()},e=>{ls=e&&e.code===1?'denied':'unavailable';gps.innerHTML='<b class="warn">تعذر تجهيز الموقع.</b> يمكنك الإرسال وسيظهر ذلك للمراجعة.';resolve()},{enableHighAccuracy:true,timeout:18000,maximumAge:0})});
-const f=document.getElementById('f'),state=document.getElementById('state');f.onsubmit=async e=>{e.preventDefault();const b=document.getElementById('send');b.disabled=true;b.textContent='جارٍ الإرسال…';state.innerHTML='<div class="spin"></div>';if(ls==='loading')await Promise.race([ready,delay(8000)]);const c=loc,payload={checkpoint_token:TOKEN,event_nonce:nonce,device_id:deviceId(),national_id:document.getElementById('nid').value.trim(),phone:document.getElementById('phone').value.trim(),client_ts:new Date().toISOString(),location_status:ls,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'',locale:navigator.language||'',viewport:innerWidth+'x'+innerHeight,network_type:(navigator.connection&&navigator.connection.effectiveType)||'',lat:c&&c.latitude,lng:c&&c.longitude,accuracy_m:c&&c.accuracy,altitude_m:c&&c.altitude,heading_deg:c&&c.heading,speed_mps:c&&c.speed};try{const z=await post({action:'scan',...payload},35000);f.classList.add('hidden');gps.classList.add('hidden');state.innerHTML='<div class="center"><div style="font-size:54px">✓</div><h2 class="ok">'+(z.duplicate?'المسحة مسجلة مسبقاً':'تم تسجيل التواجد')+'</h2>'+(z.server_time_local?'<p><b>'+esc(z.server_time_local)+'</b></p>':'')+(z.guard_name?'<p>تمت مطابقة الموظف: '+esc(z.guard_name)+'</p>':'<p class="sub">تم حفظ البيانات للمطابقة.</p>')+'</div>'}catch(e){if(e.retryable){try{const n=await enqueue(payload);if(e.retryAfter)setRetry(e.retryAfter);f.classList.add('hidden');gps.classList.add('hidden');state.innerHTML='<div class="center"><div style="font-size:54px">⌛</div><h2 class="warn">تم حفظ المسحة على الجهاز</h2><p class="sub">لا تعِد المسح. سترسل تلقائياً عند عودة الاتصال أو توفر السعة. المعلق: '+n+'</p></div>';show()}catch(qe){state.innerHTML='<p class="bad">'+esc(qe.message)+'</p>';b.disabled=false;b.textContent='إعادة الإرسال'}}else{state.innerHTML='<p class="bad">'+esc(e.message)+'</p>';b.disabled=false;b.textContent='إعادة الإرسال'}}};setTimeout(async()=>{await flush();show()},1200);window.addEventListener('online',async()=>{await flush();show()})}
+function scanView(){
+  document.getElementById('subtitle').textContent='إثبات التواجد الميداني';
+  const nonce=uid();
+  app.innerHTML=`<h2>تسجيل التواجد</h2><p class="sub">أدخل رقم الهوية والجوال فقط. سيطلب النظام إذن الموقع عند الضغط على إرسال.</p><div id="gps" class="note">الموقع لم يُطلب بعد. عند الإرسال سيظهر طلب إذن الموقع من المتصفح.</div><form id="f" autocomplete="off"><label>رقم الهوية</label><input id="nid" inputmode="numeric" maxlength="10" pattern="[12][0-9]{9}" required placeholder="10 أرقام"><label>رقم الجوال</label><input id="phone" inputmode="tel" maxlength="14" required placeholder="05xxxxxxxx"><div class="actions"><button id="send">إرسال وإثبات التواجد</button></div></form><div id="pending" class="pending"></div><div id="state"></div>`;
+  let loc=null,ls='not_requested',busy=false;
+  const gps=document.getElementById('gps'),pend=document.getElementById('pending'),f=document.getElementById('f'),state=document.getElementById('state'),send=document.getElementById('send');
+  const show=()=>{const n=pending();pend.textContent=n?'يوجد '+n+' مسحة محفوظة بانتظار المزامنة.':''};
+  show();
+
+  function gpsFailureUi(message,status){
+    ls=status||'unavailable';
+    gps.innerHTML='<b class="warn">تعذر الحصول على الموقع.</b><br>'+esc(message||'أغلق أي نافذة عائمة أو فقاعة من تطبيق آخر ثم حاول مرة أخرى.')+'<div class="actions"><button id="retryGps" type="button">إعادة طلب الموقع</button><button id="noGps" type="button" class="soft">إرسال استثنائي بدون موقع</button></div>';
+    const retry=document.getElementById('retryGps'),noGps=document.getElementById('noGps');
+    retry.onclick=()=>submitPresence(false);
+    noGps.onclick=()=>submitPresence(true);
+  }
+
+  function requestLocation(){
+    loc=null;
+    if(!window.isSecureContext){gpsFailureUi('المتصفح لا يعتبر الصفحة اتصالاً آمناً، لذلك لا يمكن طلب الموقع.','insecure');return Promise.resolve(false)}
+    if(!navigator.geolocation){gpsFailureUi('خدمة الموقع غير مدعومة في هذا المتصفح.','unsupported');return Promise.resolve(false)}
+    gps.innerHTML='<div class="spin"></div><div class="center">جارٍ طلب إذن الموقع…</div>';
+    return new Promise(resolve=>{
+      navigator.geolocation.getCurrentPosition(
+        p=>{loc=p.coords;ls='granted';gps.innerHTML='<b class="ok">تم تجهيز الموقع</b> · الدقة '+Math.round(p.coords.accuracy||0)+' م';resolve(true)},
+        e=>{
+          const status=e&&e.code===1?'denied':e&&e.code===3?'timeout':'unavailable';
+          const msg=status==='denied'
+            ?'إذا ظهرت رسالة Android بأن الموقع لا يمكن طلبه، أغلق أي Bubble أو نافذة عائمة أو Overlay من تطبيق آخر ثم اضغط «إعادة طلب الموقع».'
+            :status==='timeout'
+              ?'انتهت مهلة تحديد الموقع. تأكد من تشغيل GPS ثم أعد المحاولة.'
+              :'تعذر تحديد الموقع حالياً. تأكد من تشغيل خدمة الموقع ثم أعد المحاولة.';
+          gpsFailureUi(msg,status);
+          resolve(false);
+        },
+        {enableHighAccuracy:true,timeout:18000,maximumAge:0}
+      )
+    })
+  }
+
+  function buildPayload(){
+    const c=loc;
+    return {checkpoint_token:TOKEN,event_nonce:nonce,device_id:deviceId(),national_id:document.getElementById('nid').value.trim(),phone:document.getElementById('phone').value.trim(),client_ts:new Date().toISOString(),location_status:ls,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'',locale:navigator.language||'',viewport:innerWidth+'x'+innerHeight,network_type:(navigator.connection&&navigator.connection.effectiveType)||'',lat:c&&c.latitude,lng:c&&c.longitude,accuracy_m:c&&c.accuracy,altitude_m:c&&c.altitude,heading_deg:c&&c.heading,speed_mps:c&&c.speed}
+  }
+
+  async function submitPresence(allowNoLocation){
+    if(busy)return;
+    if(!f.reportValidity())return;
+    busy=true;send.disabled=true;send.textContent='جارٍ الإرسال…';state.innerHTML='';
+    if(!allowNoLocation){
+      const ok=await requestLocation();
+      if(!ok){busy=false;send.disabled=false;send.textContent='إرسال وإثبات التواجد';return}
+    }else{
+      loc=null;
+      if(ls==='not_requested')ls='exception_no_location';
+      gps.innerHTML='<b class="warn">سيتم الإرسال بدون موقع كحالة استثنائية.</b>';
+    }
+    const payload=buildPayload();
+    state.innerHTML='<div class="spin"></div>';
+    try{
+      const z=await post({action:'scan',...payload},35000);
+      f.classList.add('hidden');gps.classList.add('hidden');
+      state.innerHTML='<div class="center"><div style="font-size:54px">✓</div><h2 class="ok">'+(z.duplicate?'المسحة مسجلة مسبقاً':'تم تسجيل التواجد')+'</h2>'+(z.server_time_local?'<p><b>'+esc(z.server_time_local)+'</b></p>':'')+(z.guard_name?'<p>تمت مطابقة الموظف: '+esc(z.guard_name)+'</p>':'<p class="sub">تم حفظ البيانات للمطابقة.</p>')+(allowNoLocation?'<p class="warn">تم تسجيلها كحالة بدون موقع للمراجعة.</p>':'')+'</div>';
+    }catch(e){
+      if(e.retryable){
+        try{
+          const n=await enqueue(payload);if(e.retryAfter)setRetry(e.retryAfter);f.classList.add('hidden');gps.classList.add('hidden');
+          state.innerHTML='<div class="center"><div style="font-size:54px">⌛</div><h2 class="warn">تم حفظ المسحة على الجهاز</h2><p class="sub">لا تعِد المسح. سترسل تلقائياً عند عودة الاتصال أو توفر السعة. المعلق: '+n+'</p></div>';show();
+        }catch(qe){state.innerHTML='<p class="bad">'+esc(qe.message)+'</p>';busy=false;send.disabled=false;send.textContent='إعادة الإرسال'}
+      }else{state.innerHTML='<p class="bad">'+esc(e.message)+'</p>';busy=false;send.disabled=false;send.textContent='إعادة الإرسال'}
+    }
+  }
+
+  f.onsubmit=e=>{e.preventDefault();submitPresence(false)};
+  setTimeout(async()=>{await flush();show()},1200);
+  window.addEventListener('online',async()=>{await flush();show()});
+}
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
 if(OPS)opsView();else if(TOKEN)scanView();else app.innerHTML='<h2>الرابط غير مكتمل</h2><p class="sub">استخدم رابط العمليات أو امسح QR معتمداً.</p>';
 </script>
