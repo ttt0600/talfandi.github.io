@@ -16,6 +16,10 @@ async function rpPost(body,ms=30000){
 function addStyles(){
   if(doc.getElementById('reprintStyles'))return;
   const s=doc.createElement('style');s.id='reprintStyles';s.textContent=`
+  .ops-guide{margin:14px 0 18px;padding:14px 16px;background:#f5faf7;border:1px solid #d8e8df;border-radius:14px}
+  .ops-guide b{color:#173f31}
+  .ops-guide ul{margin:9px 0 0;padding-right:22px;line-height:1.9}
+  .ops-guide li{margin:2px 0}
   .rp-panel{margin-top:18px;border-top:1px solid #e3ebe6;padding-top:16px}
   .rp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .rp-row input[type=search]{flex:1;min-width:220px}
@@ -27,7 +31,7 @@ function addStyles(){
   .rp-sharebox{margin-top:12px;padding:12px;border-radius:13px;background:#eef5f1;overflow-wrap:anywhere}
   .rp-sharebox input{direction:ltr;font-size:13px}
   .rp-counter{font-size:13px;color:#68756e;margin-top:8px}
-  @media print{.rp-panel,.rp-sharebox{display:none!important}}
+  @media print{.ops-guide,.rp-panel,.rp-sharebox{display:none!important}}
   `;doc.head.appendChild(s);
 }
 function getSelected(root){return [...root.querySelectorAll('input[data-batch]:checked')].map(x=>x.dataset.batch).slice(0,MAX_SELECT)}
@@ -53,6 +57,19 @@ async function putTokensInPrint(tokens,messageTarget){
 function enhanceOps(){
   if(typeof OPS==='undefined'||!OPS||doc.getElementById('reprintCenter'))return;
   addStyles();
+  if(!doc.getElementById('opsGuide')){
+    const guide=doc.createElement('div');guide.id='opsGuide';guide.className='ops-guide screen-only';
+    guide.innerHTML=`<b>إرشادات سريعة لموظف العمليات</b><ul>
+      <li>هذا الرابط مخصص لموظفي العمليات فقط، ولا يُرسل للحراس أو المشرفين.</li>
+      <li>تأكد من اسم المشرف ورقم الهوية والجوال قبل إنشاء الأكواد.</li>
+      <li>حدد عدد الأكواد المطلوبة؛ جميع أكواد الدفعة ترتبط بالمشرف نفسه.</li>
+      <li>بعد الإنشاء استخدم «طباعة / حفظ PDF» ثم وزّع الأكواد على المواقع المطلوبة.</li>
+      <li>إذا احتجت نسخة أخرى من أكواد سابقة، استخدم «إعادة طباعة وإرسال دفعات QR سابقة» بدلاً من إنشاء دفعة جديدة.</li>
+      <li>إعادة طباعة نفس QR آمنة ولا تغيّر البيانات ولا تنشئ سجلات جديدة.</li>
+      <li>استخدم «استبدال QR» فقط عند فقد أو تلف الرمز إذا كان المطلوب إيقاف القديم وإصدار بديل.</li>
+    </ul>`;
+    const form=doc.getElementById('f');if(form)app.insertBefore(guide,form);else app.prepend(guide);
+  }
   const wrap=doc.createElement('details');wrap.id='reprintCenter';wrap.className='screen-only rp-panel';
   wrap.innerHTML=`<summary>إعادة طباعة وإرسال دفعات QR سابقة</summary>
   <p class="sub">ابحث باسم المشرف أو هويته أو جواله أو EMP_ID أو رقم الدفعة. لا يتم إنشاء QR جديدة.</p>
