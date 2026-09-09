@@ -130,7 +130,7 @@ async function enhanceScanPermissionAssistant(){
   const profile=deviceProfile();
   let patching=false;
   async function patchFailure(){
-    if(patching)return;
+    if(patching||gps.querySelector('#permFailureText'))return;
     const retry=gps.querySelector('#retryGps'),noGps=gps.querySelector('#noGps'),actions=gps.querySelector('.actions');
     if(!retry||!noGps||!actions)return;
     patching=true;
@@ -148,7 +148,7 @@ async function enhanceScanPermissionAssistant(){
       toggle.onclick=()=>{const box=gps.querySelector('.perm-help');if(!box)return;box.classList.toggle('hidden');toggle.textContent=box.classList.contains('hidden')?'طريقة السماح بالموقع':'إخفاء الخطوات'};
       actions.insertBefore(toggle,noGps);
     }
-    gps.dataset.permPatched='1';patching=false;
+    patching=false;
   }
   const obs=new MutationObserver(()=>{if(gps.querySelector('#retryGps')&&gps.querySelector('#noGps'))patchFailure()});
   obs.observe(gps,{childList:true,subtree:true,characterData:true});
