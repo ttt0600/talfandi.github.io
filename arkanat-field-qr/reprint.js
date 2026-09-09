@@ -4,7 +4,6 @@ const REPRINT_API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/field-q
 const MAX_SELECT=5;
 const doc=document;
 function h(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
 async function rpPost(body,ms=30000){
   const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
   try{
@@ -70,7 +69,7 @@ function enhanceOps(){
   btn.onclick=doSearch;search.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}});
   wrap.addEventListener('toggle',()=>{if(wrap.open&&!results.dataset.loaded){results.dataset.loaded='1';doSearch()}});
   reprint.onclick=async()=>{const codes=getSelected(wrap);if(!codes.length)return;reprint.disabled=true;state.innerHTML='<div class="spin"></div>';try{const z=await rpPost({action:'reprint_batches',ops_key:OPS,batch_codes:codes},45000);await putTokensInPrint(z.qr_tokens||[],state)}catch(e){state.innerHTML='<p class="bad">'+h(e.message)+'</p>'}finally{syncButtons()}};
-  share.onclick=async()=>{const codes=getSelected(wrap);if(!codes.length)return;share.disabled=true;state.innerHTML='<div class="spin"></div>';try{const z=await rpPost({action:'create_share',ops_key:OPS,batch_codes:codes,days:7});const url=BASE+'?share='+encodeURIComponent(z.share_token);state.innerHTML=`<div class="rp-sharebox"><b class="ok">رابط جاهز للإرسال للمشرف</b><p class="sub">صالح 7 أيام، ويعرض QR فقط للطباعة دون بيانات الموظفين.</p><input id="rpShareUrl" readonly value="${h(url)}"><div class="actions"><button id="rpCopy" type="button">نسخ الرابط</button><button id="rpOpen" type="button" class="soft">فتح للتجربة</button></div></div>`;state.querySelector('#rpCopy').onclick=async()=>{try{await navigator.clipboard.writeText(url);state.querySelector('#rpCopy').textContent='تم النسخ ✓'}catch(_){state.querySelector('#rpShareUrl').select();doc.execCommand('copy')}};state.querySelector('#rpOpen').onclick=()=>window.open(url,'_blank','noopener')}catch(e){state.innerHTML='<p class="bad">'+h(e.message)+'</p>'}finally{syncButtons()}};
+  share.onclick=async()=>{const codes=getSelected(wrap);if(!codes.length)return;share.disabled=true;state.innerHTML='<div class="spin"></div>';try{const z=await rpPost({action:'create_share',ops_key:OPS,batch_codes:codes,days:7});const url=BASE+'#share='+encodeURIComponent(z.share_token);state.innerHTML=`<div class="rp-sharebox"><b class="ok">رابط جاهز للإرسال للمشرف</b><p class="sub">صالح 7 أيام، ويعرض QR فقط للطباعة دون بيانات الموظفين.</p><input id="rpShareUrl" readonly value="${h(url)}"><div class="actions"><button id="rpCopy" type="button">نسخ الرابط</button><button id="rpOpen" type="button" class="soft">فتح للتجربة</button></div></div>`;state.querySelector('#rpCopy').onclick=async()=>{try{await navigator.clipboard.writeText(url);state.querySelector('#rpCopy').textContent='تم النسخ ✓'}catch(_){state.querySelector('#rpShareUrl').select();doc.execCommand('copy')}};state.querySelector('#rpOpen').onclick=()=>window.open(url,'_blank','noopener,noreferrer')}catch(e){state.innerHTML='<p class="bad">'+h(e.message)+'</p>'}finally{syncButtons()}};
 }
 async function shareView(rawShare){
   addStyles();
@@ -82,9 +81,12 @@ async function shareView(rawShare){
   try{const z=await rpPost({action:'resolve_share',share_token:rawShare},45000);await putTokensInPrint(z.qr_tokens||[],null);st.innerHTML='<p class="ok">تم تحميل '+h(z.qr_count||0)+' QR معتمدة. لا يتم إنشاء أكواد جديدة عند الطباعة.</p>';doc.getElementById('sharePrint').onclick=()=>window.print()}catch(e){st.innerHTML='<p class="bad">'+h(e.message)+'</p>'}
 }
 function boot(){
-  let share='';
-  try{share=(typeof SHARE!=='undefined'&&SHARE)||new URLSearchParams(location.search).get('share')||sessionStorage.getItem('arkanat_field_share_v1')||''}catch(_){}
-  if(share&&!((typeof OPS!=='undefined')&&OPS))shareView(share);else enhanceOps();
+  let explicitShare='',storedShare='';
+  try{explicitShare=new URLSearchParams(location.hash.replace(/^#/,'' )).get('share')||'';storedShare=sessionStorage.getItem('arkanat_field_share_v1')||''}catch(_){}
+  if(explicitShare){shareView(explicitShare);return}
+  if((typeof OPS!=='undefined')&&OPS){enhanceOps();return}
+  const share=((typeof SHARE!=='undefined'&&SHARE)||storedShare||'');
+  if(share)shareView(share);
 }
 if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
