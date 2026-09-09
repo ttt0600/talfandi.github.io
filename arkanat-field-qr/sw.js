@@ -1,4 +1,4 @@
-const CACHE='arkanat-field-qr-v5-20260909';
+const CACHE='arkanat-field-qr-v5-2-20260909';
 const CORE=['./','./index.html'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('arkanat-field-qr-')).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
