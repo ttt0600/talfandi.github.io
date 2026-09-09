@@ -31,7 +31,11 @@ function addStyles(){
   .rp-sharebox{margin-top:12px;padding:12px;border-radius:13px;background:#eef5f1;overflow-wrap:anywhere}
   .rp-sharebox input{direction:ltr;font-size:13px}
   .rp-counter{font-size:13px;color:#68756e;margin-top:8px}
-  @media print{.ops-guide,.rp-panel,.rp-sharebox{display:none!important}}
+  .perm-help{margin-top:10px;padding:11px 13px;border:1px solid #d8e8df;border-radius:12px;background:#fff}
+  .perm-help ol{margin:7px 0 0;padding-right:22px;line-height:1.9}
+  .perm-device{font-size:13px;color:#69776f;margin-top:4px}
+  .perm-small{font-size:13px;color:#5f6e66;line-height:1.7;margin-top:6px}
+  @media print{.ops-guide,.rp-panel,.rp-sharebox,.perm-help{display:none!important}}
   `;doc.head.appendChild(s);
 }
 function getSelected(root){return [...root.querySelectorAll('input[data-batch]:checked')].map(x=>x.dataset.batch).slice(0,MAX_SELECT)}
@@ -97,10 +101,91 @@ async function shareView(rawShare){
   const st=doc.getElementById('shareState');
   try{const z=await rpPost({action:'resolve_share',share_token:rawShare},45000);await putTokensInPrint(z.qr_tokens||[],null);st.innerHTML='<p class="ok">تم تحميل '+h(z.qr_count||0)+' QR معتمدة. لا يتم إنشاء أكواد جديدة عند الطباعة.</p>';doc.getElementById('sharePrint').onclick=()=>window.print()}catch(e){st.innerHTML='<p class="bad">'+h(e.message)+'</p>'}
 }
+function deviceProfile(){
+  const ua=navigator.userAgent||'',platform=navigator.platform||'';
+  const ios=/iPad|iPhone|iPod/i.test(ua)||(platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const android=/Android/i.test(ua);
+  let browser='other',label='المتصفح الحالي';
+  if(ios){if(/CriOS/i.test(ua)){browser='ios_chrome';label='iPhone / iPad + Chrome'}else if(/FxiOS/i.test(ua)){browser='ios_firefox';label='iPhone / iPad + Firefox'}else if(/EdgiOS/i.test(ua)){browser='ios_edge';label='iPhone / iPad + Edge'}else{browser='ios_safari';label='iPhone / iPad + Safari'}}
+  else if(android){if(/SamsungBrowser/i.test(ua)){browser='android_samsung';label='Android + Samsung Internet'}else if(/EdgA/i.test(ua)){browser='android_edge';label='Android + Edge'}else{browser='android_chrome';label='Android + Chrome'}}
+  return{ios,android,browser,label};
+}
+async function permissionState(){
+  try{if(navigator.permissions&&navigator.permissions.query){const p=await navigator.permissions.query({name:'geolocation'});return p&&p.state||'unknown'}}catch(_){}
+  return'unknown';
+}
+function permissionSteps(profile){
+  if(profile.browser==='ios_chrome')return['افتح «الإعدادات» في iPhone.','اختر Chrome ثم «الموقع».','اختر «أثناء استخدام التطبيق» وشغّل «الموقع الدقيق».','ارجع لهذه الصفحة واضغط «إعادة طلب الموقع».'];
+  if(profile.browser==='ios_safari')return['في Safari افتح قائمة الصفحة ثم «إعدادات موقع الويب».','اختر «الموقع» ثم «سماح».','إذا كانت خدمات الموقع مقفلة بالكامل: الإعدادات ← الخصوصية والأمان ← خدمات الموقع.','ارجع لهذه الصفحة واضغط «إعادة طلب الموقع».'];
+  if(profile.ios)return['افتح «الإعدادات» في iPhone.','افتح إعدادات المتصفح المستخدم ثم «الموقع».','اختر السماح أثناء الاستخدام وشغّل الموقع الدقيق إن ظهر.','ارجع لهذه الصفحة واضغط «إعادة طلب الموقع».'];
+  if(profile.browser==='android_samsung')return['تأكد من تشغيل «الموقع» في الجهاز.','Samsung Internet ← القائمة ← الإعدادات ← أذونات المواقع / الموقع.','اسمح للموقع الحالي باستخدام الموقع.','ارجع واضغط «إعادة طلب الموقع».'];
+  if(profile.android)return['تأكد من تشغيل «الموقع» في الجهاز.','Chrome ← ⋮ ← الإعدادات ← إعدادات المواقع ← الموقع.','اسمح للموقع الحالي باستخدام الموقع.','ارجع واضغط «إعادة طلب الموقع».'];
+  return['تأكد من تشغيل خدمة الموقع في الجهاز.','افتح إعدادات المتصفح أو أذونات الموقع واسمح لهذا الموقع باستخدام موقعك.','ارجع لهذه الصفحة واضغط «إعادة طلب الموقع».'];
+}
+function stepsHtml(profile){return '<div class="perm-help"><b>طريقة السماح بالموقع</b><div class="perm-device">الجهاز المكتشف: '+h(profile.label)+'</div><ol>'+permissionSteps(profile).map(x=>'<li>'+h(x)+'</li>').join('')+'</ol></div>'}
+async function enhanceScanPermissionAssistant(){
+  if(typeof TOKEN==='undefined'||!TOKEN)return;
+  addStyles();
+  const gps=doc.getElementById('gps'),form=doc.getElementById('f');if(!gps||!form)return;
+  const profile=deviceProfile();
+  let patching=false;
+  async function patchFailure(){
+    if(patching)return;
+    const retry=gps.querySelector('#retryGps'),noGps=gps.querySelector('#noGps'),actions=gps.querySelector('.actions');
+    if(!retry||!noGps||!actions)return;
+    patching=true;
+    const ps=await permissionState();
+    const block=doc.createElement('div');block.id='permFailureText';
+    const msg=profile.ios?'لم يسمح iPhone/iPad للموقع باستخدام موقعك، أو أن خدمة الموقع متوقفة.':'لم يسمح الجهاز للموقع باستخدام موقعك، أو أن خدمة الموقع متوقفة.';
+    block.innerHTML='<b class="warn">الموقع غير متاح حالياً.</b><div class="perm-device">الجهاز المكتشف: '+h(profile.label)+'</div><div class="perm-small">'+h(msg)+(ps==='denied'?' الصلاحية تظهر كمرفوضة في المتصفح.':'')+'</div>'+stepsHtml(profile);
+    [...gps.childNodes].forEach(n=>{if(n!==actions)n.remove()});
+    gps.insertBefore(block,actions);
+    retry.textContent='إعادة طلب الموقع';
+    noGps.textContent='متابعة وتسجيل التواجد';
+    noGps.classList.add('soft');
+    if(!actions.querySelector('#permToggle')){
+      const toggle=doc.createElement('button');toggle.id='permToggle';toggle.type='button';toggle.className='soft';toggle.textContent='إخفاء الخطوات';
+      toggle.onclick=()=>{const box=gps.querySelector('.perm-help');if(!box)return;box.classList.toggle('hidden');toggle.textContent=box.classList.contains('hidden')?'طريقة السماح بالموقع':'إخفاء الخطوات'};
+      actions.insertBefore(toggle,noGps);
+    }
+    gps.dataset.permPatched='1';patching=false;
+  }
+  const obs=new MutationObserver(()=>{if(gps.querySelector('#retryGps')&&gps.querySelector('#noGps'))patchFailure()});
+  obs.observe(gps,{childList:true,subtree:true,characterData:true});
+  async function preflight(){
+    if(gps.querySelector('#retryGps')){patchFailure();return}
+    const ps=await permissionState();
+    if(ps==='granted'){gps.innerHTML='<b class="ok">صلاحية الموقع مفعلة.</b><div class="perm-small">سيتم التقاط موقع فعلي ومحدث عند الضغط على «إرسال وإثبات التواجد».</div>';return}
+    if(ps==='denied'){
+      gps.innerHTML='<b class="warn">صلاحية الموقع غير مفعلة.</b><div class="perm-device">الجهاز المكتشف: '+h(profile.label)+'</div><div class="perm-small">يمكنك تعديل الصلاحية بالخطوات التالية، أو الاستمرار وسيتم حفظ المسحة بدون موقع للمراجعة بعد محاولة الإرسال.</div>'+stepsHtml(profile);return
+    }
+    gps.innerHTML='<b>الموقع لم يُطلب بعد.</b><div class="perm-small">عند الضغط على إرسال سيظهر طلب السماح من النظام.</div><div class="actions"><button id="permAllowNow" type="button" class="soft">السماح بالموقع الآن</button></div>';
+    const warm=gps.querySelector('#permAllowNow');
+    warm.onclick=()=>{
+      if(!navigator.geolocation){gps.innerHTML='<b class="warn">خدمة الموقع غير مدعومة في هذا المتصفح.</b>'+stepsHtml(profile);return}
+      warm.disabled=true;warm.textContent='جارٍ طلب الموقع…';
+      navigator.geolocation.getCurrentPosition(
+        p=>{gps.innerHTML='<b class="ok">تم السماح بالموقع.</b><div class="perm-small">الدقة الحالية تقريباً '+Math.round(p.coords.accuracy||0)+' م. أكمل البيانات ثم اضغط إرسال.</div>'},
+        ()=>{gps.innerHTML='<b class="warn">لم يتم السماح بالموقع.</b>'+stepsHtml(profile)+'<div class="perm-small">بعد تعديل الإعدادات ارجع للصفحة واضغط «إرسال وإثبات التواجد».</div>'},
+        {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+      );
+    };
+  }
+  preflight();
+  doc.addEventListener('visibilitychange',()=>{if(doc.visibilityState==='visible'&&form&&!form.classList.contains('hidden'))preflight()});
+}
 function boot(){
   let explicitShare='',storedShare='';
   try{explicitShare=new URLSearchParams(location.hash.replace(/^#/,'' )).get('share')||'';storedShare=sessionStorage.getItem('arkanat_field_share_v1')||''}catch(_){}
   if(explicitShare){shareView(explicitShare);return}
+  if((typeof TOKEN!=='undefined')&&TOKEN&&(typeof OPS!=='undefined')&&OPS){
+    try{sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.setItem('arkanat_field_token_v5',TOKEN)}catch(_){}
+    location.reload();return;
+  }
+  if((typeof TOKEN!=='undefined')&&TOKEN){
+    try{sessionStorage.removeItem('arkanat_field_share_v1')}catch(_){}
+    enhanceScanPermissionAssistant();return;
+  }
   if((typeof OPS!=='undefined')&&OPS){enhanceOps();return}
   const share=((typeof SHARE!=='undefined'&&SHARE)||storedShare||'');
   if(share)shareView(share);
