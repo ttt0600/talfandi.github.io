@@ -29,7 +29,7 @@ body *{visibility:hidden!important}
 <body>
 <main><div class="brand">أركانات للحراسات الأمنية</div><div id="subtitle" class="sub">نظام الرصد الميداني السريع</div><section class="card"><div id="app"></div></section></main>
 <script>
-const VERSION='FIELD-QR-V5.5-20260909';
+const VERSION='FIELD-QR-V5.9-20260913';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/guard-control-uat-helper';
 const BASE=location.origin+location.pathname;
 const QKEY='arkanat_field_queue_v5',CKEY='arkanat_field_queue_crypto_v5',RKEY='arkanat_field_retry_v5';
@@ -62,35 +62,93 @@ document.getElementById('replaceBtn').onclick=async()=>{const btn=document.getEl
 function scanView(){
   document.getElementById('subtitle').textContent='إثبات التواجد الميداني';
   const nonce=uid();
-  app.innerHTML=`<h2>تسجيل التواجد</h2><p class="sub">أدخل رقم الهوية والجوال فقط. سيطلب النظام إذن الموقع عند الضغط على إرسال.</p><div id="gps" class="note">الموقع لم يُطلب بعد. عند الإرسال سيظهر طلب إذن الموقع من المتصفح.</div><form id="f" autocomplete="off"><label>رقم الهوية</label><input id="nid" inputmode="numeric" maxlength="10" pattern="[12][0-9]{9}" required placeholder="10 أرقام"><label>رقم الجوال</label><input id="phone" inputmode="tel" maxlength="14" required placeholder="05xxxxxxxx"><div class="actions"><button id="send">إرسال وإثبات التواجد</button></div></form><div id="pending" class="pending"></div><div id="state"></div>`;
-  let loc=null,ls='not_requested',busy=false;
+  app.innerHTML=`<h2>تسجيل التواجد</h2><p class="sub">أدخل رقم الهوية والجوال فقط. الموقع مطلوب لإثبات التواجد وسيطلبه النظام عند الضغط على إرسال.</p><div id="gps" class="note" aria-live="polite">الموقع لم يُطلب بعد. عند الإرسال سيظهر طلب إذن الموقع من المتصفح.</div><form id="f" autocomplete="off"><label>رقم الهوية</label><input id="nid" inputmode="numeric" maxlength="10" pattern="[12][0-9]{9}" required placeholder="10 أرقام"><label>رقم الجوال</label><input id="phone" inputmode="tel" maxlength="14" required placeholder="05xxxxxxxx"><div class="actions"><button id="send">إرسال وإثبات التواجد</button></div></form><div id="pending" class="pending"></div><div id="state"></div>`;
+  let loc=null,ls='not_requested',busy=false,permissionWatcher=null;
   const gps=document.getElementById('gps'),pend=document.getElementById('pending'),f=document.getElementById('f'),state=document.getElementById('state'),send=document.getElementById('send');
   const show=()=>{const n=pending();pend.textContent=n?'يوجد '+n+' مسحة محفوظة بانتظار المزامنة.':''};
   show();
 
+  function platformType(){
+    const ua=navigator.userAgent||'';
+    const ios=/iPhone|iPad|iPod/i.test(ua);
+    const android=/Android/i.test(ua);
+    if(ios&&/CriOS/i.test(ua))return'ios_chrome';
+    if(ios)return'ios_safari';
+    if(android&&/SamsungBrowser/i.test(ua))return'samsung';
+    if(android&&/Chrome/i.test(ua))return'android_chrome';
+    return'generic';
+  }
+
+  function permissionHelp(status){
+    const p=platformType();
+    if(status==='timeout')return'تأكد أن خدمة الموقع مفعلة، انتظر عدة ثوانٍ في مكان مكشوف إن أمكن، ثم اضغط «إعادة طلب الموقع».';
+    if(status==='unavailable')return'تأكد أن خدمة الموقع في الجهاز مفعلة وأن المتصفح مسموح له باستخدامها، ثم أعد المحاولة.';
+    if(status==='insecure')return'افتح الرابط من الصفحة الأصلية الآمنة ثم أعد المحاولة.';
+    if(status==='unsupported')return'جرّب فتح الرابط في متصفح حديث يدعم تحديد الموقع.';
+    if(status!=='denied')return'';
+    if(p==='ios_safari')return'في الآيفون: من إعدادات الموقع الخاصة بالموقع أو Safari فعّل السماح بالموقع، ثم ارجع لهذه الصفحة واضغط «إعادة طلب الموقع».';
+    if(p==='ios_chrome')return'في الآيفون: تأكد من السماح لخدمات الموقع لمتصفح Chrome من إعدادات الجهاز، ثم ارجع واضغط «إعادة طلب الموقع».';
+    if(p==='samsung')return'في أندرويد: افتح صلاحيات الموقع من إعدادات الصفحة أو متصفح Samsung Internet واختر السماح، وتأكد من تشغيل خدمة الموقع بالجهاز. إذا ظهرت نافذة عائمة أو فقاعة أغلقها مؤقتاً ثم أعد الطلب.';
+    if(p==='android_chrome')return'في أندرويد: افتح صلاحيات هذا الموقع في Chrome واختر السماح بالموقع، وتأكد من تشغيل خدمة الموقع بالجهاز. إذا ظهرت نافذة عائمة أو فقاعة أغلقها مؤقتاً ثم أعد الطلب.';
+    return'فعّل صلاحية الموقع لهذا الموقع من إعدادات المتصفح والجهاز، ثم ارجع واضغط «إعادة طلب الموقع».';
+  }
+
+  function statusTitle(status){
+    if(status==='denied')return'تم رفض صلاحية الموقع';
+    if(status==='timeout')return'انتهت مهلة تحديد الموقع';
+    if(status==='unavailable')return'تعذر تحديد الموقع حالياً';
+    if(status==='insecure')return'تعذر طلب الموقع من هذه الصفحة';
+    if(status==='unsupported')return'المتصفح لا يدعم تحديد الموقع';
+    return'تعذر الحصول على الموقع';
+  }
+
   function gpsFailureUi(message,status){
     ls=status||'unavailable';
-    gps.innerHTML='<b class="warn">تعذر الحصول على الموقع.</b><br>'+esc(message||'أغلق أي نافذة عائمة أو فقاعة من تطبيق آخر ثم حاول مرة أخرى.')+'<div class="actions"><button id="retryGps" type="button">إعادة طلب الموقع</button><button id="noGps" type="button" class="soft">إرسال استثنائي بدون موقع</button></div>';
+    const help=permissionHelp(ls);
+    gps.innerHTML='<b class="warn">'+esc(statusTitle(ls))+'.</b><br>'+esc(message||'تعذر الحصول على الموقع حالياً.')+(help?'<div class="sub" style="margin-top:8px">'+esc(help)+'</div>':'')+'<div class="actions"><button id="retryGps" type="button">إعادة طلب الموقع</button></div><details style="margin-top:12px"><summary class="warn">تعذر الموقع بعد المحاولة؟</summary><p class="sub">يمكن تسجيل الحالة استثنائياً للمراجعة، لكن لن تعتبر المسحة مثبتة بالموقع وسيظل سبب التعذر محفوظاً.</p><div class="actions"><button id="noGps" type="button" class="soft">تسجيل استثنائي للمراجعة</button></div></details>';
     const retry=document.getElementById('retryGps'),noGps=document.getElementById('noGps');
     retry.onclick=()=>submitPresence(false);
     noGps.onclick=()=>submitPresence(true);
+  }
+
+  async function preflightPermission(){
+    if(!navigator.permissions||!navigator.permissions.query)return;
+    try{
+      permissionWatcher=await navigator.permissions.query({name:'geolocation'});
+      const paint=()=>{
+        if(ls==='granted'||busy)return;
+        if(permissionWatcher.state==='denied'){
+          ls='denied';
+          gps.innerHTML='<b class="warn">صلاحية الموقع مرفوضة حالياً.</b><div class="sub" style="margin-top:8px">'+esc(permissionHelp('denied'))+'</div><p class="sub" style="margin-bottom:0">بعد التفعيل اضغط إرسال وسيطلب النظام الموقع من جديد.</p>';
+        }else if(permissionWatcher.state==='granted'&&ls==='not_requested'){
+          gps.innerHTML='<b class="ok">صلاحية الموقع مفعلة.</b> سيتم التقاط الموقع الفعلي عند الضغط على إرسال.';
+        }
+      };
+      paint();
+      permissionWatcher.onchange=paint;
+    }catch(_){}
   }
 
   function requestLocation(){
     loc=null;
     if(!window.isSecureContext){gpsFailureUi('المتصفح لا يعتبر الصفحة اتصالاً آمناً، لذلك لا يمكن طلب الموقع.','insecure');return Promise.resolve(false)}
     if(!navigator.geolocation){gpsFailureUi('خدمة الموقع غير مدعومة في هذا المتصفح.','unsupported');return Promise.resolve(false)}
-    gps.innerHTML='<div class="spin"></div><div class="center">جارٍ طلب إذن الموقع…</div>';
+    gps.innerHTML='<div class="spin"></div><div class="center">جارٍ تحديد موقعك الفعلي…</div>';
     return new Promise(resolve=>{
       navigator.geolocation.getCurrentPosition(
-        p=>{loc=p.coords;ls='granted';gps.innerHTML='<b class="ok">تم تجهيز الموقع</b> · الدقة '+Math.round(p.coords.accuracy||0)+' م';resolve(true)},
+        p=>{
+          loc=p.coords;ls='granted';
+          const acc=Math.round(p.coords.accuracy||0);
+          gps.innerHTML=acc>150?'<b class="warn">تم تجهيز الموقع لكن الدقة منخفضة</b> · الدقة '+acc+' م وسيتم حفظها للمراجعة.':'<b class="ok">تم تجهيز الموقع</b> · الدقة '+acc+' م';
+          resolve(true)
+        },
         e=>{
           const status=e&&e.code===1?'denied':e&&e.code===3?'timeout':'unavailable';
           const msg=status==='denied'
-            ?'إذا ظهرت رسالة Android بأن الموقع لا يمكن طلبه، أغلق أي Bubble أو نافذة عائمة أو Overlay من تطبيق آخر ثم اضغط «إعادة طلب الموقع».'
+            ?'لم يتم السماح للمتصفح باستخدام الموقع.'
             :status==='timeout'
-              ?'انتهت مهلة تحديد الموقع. تأكد من تشغيل GPS ثم أعد المحاولة.'
-              :'تعذر تحديد الموقع حالياً. تأكد من تشغيل خدمة الموقع ثم أعد المحاولة.';
+              ?'لم يتمكن الجهاز من تحديد الموقع خلال المهلة.'
+              :'لم يتمكن الجهاز أو المتصفح من توفير إحداثيات الموقع.';
           gpsFailureUi(msg,status);
           resolve(false);
         },
@@ -113,15 +171,15 @@ function scanView(){
       if(!ok){busy=false;send.disabled=false;send.textContent='إرسال وإثبات التواجد';return}
     }else{
       loc=null;
-      if(ls==='not_requested')ls='exception_no_location';
-      gps.innerHTML='<b class="warn">سيتم الإرسال بدون موقع كحالة استثنائية.</b>';
+      if(ls==='not_requested'||ls==='granted')ls='exception_no_location';
+      gps.innerHTML='<b class="warn">سيتم تسجيل الحالة بدون موقع كاستثناء للمراجعة.</b><div class="sub" style="margin-top:6px">سبب التعذر المسجل: '+esc(statusTitle(ls))+'.</div>';
     }
     const payload=buildPayload();
     state.innerHTML='<div class="spin"></div>';
     try{
       const z=await post({action:'scan',...payload},35000);
       f.classList.add('hidden');gps.classList.add('hidden');
-      state.innerHTML='<div class="center"><div style="font-size:54px">✓</div><h2 class="ok">'+(z.duplicate?'المسحة مسجلة مسبقاً':'تم تسجيل التواجد')+'</h2>'+(z.server_time_local?'<p><b>'+esc(z.server_time_local)+'</b></p>':'')+(z.guard_name?'<p>تمت مطابقة الموظف: '+esc(z.guard_name)+'</p>':'<p class="sub">تم حفظ البيانات للمطابقة.</p>')+(allowNoLocation?'<p class="warn">تم تسجيلها كحالة بدون موقع للمراجعة.</p>':'')+'</div>';
+      state.innerHTML='<div class="center"><div style="font-size:54px">✓</div><h2 class="ok">'+(z.duplicate?'المسحة مسجلة مسبقاً':'تم تسجيل التواجد')+'</h2>'+(z.server_time_local?'<p><b>'+esc(z.server_time_local)+'</b></p>':'')+(z.guard_name?'<p>تمت مطابقة الموظف: '+esc(z.guard_name)+'</p>':'<p class="sub">تم حفظ البيانات للمطابقة.</p>')+(allowNoLocation?'<p class="warn">تم تسجيلها كحالة استثنائية بدون موقع للمراجعة.</p>':'')+'</div>';
     }catch(e){
       if(e.retryable){
         try{
@@ -133,6 +191,7 @@ function scanView(){
   }
 
   f.onsubmit=e=>{e.preventDefault();submitPresence(false)};
+  preflightPermission();
   setTimeout(async()=>{await flush();show()},1200);
   window.addEventListener('online',async()=>{await flush();show()});
 }
