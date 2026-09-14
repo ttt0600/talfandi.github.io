@@ -1,5 +1,5 @@
-const CACHE='arkanat-field-qr-v5-11a-20260914';
-const CORE=['./','./index.html','./reprint.js'];
+const CACHE='arkanat-field-qr-v5-12-20260915';
+const CORE=['./','./index.html','./reprint.js','./photo-evidence.js'];
 const SCAN_GUARD=`<script id="__ARK_SCAN_ROUTE_GUARD">(()=>{try{const q=new URLSearchParams(location.search),t=q.get('p')||q.get('field');if(!t)return;sessionStorage.setItem('arkanat_field_token_v5',t);sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');sessionStorage.removeItem('arkanat_field_share_v1');window.__ARK_FIELD_ROUTE='scan'}catch(_){}})();<\/script>`;
 function isScan(url){return !!(url.searchParams.get('p')||url.searchParams.get('field'))}
 function cleanHtmlHeaders(source){const h=new Headers(source);['content-encoding','content-length','etag','last-modified'].forEach(k=>h.delete(k));h.set('cache-control','no-store');return h}
@@ -11,7 +11,7 @@ async function injectRouteGuard(response,url){
 }
 async function freshShell(request,url){
   try{
-    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','511a');
+    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','512');
     const response=await fetch(shell.href,{cache:'no-store',credentials:'same-origin',redirect:'follow'});
     if(!response.ok)throw new Error('shell_fetch_failed');
     const raw=response.clone();caches.open(CACHE).then(c=>c.put('./index.html',raw)).catch(()=>{});
@@ -35,5 +35,5 @@ self.addEventListener('fetch',event=>{
   const req=event.request;if(req.method!=='GET')return;
   const url=new URL(req.url);
   if(req.mode==='navigate'&&url.origin===self.location.origin){event.respondWith(freshShell(req,url));return}
-  if(url.origin===self.location.origin&&(url.pathname.endsWith('/reprint.js')||url.pathname.endsWith('/index.html'))){event.respondWith(freshAsset(req))}
+  if(url.origin===self.location.origin&&(url.pathname.endsWith('/reprint.js')||url.pathname.endsWith('/photo-evidence.js')||url.pathname.endsWith('/index.html'))){event.respondWith(freshAsset(req))}
 });
