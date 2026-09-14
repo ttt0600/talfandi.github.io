@@ -29,12 +29,38 @@ body *{visibility:hidden!important}
 <body>
 <main><div class="brand">أركانات للحراسات الأمنية</div><div id="subtitle" class="sub">نظام الرصد الميداني السريع</div><section class="card"><div id="app"></div></section></main>
 <script>
-const VERSION='FIELD-QR-V5.9-20260913';
+const VERSION='FIELD-QR-V5.10-20260914';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/guard-control-uat-helper';
 const BASE=location.origin+location.pathname;
 const QKEY='arkanat_field_queue_v5',CKEY='arkanat_field_queue_crypto_v5',RKEY='arkanat_field_retry_v5';
-const qs=new URLSearchParams(location.search);let OPS=qs.get('ops')||null,TOKEN=qs.get('p')||qs.get('field')||null,SHARE=qs.get('share')||null;
-try{if(OPS)sessionStorage.setItem('arkanat_field_ops_v5',OPS);else OPS=sessionStorage.getItem('arkanat_field_ops_v5');if(TOKEN)sessionStorage.setItem('arkanat_field_token_v5',TOKEN);else TOKEN=sessionStorage.getItem('arkanat_field_token_v5');if(SHARE)sessionStorage.setItem('arkanat_field_share_v1',SHARE);else SHARE=sessionStorage.getItem('arkanat_field_share_v1');if((OPS||TOKEN||SHARE)&&location.search)history.replaceState(null,'',BASE)}catch(_){}
+const qs=new URLSearchParams(location.search),qOPS=qs.get('ops')||null,qTOKEN=qs.get('p')||qs.get('field')||null,qSHARE=qs.get('share')||null;
+let OPS=qOPS,TOKEN=qTOKEN,SHARE=qSHARE;
+try{
+  if(qTOKEN){
+    sessionStorage.setItem('arkanat_field_token_v5',qTOKEN);
+    sessionStorage.removeItem('arkanat_field_ops_v5');
+    sessionStorage.removeItem('arkanat_field_share_mode_v1');
+    OPS=null;SHARE=null;
+  }else if(qOPS){
+    sessionStorage.setItem('arkanat_field_ops_v5',qOPS);
+    sessionStorage.removeItem('arkanat_field_token_v5');
+    sessionStorage.removeItem('arkanat_field_share_mode_v1');
+    TOKEN=null;SHARE=null;
+  }else if(qSHARE){
+    sessionStorage.setItem('arkanat_field_share_v1',qSHARE);
+    sessionStorage.setItem('arkanat_field_share_mode_v1','1');
+    sessionStorage.removeItem('arkanat_field_ops_v5');
+    sessionStorage.removeItem('arkanat_field_token_v5');
+    OPS=null;TOKEN=null;
+  }else{
+    OPS=sessionStorage.getItem('arkanat_field_ops_v5');
+    TOKEN=sessionStorage.getItem('arkanat_field_token_v5');
+    SHARE=sessionStorage.getItem('arkanat_field_share_v1');
+    const shareMode=sessionStorage.getItem('arkanat_field_share_mode_v1')==='1';
+    if(shareMode&&SHARE){OPS=null;TOKEN=null}else if(TOKEN){OPS=null}
+  }
+  if((qOPS||qTOKEN||qSHARE)&&location.search)history.replaceState(null,'',BASE)
+}catch(_){}
 const app=document.getElementById('app');
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)}
