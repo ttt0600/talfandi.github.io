@@ -1,18 +1,17 @@
-const CACHE='arkanat-field-qr-v5-11-20260914';
+const CACHE='arkanat-field-qr-v5-11a-20260914';
 const CORE=['./','./index.html','./reprint.js'];
 const SCAN_GUARD=`<script id="__ARK_SCAN_ROUTE_GUARD">(()=>{try{const q=new URLSearchParams(location.search),t=q.get('p')||q.get('field');if(!t)return;sessionStorage.setItem('arkanat_field_token_v5',t);sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');sessionStorage.removeItem('arkanat_field_share_v1');window.__ARK_FIELD_ROUTE='scan'}catch(_){}})();<\/script>`;
 function isScan(url){return !!(url.searchParams.get('p')||url.searchParams.get('field'))}
+function cleanHtmlHeaders(source){const h=new Headers(source);['content-encoding','content-length','etag','last-modified'].forEach(k=>h.delete(k));h.set('cache-control','no-store');return h}
 async function injectRouteGuard(response,url){
   if(!isScan(url))return response;
   const text=await response.text();
-  if(text.includes('__ARK_SCAN_ROUTE_GUARD'))return new Response(text,{status:response.status,statusText:response.statusText,headers:response.headers});
-  const guarded=text.includes('<head>')?text.replace('<head>','<head>'+SCAN_GUARD):SCAN_GUARD+text;
-  const headers=new Headers(response.headers);headers.set('cache-control','no-store');
-  return new Response(guarded,{status:response.status,statusText:response.statusText,headers});
+  const guarded=text.includes('__ARK_SCAN_ROUTE_GUARD')?text:(text.includes('<head>')?text.replace('<head>','<head>'+SCAN_GUARD):SCAN_GUARD+text);
+  return new Response(guarded,{status:response.status,statusText:response.statusText,headers:cleanHtmlHeaders(response.headers)});
 }
 async function freshShell(request,url){
   try{
-    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','511');
+    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','511a');
     const response=await fetch(shell.href,{cache:'no-store',credentials:'same-origin',redirect:'follow'});
     if(!response.ok)throw new Error('shell_fetch_failed');
     const raw=response.clone();caches.open(CACHE).then(c=>c.put('./index.html',raw)).catch(()=>{});
