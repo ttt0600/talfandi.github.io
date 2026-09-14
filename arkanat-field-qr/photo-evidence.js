@@ -122,7 +122,7 @@ async function compose(file,meta,capturedTs){
   let blob=await canvasBlob(canvas,.82);
   for(const q of [.72,.64,.56]){if(blob.size<=TARGET_BYTES)break;blob=await canvasBlob(canvas,q)}
   if(blob.size>HARD_BYTES){
-    max=1280;scale=Math.min(1,max/Math.max(iw,ih));w=Math.max(1,Math.round(iw*scale));hgt=Math.max(1,Math.round(ih*scale));
+    max=1280;scale=Math.min(1,max/Math.max(iw,ih));w=Math.max(1,Math.round(iw*scale)),hgt=Math.max(1,Math.round(ih*scale));
     canvas=document.createElement('canvas');canvas.width=w;canvas.height=hgt;ctx=canvas.getContext('2d',{alpha:false});if(!ctx)throw new Error('تعذر تشغيل معالج الصور على هذا الجهاز.');
     ctx.drawImage(im,0,0,w,hgt);drawOverlay(ctx,w,hgt,meta,capturedTs);blob=await canvasBlob(canvas,.68);
     for(const q of [.58,.50,.44]){if(blob.size<=HARD_BYTES)break;blob=await canvasBlob(canvas,q)}
@@ -133,45 +133,89 @@ async function compose(file,meta,capturedTs){
   return{blob,width:w,height:hgt};
 }
 
+function makePhotoShell(state,eventId){
+  const old=document.getElementById('photoEvidenceBox');
+  if(old&&old.dataset.eventId===eventId)return old;
+  if(old)old.remove();
+  const box=document.createElement('div');box.id='photoEvidenceBox';box.dataset.eventId=eventId;box.className='note';
+  box.style.cssText='margin-top:16px;border:2px solid #1d6b4a;background:#eef7f2;scroll-margin-top:18px';
+  box.innerHTML='<b class="ok" style="font-size:18px">الخطوة التالية: صورة إثبات ميداني</b><p style="margin:8px 0 6px;font-weight:800">تم حفظ تسجيل التواجد. أكمل صورة الموقع قبل إغلاق الصفحة.</p><p class="sub" style="margin:0 0 10px">يمكن فتح الكاميرا الآن، وسيكمل النظام ربط بيانات المسحة تلقائياً في الخلفية.</p><input id="fieldPhotoInput" type="file" accept="image/*" capture="environment" class="hidden"><div class="actions"><button id="fieldPhotoTake" type="button">التقاط صورة للموقع</button></div><div id="fieldPhotoState"><span class="sub">جارٍ تجهيز بيانات الصورة…</span></div>';
+  state.appendChild(box);
+  setTimeout(()=>{try{box.scrollIntoView({behavior:'smooth',block:'center'})}catch(_){try{box.scrollIntoView()}catch(__){}}},60);
+  return box;
+}
+
 function renderPhotoStep(eventId){
   if(!hasToken()||!eventId||eventId===lastPromptedEvent)return;
   lastPromptedEvent=eventId;
   let tries=0;
-  const mount=async()=>{
+  const mount=()=>{
     const state=document.getElementById('state');
-    if(!state&&tries++<20){setTimeout(mount,150);return}
+    if(!state&&tries++<30){setTimeout(mount,80);return}
     if(!state)return;
-    let meta;try{meta=await apiJson({action:'meta',event_id:eventId,checkpoint_token:getToken()})}catch(_){return}
-    if(meta.already_uploaded)return;
-    const box=document.createElement('div');box.id='photoEvidenceBox';box.className='note';box.style.marginTop='16px';
-    box.innerHTML='<b>صورة إثبات ميداني</b><p class="sub">تم حفظ المسحة الأساسية. أضف صورة حديثة للموقع لرفع دقة الإثبات؛ الصورة لا تغيّر بيانات المسحة أو الرمز.</p><input id="fieldPhotoInput" type="file" accept="image/*" capture="environment" class="hidden"><div class="actions"><button id="fieldPhotoTake" type="button">التقاط صورة للموقع</button></div><div id="fieldPhotoState"></div>';
-    state.appendChild(box);
+
+    const box=makePhotoShell(state,eventId);
     const input=box.querySelector('#fieldPhotoInput'),take=box.querySelector('#fieldPhotoTake'),out=box.querySelector('#fieldPhotoState');
+    let meta=null,metaPromise=null,processing=false;
+
+    const loadMeta=(force=false)=>{
+      if(meta&&!force)return Promise.resolve(meta);
+      if(metaPromise&&!force)return metaPromise;
+      metaPromise=apiJson({action:'meta',event_id:eventId,checkpoint_token:getToken()})
+        .then(z=>{
+          meta=z;metaPromise=null;
+          if(z.already_uploaded){box.innerHTML='<b class="ok">✓ صورة الإثبات محفوظة ومربوطة بالمسحة.</b><p class="sub">لا يلزم أي إجراء إضافي.</p>'}
+          else if(!processing&&out)out.innerHTML='<span class="ok">الكاميرا جاهزة. التقط صورة الموقع قبل إغلاق الصفحة.</span>';
+          return z;
+        })
+        .catch(e=>{
+          metaPromise=null;
+          if(!processing&&out)out.innerHTML='<span class="warn">سيعاد ربط بيانات المسحة تلقائياً عند التقاط الصورة.</span>';
+          throw e;
+        });
+      return metaPromise;
+    };
+
+    loadMeta().catch(()=>{});
     take.onclick=()=>input.click();
-    input.onchange=async()=>{
-      const file=input.files&&input.files[0];if(!file)return;
+
+    const processFile=async(file)=>{
+      if(processing||!file)return;
       if(!freshEnough(file)){out.innerHTML='<p class="bad">الصورة المختارة تبدو قديمة. التقط صورة جديدة للموقع الآن.</p>';input.value='';take.disabled=false;return}
       const captured=new Date().toISOString();
-      take.disabled=true;out.innerHTML='<div class="spin"></div><div class="center">جارٍ تجهيز صورة الإثبات…</div>';
+      processing=true;take.disabled=true;out.innerHTML='<div class="spin"></div><div class="center">جارٍ تجهيز صورة الإثبات وربطها بالمسحة…</div>';
+      let currentMeta;
+      try{currentMeta=meta||await loadMeta(true)}
+      catch(e){
+        processing=false;take.disabled=false;
+        out.innerHTML='<p class="warn">تعذر ربط بيانات المسحة مؤقتاً، والمسحة الأساسية محفوظة.</p><div class="actions"><button id="fieldPhotoMetaRetry" type="button">إعادة المحاولة دون إعادة التصوير</button><button id="fieldPhotoNewCapture" type="button" class="soft">إعادة التصوير</button></div>';
+        const retry=out.querySelector('#fieldPhotoMetaRetry'),again=out.querySelector('#fieldPhotoNewCapture');
+        retry.onclick=()=>processFile(file);again.onclick=()=>{input.value='';out.innerHTML='';input.click()};
+        return;
+      }
+      if(currentMeta.already_uploaded){box.innerHTML='<b class="ok">✓ صورة الإثبات محفوظة ومربوطة بالمسحة.</b><p class="sub">لا يلزم أي إجراء إضافي.</p>';processing=false;return}
       try{
-        const made=await compose(file,meta,captured),u=URL.createObjectURL(made.blob);
+        const made=await compose(file,currentMeta,captured),u=URL.createObjectURL(made.blob);
         out.innerHTML='<img id="fieldPhotoPreview" alt="معاينة صورة الإثبات" style="width:100%;max-height:420px;object-fit:contain;border-radius:12px;margin-top:12px;background:#111"><div class="sub" style="margin-top:8px">الحجم بعد الضغط: '+Math.max(1,Math.round(made.blob.size/1024))+' كيلوبايت</div><div class="actions"><button id="fieldPhotoApprove" type="button">اعتماد وحفظ الصورة</button><button id="fieldPhotoRetake" type="button" class="soft">إعادة التصوير</button></div>';
         out.querySelector('#fieldPhotoPreview').src=u;
-        out.querySelector('#fieldPhotoRetake').onclick=()=>{URL.revokeObjectURL(u);input.value='';take.disabled=false;out.innerHTML='';input.click()};
+        out.querySelector('#fieldPhotoRetake').onclick=()=>{URL.revokeObjectURL(u);processing=false;input.value='';take.disabled=false;out.innerHTML='';input.click()};
         out.querySelector('#fieldPhotoApprove').onclick=async()=>{
           const approve=out.querySelector('#fieldPhotoApprove'),retake=out.querySelector('#fieldPhotoRetake');approve.disabled=true;retake.disabled=true;out.insertAdjacentHTML('beforeend','<div id="fieldPhotoUploading"><div class="spin"></div><div class="center">جارٍ حفظ الصورة…</div></div>');
           const row={event_id:eventId,checkpoint_token:getToken(),blob:made.blob,width_px:made.width,height_px:made.height,captured_client_ts:captured,queued_at:Date.now()};
           try{
             await uploadRow(row);URL.revokeObjectURL(u);box.innerHTML='<b class="ok">✓ تم حفظ صورة الإثبات وربطها بالمسحة.</b><p class="sub">المسحة الأصلية وبياناتها لم تتغير.</p>';
           }catch(e){
-            if(e&&e.permanent){URL.revokeObjectURL(u);out.innerHTML='<p class="bad">'+h(e.message||'تعذر قبول الصورة.')+'</p><div class="actions"><button id="fieldPhotoRetryCapture" type="button">إعادة التصوير</button></div>';const rb=out.querySelector('#fieldPhotoRetryCapture');rb.onclick=()=>{input.value='';take.disabled=false;out.innerHTML='';input.click()};return}
+            if(e&&e.permanent){URL.revokeObjectURL(u);processing=false;out.innerHTML='<p class="bad">'+h(e.message||'تعذر قبول الصورة.')+'</p><div class="actions"><button id="fieldPhotoRetryCapture" type="button">إعادة التصوير</button></div>';const rb=out.querySelector('#fieldPhotoRetryCapture');rb.onclick=()=>{input.value='';take.disabled=false;out.innerHTML='';input.click()};return}
             let queued=false;try{await dbPut(row);queued=true}catch(_){}
             URL.revokeObjectURL(u);
             box.innerHTML=queued?'<b class="warn">تم حفظ الصورة على الجهاز بانتظار الرفع التلقائي.</b><p class="sub">المسحة الأصلية محفوظة ولن تحتاج إعادة المسح.</p>':'<b class="warn">تعذر حفظ الصورة حالياً.</b><p class="sub">المسحة الأصلية محفوظة ولم تتأثر.</p>';
           }
+          processing=false;
         };
-      }catch(e){out.innerHTML='<p class="bad">'+h(e.message||'تعذر تجهيز الصورة.')+'</p>';take.disabled=false}
+      }catch(e){processing=false;out.innerHTML='<p class="bad">'+h(e.message||'تعذر تجهيز الصورة.')+'</p>';take.disabled=false}
     };
+
+    input.onchange=()=>{const file=input.files&&input.files[0];if(file)processFile(file)};
   };
   mount();
 }
@@ -187,7 +231,7 @@ window.fetch=async function(input,init){
   }catch(_){}
   const r=await nativeFetch(input,init);
   if(isScan){
-    try{const c=r.clone();c.json().then(z=>{if(z&&z.ok&&z.event_id)setTimeout(()=>renderPhotoStep(String(z.event_id)),120)}).catch(()=>{})}catch(_){}
+    try{const c=r.clone();c.json().then(z=>{if(z&&z.ok&&z.event_id)setTimeout(()=>renderPhotoStep(String(z.event_id)),80)}).catch(()=>{})}catch(_){}
   }
   return r;
 };
