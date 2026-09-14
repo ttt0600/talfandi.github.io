@@ -19,7 +19,8 @@ function hasToken(){try{return typeof TOKEN!=='undefined'&&!!TOKEN}catch(_){retu
 function getToken(){try{return typeof TOKEN!=='undefined'?TOKEN:''}catch(_){return''}}
 function freshEnough(file){
   const lm=Number(file&&file.lastModified||0),now=Date.now();
-  if(!lm||lm>now+5*60*1000)return true;
+  if(!lm)return true;
+  if(lm>now+5*60*1000)return false;
   return now-lm<=MAX_GALLERY_AGE_MS;
 }
 function timeoutFetch(url,init,ms){
@@ -48,13 +49,13 @@ async function dbAll(){const db=await openDb();return new Promise((resolve,rejec
 async function dbDelete(id){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(PHOTO_STORE,'readwrite');tx.objectStore(PHOTO_STORE).delete(id);tx.oncomplete=()=>{db.close();resolve(true)};tx.onerror=()=>{db.close();reject(tx.error)}})}
 async function dbPut(row){
   row={...row,queued_at:row.queued_at||Date.now()};
+  const all=await dbAll().catch(()=>[]);
+  const exists=all.some(x=>x&&x.event_id===row.event_id);
+  if(!exists&&all.length>=MAX_PENDING_PHOTOS)throw new Error('وصل الجهاز إلى الحد الآمن للصور المعلقة. يلزم الاتصال بالإنترنت قبل حفظ صور إضافية.');
   const db=await openDb();
-  await new Promise((resolve,reject)=>{const tx=db.transaction(PHOTO_STORE,'readwrite');tx.objectStore(PHOTO_STORE).put(row);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
-  db.close();
   try{
-    const all=(await dbAll()).sort((a,b)=>Number(a.queued_at||0)-Number(b.queued_at||0));
-    for(const old of all.slice(0,Math.max(0,all.length-MAX_PENDING_PHOTOS)))await dbDelete(old.event_id);
-  }catch(_){}
+    await new Promise((resolve,reject)=>{const tx=db.transaction(PHOTO_STORE,'readwrite');tx.objectStore(PHOTO_STORE).put(row);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+  }finally{db.close()}
   return true;
 }
 
