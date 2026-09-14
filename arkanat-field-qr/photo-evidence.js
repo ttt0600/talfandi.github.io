@@ -6,10 +6,10 @@ const PHOTO_DB='arkanat-field-photo-v1';
 const PHOTO_STORE='pending';
 const TARGET_BYTES=450000;
 const HARD_BYTES=850000;
+const MAX_FILE_AGE_MS=15*60*1000;
 let lastPromptedEvent='';
 
-function h(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
-function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+function h(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmtTime(v){try{return new Intl.DateTimeFormat('ar-SA',{timeZone:'Asia/Riyadh',dateStyle:'medium',timeStyle:'medium'}).format(new Date(v))}catch(_){return String(v||'')}}
 function hasToken(){try{return typeof TOKEN!=='undefined'&&!!TOKEN}catch(_){return false}}
 function getToken(){try{return typeof TOKEN!=='undefined'?TOKEN:''}catch(_){return''}}
@@ -61,18 +61,19 @@ function canvasBlob(canvas,q){return new Promise((resolve,reject)=>canvas.toBlob
 
 function drawOverlay(ctx,w,h,meta){
   const pad=Math.round(Math.max(22,w*0.025));
-  const fs=Math.round(Math.max(24,Math.min(38,w*0.028)));
-  const line=Math.round(fs*1.45);
+  const fs=Math.round(Math.max(23,Math.min(36,w*0.027)));
+  const line=Math.round(fs*1.42);
   const lines=[];
   lines.push('أركانات للحراسات الأمنية');
   lines.push('النقطة: '+String(meta.checkpoint_code||''));
-  lines.push('الوقت: '+fmtTime(meta.server_time));
+  lines.push('وقت المسحة: '+fmtTime(meta.server_time));
+  lines.push('وقت الصورة: '+fmtTime(meta.captured_client_ts));
   if(meta.lat!=null&&meta.lng!=null){
     lines.push('الموقع: '+Number(meta.lat).toFixed(6)+' ، '+Number(meta.lng).toFixed(6));
     if(meta.accuracy_m!=null)lines.push('دقة الموقع: '+Math.round(Number(meta.accuracy_m))+' م');
   }else lines.push('الموقع: غير متاح في المسحة');
   const boxH=pad*2+line*lines.length;
-  ctx.save();ctx.fillStyle='rgba(0,0,0,.62)';ctx.fillRect(0,h-boxH,w,boxH);
+  ctx.save();ctx.fillStyle='rgba(0,0,0,.64)';ctx.fillRect(0,h-boxH,w,boxH);
   ctx.direction='rtl';ctx.textAlign='right';ctx.textBaseline='top';ctx.font='700 '+fs+'px -apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif';ctx.fillStyle='#fff';
   let y=h-boxH+pad;for(const t of lines){ctx.fillText(t,w-pad,y,w-pad*2);y+=line}
   ctx.restore();
@@ -106,15 +107,18 @@ function renderPhotoStep(eventId){
     let meta;try{meta=await apiJson({action:'meta',event_id:eventId,checkpoint_token:getToken()})}catch(_){return}
     if(meta.already_uploaded)return;
     const box=document.createElement('div');box.id='photoEvidenceBox';box.className='note';box.style.marginTop='16px';
-    box.innerHTML='<b>صورة إثبات ميداني</b><p class="sub">تم حفظ المسحة الأساسية. أضف صورة للموقع لرفع دقة الإثبات؛ الصورة لا تغيّر بيانات المسحة أو الرمز.</p><input id="fieldPhotoInput" type="file" accept="image/*" capture="environment" class="hidden"><div class="actions"><button id="fieldPhotoTake" type="button">التقاط صورة للموقع</button></div><div id="fieldPhotoState"></div>';
+    box.innerHTML='<b>صورة إثبات ميداني</b><p class="sub">تم حفظ المسحة الأساسية. أضف صورة حديثة للموقع لرفع دقة الإثبات؛ الصورة لا تغيّر بيانات المسحة أو الرمز.</p><input id="fieldPhotoInput" type="file" accept="image/*" capture="environment" class="hidden"><div class="actions"><button id="fieldPhotoTake" type="button">التقاط صورة للموقع</button></div><div id="fieldPhotoState"></div>';
     state.appendChild(box);
     const input=box.querySelector('#fieldPhotoInput'),take=box.querySelector('#fieldPhotoTake'),out=box.querySelector('#fieldPhotoState');
     take.onclick=()=>input.click();
     input.onchange=async()=>{
       const file=input.files&&input.files[0];if(!file)return;
+      if(file.lastModified&&Date.now()-file.lastModified>MAX_FILE_AGE_MS){
+        out.innerHTML='<p class="bad">استخدم صورة حديثة من الموقع. الصورة المختارة أقدم من المدة المسموحة.</p>';input.value='';take.disabled=false;return;
+      }
       take.disabled=true;out.innerHTML='<div class="spin"></div><div class="center">جارٍ تجهيز صورة الإثبات…</div>';
       try{
-        const made=await compose(file,meta),u=URL.createObjectURL(made.blob),captured=new Date().toISOString();
+        const captured=new Date().toISOString(),made=await compose(file,{...meta,captured_client_ts:captured}),u=URL.createObjectURL(made.blob);
         out.innerHTML='<img id="fieldPhotoPreview" alt="معاينة صورة الإثبات" style="width:100%;max-height:420px;object-fit:contain;border-radius:12px;margin-top:12px;background:#111"><div class="sub" style="margin-top:8px">الحجم بعد الضغط: '+Math.max(1,Math.round(made.blob.size/1024))+' كيلوبايت</div><div class="actions"><button id="fieldPhotoApprove" type="button">اعتماد وحفظ الصورة</button><button id="fieldPhotoRetake" type="button" class="soft">إعادة التصوير</button></div>';
         out.querySelector('#fieldPhotoPreview').src=u;
         out.querySelector('#fieldPhotoRetake').onclick=()=>{URL.revokeObjectURL(u);input.value='';take.disabled=false;out.innerHTML='';input.click()};
