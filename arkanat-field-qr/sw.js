@@ -1,4 +1,4 @@
-const CACHE='arkanat-field-qr-v5-14-20260915';
+const CACHE='arkanat-field-qr-v5-15-20260915';
 const CORE=['./','./index.html','./reprint.js','./photo-evidence.js'];
 const SCAN_GUARD=`<script id="__ARK_SCAN_ROUTE_GUARD">(()=>{try{const q=new URLSearchParams(location.search),t=q.get('p')||q.get('field');if(!t)return;sessionStorage.setItem('arkanat_field_token_v5',t);sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');sessionStorage.removeItem('arkanat_field_share_v1');window.__ARK_FIELD_ROUTE='scan'}catch(_){}})();<\/script>`;
 function isScan(url){return !!(url.searchParams.get('p')||url.searchParams.get('field'))}
@@ -11,7 +11,7 @@ async function injectRouteGuard(response,url){
 }
 async function freshShell(request,url){
   try{
-    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','514');
+    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','515');
     const response=await fetch(shell.href,{cache:'no-store',credentials:'same-origin',redirect:'follow'});
     if(!response.ok)throw new Error('shell_fetch_failed');
     const raw=response.clone();caches.open(CACHE).then(c=>c.put('./index.html',raw)).catch(()=>{});
