@@ -1,4 +1,4 @@
-const CACHE='arkanat-field-qr-v5-33-20260916';
+const CACHE='arkanat-field-qr-v5-34-20260916';
 const CORE=['./index.html','./reprint.js','./shift-attendance.js','./mobile-ux.js','./photo-evidence.js','./workflow-ux.js','./photo-evidence-ux.js'];
 
 function keyFor(url){const name=url.pathname.split('/').pop()||'index.html';return './'+(name||'index.html')}
