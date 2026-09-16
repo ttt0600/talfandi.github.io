@@ -13,6 +13,7 @@ const SHIFT_SCRIPT_ID='fieldShiftAttendanceRuntime';
 const PHOTO_UX_SCRIPT_ID='fieldPhotoEvidenceUxRuntime';
 const WORKFLOW_UX_SCRIPT_ID='fieldWorkflowUxRuntime';
 const MOBILE_UX_SCRIPT_ID='fieldMobileUxRuntime';
+const MOBILE_FALLBACK_SCRIPT_ID='fieldMobileFallbackRuntime';
 
 function params(){
   const q=new URLSearchParams(location.search||'');
@@ -69,6 +70,7 @@ function bootScanLayers(){
   loadScript(PHOTO_UX_SCRIPT_ID,'__ARK_FIELD_PHOTO_UX_V1','./photo-evidence-ux.js?v=526','fieldPhotoEvidenceUxScript');
   loadScript(WORKFLOW_UX_SCRIPT_ID,'__ARK_FIELD_WORKFLOW_UX_V2','./workflow-ux.js?v=526','fieldWorkflowUxScript');
   loadScript(MOBILE_UX_SCRIPT_ID,'__ARK_FIELD_MOBILE_UX_V1','./mobile-ux.js?v=526','fieldMobileUxScript');
+  loadScript(MOBILE_FALLBACK_SCRIPT_ID,'__ARK_FIELD_MOBILE_FALLBACK_V1','./mobile-fallback.js?v=526','fieldMobileFallbackScript');
 }
 function looksLikeOps(){
   try{const subtitle=document.getElementById('subtitle'),app=document.getElementById('app'),s=(subtitle&&subtitle.textContent||'')+' '+(app&&app.textContent||'');return /إدارة العمليات|بيانات المشرف|اسم المشرف/.test(s)&&!!document.getElementById('count')}catch(_){return false}
