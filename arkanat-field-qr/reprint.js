@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
-if(window.__ARK_DIRECT_BOOTSTRAP_V529)return;
-window.__ARK_DIRECT_BOOTSTRAP_V529=true;
-const V='529';
+if(window.__ARK_DIRECT_BOOTSTRAP_V530)return;
+window.__ARK_DIRECT_BOOTSTRAP_V530=true;
+const V='530';
 function activeScan(){
   try{
     if(typeof TOKEN!=='undefined'&&TOKEN)return true;
@@ -16,54 +16,64 @@ function load(src,id,flag,retry){
     try{
       if(flag&&window[flag])return resolve(true);
       if(document.getElementById(id))return resolve(true);
-      const s=document.createElement('script');s.id=id;s.async=true;s.src=src+'?v='+V+(retry?'&r=1':'');
+      const s=document.createElement('script');s.id=id;s.async=true;s.src=src+'?v='+V+(retry?'-r'+Date.now():'');
       s.onload=()=>resolve(true);
       s.onerror=()=>{try{s.remove()}catch(_){};if(!retry){load(src,id,flag,true).then(resolve)}else resolve(false)};
       (document.head||document.documentElement).appendChild(s);
     }catch(_){resolve(false)}
   })
 }
-function afterPaint(fn){
-  try{requestAnimationFrame(()=>requestAnimationFrame(fn))}catch(_){setTimeout(fn,40)}
+function loadQrLib(){
+  if(typeof window.QRCode==='function'||document.getElementById('arkLazyQrLib'))return;
+  const s=document.createElement('script');s.id='arkLazyQrLib';s.async=true;
+  s.src='https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js?ark_ops=1';
+  s.onerror=()=>{try{s.remove()}catch(_){};const f=document.createElement('script');f.id='arkLazyQrLibFallback';f.async=true;f.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js?ark_ops=1';(document.head||document.documentElement).appendChild(f)};
+  (document.head||document.documentElement).appendChild(s);
 }
-async function criticalScanLayers(){
-  if(!activeScan())return;
-  await Promise.all([
-    load('./shift-attendance.js','directShift529','__ARK_FIELD_SHIFT_ATTENDANCE_V1',false),
-    load('./photo-evidence.js','directPhoto529','__ARK_FIELD_PHOTO_EVIDENCE_V1',false),
-    load('./mobile-ux.js','directMobile529','__ARK_FIELD_MOBILE_UX_V1',false)
-  ]);
-}
-function secondaryScanLayers(){
-  if(!activeScan())return;
-  Promise.all([
-    load('./workflow-ux.js','directWorkflow529','__ARK_FIELD_WORKFLOW_UX_V2',false),
-    load('./photo-evidence-ux.js','directPhotoUx529','__ARK_FIELD_PHOTO_UX_V1',false),
-    load('./mobile-fallback.js','directFallback529','__ARK_FIELD_MOBILE_FALLBACK_V1',false)
-  ]).catch(()=>{});
+function idle(fn,timeout=900){
+  try{if('requestIdleCallback'in window)return requestIdleCallback(fn,{timeout})}catch(_){}
+  return setTimeout(fn,Math.min(timeout,450));
 }
 function refreshWorkerLater(){
-  const run=()=>{try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}};
-  try{if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:3500});else setTimeout(run,2500)}catch(_){setTimeout(run,2500)}
+  idle(()=>{
+    try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}
+  },2500);
+}
+function loadGuardCritical(){
+  if(!activeScan())return;
+  // Only what is required for the first usable guard screen.
+  load('./shift-attendance.js','directShift530','__ARK_FIELD_SHIFT_ATTENDANCE_V1',false);
+  load('./mobile-ux.js','directMobile530','__ARK_FIELD_MOBILE_UX_V1',false);
+}
+function loadGuardDeferred(){
+  if(!activeScan())return;
+  Promise.all([
+    load('./photo-evidence.js','directPhoto530','__ARK_FIELD_PHOTO_EVIDENCE_V1',false),
+    load('./workflow-ux.js','directWorkflow530','__ARK_FIELD_WORKFLOW_UX_V2',false)
+  ]).then(()=>{
+    idle(()=>{
+      load('./photo-evidence-ux.js','directPhotoUx530','__ARK_FIELD_PHOTO_UX_V1',false);
+      load('./mobile-fallback.js','directFallback530','__ARK_FIELD_MOBILE_FALLBACK_V1',false);
+      load('./route-guard.js','directRouteGuard530','__ARK_FIELD_ROUTE_GUARD_V1',false);
+    },1200);
+  });
+}
+function armDeferredOnIntent(){
+  let fired=false;
+  const go=()=>{if(fired)return;fired=true;loadGuardDeferred();['pointerdown','touchstart','focusin','keydown'].forEach(ev=>document.removeEventListener(ev,go,true))};
+  ['pointerdown','touchstart','focusin','keydown'].forEach(ev=>document.addEventListener(ev,go,{capture:true,passive:true,once:false}));
+  idle(go,1100);
 }
 function boot(){
   if(activeScan()){
-    criticalScanLayers().catch(()=>{});
-    afterPaint(secondaryScanLayers);
+    loadGuardCritical();
+    armDeferredOnIntent();
   }else{
-    load('./reprint-core.js','fieldReprintCore529',null,false);
+    loadQrLib();
+    load('./reprint-core.js','fieldReprintCore530',null,false);
   }
   refreshWorkerLater();
-  setTimeout(async()=>{
-    if(!activeScan())return;
-    const form=document.getElementById('f'),nid=document.getElementById('nid'),phone=document.getElementById('phone');
-    if(form&&nid&&phone){
-      if(!document.getElementById('arkShiftChooser')&&!window.__ARK_FIELD_SHIFT_ATTENDANCE_V1)await load('./shift-attendance.js','directShift529Retry','__ARK_FIELD_SHIFT_ATTENDANCE_V1',true);
-      if(!window.__ARK_FIELD_MOBILE_UX_V1)await load('./mobile-ux.js','directMobile529Retry','__ARK_FIELD_MOBILE_UX_V1',true);
-      if(!window.__ARK_FIELD_PHOTO_EVIDENCE_V1)await load('./photo-evidence.js','directPhoto529Retry','__ARK_FIELD_PHOTO_EVIDENCE_V1',true);
-    }
-  },700);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-window.addEventListener('pageshow',()=>{if(activeScan()){criticalScanLayers().catch(()=>{});afterPaint(secondaryScanLayers)}});
+window.addEventListener('pageshow',()=>{if(activeScan()){loadGuardCritical();armDeferredOnIntent()}refreshWorkerLater()});
 })();
