@@ -12,6 +12,7 @@ const REPAIR_KEY='arkanat_field_route_repair_v1';
 const SHIFT_SCRIPT_ID='fieldShiftAttendanceRuntime';
 const PHOTO_UX_SCRIPT_ID='fieldPhotoEvidenceUxRuntime';
 const WORKFLOW_UX_SCRIPT_ID='fieldWorkflowUxRuntime';
+const MOBILE_UX_SCRIPT_ID='fieldMobileUxRuntime';
 
 function params(){
   const q=new URLSearchParams(location.search||'');
@@ -64,9 +65,10 @@ function loadScript(id,flag,src,existingId){
 }
 function bootScanLayers(){
   const r=resolveRoute();if(r.route!=='scan'||!r.token)return;
-  loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=525','fieldShiftAttendanceScript');
-  loadScript(PHOTO_UX_SCRIPT_ID,'__ARK_FIELD_PHOTO_UX_V1','./photo-evidence-ux.js?v=525','fieldPhotoEvidenceUxScript');
-  loadScript(WORKFLOW_UX_SCRIPT_ID,'__ARK_FIELD_WORKFLOW_UX_V2','./workflow-ux.js?v=525','fieldWorkflowUxScript');
+  loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=526','fieldShiftAttendanceScript');
+  loadScript(PHOTO_UX_SCRIPT_ID,'__ARK_FIELD_PHOTO_UX_V1','./photo-evidence-ux.js?v=526','fieldPhotoEvidenceUxScript');
+  loadScript(WORKFLOW_UX_SCRIPT_ID,'__ARK_FIELD_WORKFLOW_UX_V2','./workflow-ux.js?v=526','fieldWorkflowUxScript');
+  loadScript(MOBILE_UX_SCRIPT_ID,'__ARK_FIELD_MOBILE_UX_V1','./mobile-ux.js?v=526','fieldMobileUxScript');
 }
 function looksLikeOps(){
   try{const subtitle=document.getElementById('subtitle'),app=document.getElementById('app'),s=(subtitle&&subtitle.textContent||'')+' '+(app&&app.textContent||'');return /إدارة العمليات|بيانات المشرف|اسم المشرف/.test(s)&&!!document.getElementById('count')}catch(_){return false}
