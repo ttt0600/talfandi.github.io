@@ -6,7 +6,6 @@ window.__ARK_FIELD_MOBILE_UX_V1=true;
 var STYLE_ID='arkMobileUxStyle';
 var TOP_STEPPER='arkMobileTopStepper';
 var GPS_TITLE='arkGpsCompactTitle';
-var lastRoute='';
 var scheduled=false;
 
 function addStyles(){
@@ -26,7 +25,7 @@ function addStyles(){
   body.ark-mobile-scan #app>p.sub{font-size:13px!important;line-height:1.55!important;margin:0 0 8px!important;}\
   body.ark-mobile-scan #arkGpsRequired{display:none!important;}\
   body.ark-mobile-scan #arkWorkflowGuide{display:none!important;}\
-  body.ark-mobile-scan #gps{margin:8px 0!important;padding:10px 11px!important;border:1px solid #d7e4dd!important;border-radius:12px!important;background:#f7faf8!important;color:#32483c!important;line-height:1.5!important;}\
+  body.ark-mobile-scan #gps{margin:8px 0 2px!important;padding:10px 11px!important;border:1px solid #d7e4dd!important;border-radius:12px!important;background:#f7faf8!important;color:#32483c!important;line-height:1.5!important;}\
   body.ark-mobile-scan #gps .spin{width:26px!important;height:26px!important;margin:6px auto!important;border-width:3px!important;}\
   body.ark-mobile-scan #gps .actions{margin-top:8px!important;}\
   body.ark-mobile-scan #gps button{width:100%;padding:10px 12px!important;font-size:14px!important;}\
@@ -80,7 +79,6 @@ function setRouteClass(r){
   if(r==='scan')document.body.classList.add('ark-mobile-scan');
   else if(r==='ops')document.body.classList.add('ark-mobile-ops');
   else if(r==='share')document.body.classList.add('ark-mobile-share');
-  lastRoute=r;
 }
 function safeAttr(el,name,value){try{if(el&&el.getAttribute(name)!==value)el.setAttribute(name,value)}catch(_){}}
 function normalizeInputs(r){
@@ -96,8 +94,9 @@ function shortenIntro(){
   if(p&&/أدخل رقم الهوية والجوال/.test(p.textContent||''))p.textContent='أكمل البيانات واختر نوع العملية. الموقع وصورة الإثبات إلزاميان.';
 }
 function ensureTopStepper(){
-  var app=document.getElementById('app'),gps=document.getElementById('gps');if(!app||!gps)return;
-  var st=document.getElementById(TOP_STEPPER);if(!st){st=document.createElement('div');st.id=TOP_STEPPER;st.innerHTML='<div class="ark-m-step active">1. البيانات</div><div class="ark-m-step">2. الموقع</div><div class="ark-m-step">3. الإثبات</div>';gps.parentNode.insertBefore(st,gps)}
+  var app=document.getElementById('app'),f=document.getElementById('f');if(!app||!f)return;
+  var st=document.getElementById(TOP_STEPPER);if(!st){st=document.createElement('div');st.id=TOP_STEPPER;st.innerHTML='<div class="ark-m-step active">1. البيانات</div><div class="ark-m-step">2. الموقع</div><div class="ark-m-step">3. الإثبات</div>';app.insertBefore(st,f)}
+  else if(st.nextSibling!==f){try{app.insertBefore(st,f)}catch(_){}}
   var state=document.getElementById('state'),box=document.getElementById('photoEvidenceBox'),txt=(state&&state.textContent)||'';
   var phase=1;if(box||/تم تسجيل التواجد|المسحة مسجلة مسبقاً/.test(txt))phase=3;else{var send=document.getElementById('send');if(send&&(send.disabled||/جارٍ/.test(send.textContent||'')))phase=2}
   var a=st.children;for(var i=0;i<a.length;i++){a[i].className='ark-m-step '+(i+1<phase?'done':i+1===phase?'active':'')}
@@ -113,21 +112,17 @@ function compactGps(){
   if(help&&(!help.parentNode||!help.parentNode.classList||!help.parentNode.classList.contains('ark-gps-help-wrap'))){
     var d=document.createElement('details');d.className='ark-gps-help-wrap';var sm=document.createElement('summary');sm.textContent='طريقة تفعيل الموقع';d.appendChild(sm);help.parentNode.insertBefore(d,help);d.appendChild(help);
   }
-  var tx=gps.textContent||'';
-  var denied=/غير مفعلة|لم يتم السماح|مرفوض|تعذر/.test(tx);
-  var wrappers=gps.querySelectorAll('.ark-gps-help-wrap');for(var i=0;i<wrappers.length;i++){if(denied&&/مرفوض/.test(tx))wrappers[i].open=false}
 }
 function syncKeyboardOffset(){
   var vv=window.visualViewport;
   if(!vv){document.documentElement.style.setProperty('--ark-vv-bottom','0px');document.body.classList.remove('ark-keyboard-open');return}
   var bottom=Math.max(0,window.innerHeight-(vv.height+vv.offsetTop));
   document.documentElement.style.setProperty('--ark-vv-bottom',Math.round(bottom)+'px');
-  var open=vv.height<window.innerHeight*0.72;
-  document.body.classList.toggle('ark-keyboard-open',open);
+  document.body.classList.toggle('ark-keyboard-open',vv.height<window.innerHeight*0.72);
 }
 function sync(){
   scheduled=false;addStyles();var r=route();setRouteClass(r);normalizeInputs(r);syncKeyboardOffset();
-  if(r==='scan'){shortenIntro();compactGps();ensureTopStepper()}
+  if(r==='scan'){shortenIntro();ensureTopStepper();compactGps()}
 }
 function schedule(){if(scheduled)return;scheduled=true;(window.requestAnimationFrame||function(fn){return setTimeout(fn,16)})(sync)}
 function boot(){
