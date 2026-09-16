@@ -1,9 +1,9 @@
-const CACHE='arkanat-field-qr-v5-18-20260916';
+const CACHE='arkanat-field-qr-v5-19-20260916';
 const CORE=['./','./index.html','./reprint.js','./photo-evidence.js','./route-guard.js','./shift-attendance.js'];
 const SCAN_GUARD=`<script id="__ARK_SCAN_ROUTE_GUARD">(()=>{try{const q=new URLSearchParams(location.search),h=new URLSearchParams((location.hash||'').replace(/^#\??/,'')),t=q.get('p')||q.get('field')||h.get('p')||h.get('field');if(!t)return;sessionStorage.setItem('arkanat_field_token_v5',t);sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');sessionStorage.removeItem('arkanat_field_share_v1');window.__ARK_FIELD_ROUTE='scan'}catch(_){}})();<\/script>`;
-const ROUTE_BOOT=`<script id="fieldRouteGuardScript" src="./route-guard.js?v=518"><\/script>`;
-const PHOTO_BOOT=`<script id="fieldPhotoEvidenceScript" src="./photo-evidence.js?v=518"><\/script>`;
-const SHIFT_BOOT=`<script id="fieldShiftAttendanceScript" src="./shift-attendance.js?v=518"><\/script>`;
+const ROUTE_BOOT=`<script id="fieldRouteGuardScript" src="./route-guard.js?v=519"><\/script>`;
+const PHOTO_BOOT=`<script id="fieldPhotoEvidenceScript" src="./photo-evidence.js?v=519"><\/script>`;
+const SHIFT_BOOT=`<script id="fieldShiftAttendanceScript" src="./shift-attendance.js?v=519"><\/script>`;
 function isScan(url){
   if(url.searchParams.get('p')||url.searchParams.get('field'))return true;
   try{const h=new URLSearchParams((url.hash||'').replace(/^#\??/,''));return !!(h.get('p')||h.get('field'))}catch(_){return false}
@@ -22,7 +22,7 @@ async function injectBoot(response,url){
 }
 async function freshShell(request,url){
   try{
-    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','518');
+    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','519');
     const response=await fetch(shell.href,{cache:'no-store',credentials:'same-origin',redirect:'follow'});
     if(!response.ok)throw new Error('shell_fetch_failed');
     const raw=response.clone();caches.open(CACHE).then(c=>c.put('./index.html',raw)).catch(()=>{});
@@ -41,7 +41,27 @@ async function freshAsset(request){
   }catch(_){return (await caches.match(request))||Response.error()}
 }
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
-self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('arkanat-field-qr-')).map(k=>caches.delete(k)));try{if(self.registration.navigationPreload)await self.registration.navigationPreload.enable()}catch(_){}await self.clients.claim()})())});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  const hadPrior=keys.some(k=>k!==CACHE&&k.startsWith('arkanat-field-qr-'));
+  await Promise.all(keys.filter(k=>k!==CACHE&&k.startsWith('arkanat-field-qr-')).map(k=>caches.delete(k)));
+  try{if(self.registration.navigationPreload)await self.registration.navigationPreload.enable()}catch(_){}
+  await self.clients.claim();
+  if(!hadPrior){
+    try{
+      const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+      await Promise.all(clients.map(async c=>{
+        try{
+          const u=new URL(c.url);
+          if(u.origin!==self.location.origin||!u.pathname.startsWith(new URL(self.registration.scope).pathname))return;
+          if(u.searchParams.get('__ark_first_boot')==='519')return;
+          u.searchParams.set('__ark_first_boot','519');
+          await c.navigate(u.href);
+        }catch(_){}
+      }));
+    }catch(_){}
+  }
+})())});
 self.addEventListener('fetch',event=>{
   const req=event.request;if(req.method!=='GET')return;
   const url=new URL(req.url);
