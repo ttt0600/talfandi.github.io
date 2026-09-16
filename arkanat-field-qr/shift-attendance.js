@@ -11,9 +11,7 @@ const MAX_PENDING=250;
 const ACTIONS=new Set(['start_shift','field_check','end_shift']);
 
 function activeToken(){
-  try{
-    if(typeof TOKEN!=='undefined'&&TOKEN)return String(TOKEN);
-  }catch(_){}
+  try{if(typeof TOKEN!=='undefined'&&TOKEN)return String(TOKEN)}catch(_){}
   try{return sessionStorage.getItem('arkanat_field_token_v5')||''}catch(_){return''}
 }
 function isScanForm(){
@@ -32,29 +30,69 @@ function mapSet(nonce,action){
   while(keys.length>MAX_MAP){delete x[keys.shift()]}
   writeObj(MAP_KEY,x);
 }
-function mapGet(nonce){const x=readObj(MAP_KEY);const v=x[nonce];return v&&ACTIONS.has(v.action)?v.action:''}
+function mapGet(nonce){const x=readObj(MAP_KEY),v=x[nonce];return v&&ACTIONS.has(v.action)?v.action:''}
 function mapDel(nonce){const x=readObj(MAP_KEY);if(x[nonce]){delete x[nonce];writeObj(MAP_KEY,x)}}
-function currentAction(){const r=document.querySelector('input[name="arkShiftAction"]:checked');return r&&ACTIONS.has(r.value)?r.value:'field_check'}
-function actionLabel(v){return v==='start_shift'?'بدء الوردية':v==='end_shift'?'انتهاء الوردية':'رصد ميداني'}
+function currentAction(){const r=document.querySelector('input[name="arkShiftAction"]:checked');return r&&ACTIONS.has(r.value)?r.value:''}
+function actionLabel(v){return v==='start_shift'?'بدء الوردية':v==='end_shift'?'انتهاء الوردية':'إثبات التحضير'}
 
 function addStyles(){
   if(document.getElementById('arkShiftStyle'))return;
   const s=document.createElement('style');s.id='arkShiftStyle';
-  s.textContent=`.ark-shift{margin:16px 0 4px}.ark-shift-title{font-weight:900;margin-bottom:8px}.ark-shift-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ark-shift-opt{position:relative}.ark-shift-opt input{position:absolute;opacity:0;pointer-events:none}.ark-shift-opt span{display:flex;min-height:58px;align-items:center;justify-content:center;text-align:center;padding:9px 7px;border:1.5px solid #cfdad4;border-radius:13px;background:#fff;color:#274437;font-weight:800;line-height:1.35;cursor:pointer}.ark-shift-opt input:checked+span{border-color:#1d6b4a;background:#e8f4ed;color:#123f2c;box-shadow:0 0 0 2px rgba(29,107,74,.10)}.ark-shift-help{font-size:12px;color:#69776f;line-height:1.6;margin-top:7px}@media(max-width:390px){.ark-shift-grid{gap:6px}.ark-shift-opt span{font-size:13px;padding:8px 5px}}`;
+  s.textContent=`
+  .ark-required-tag{font-size:12px;color:#9a2727;font-weight:900;margin-right:5px}
+  .ark-shift{margin:16px 0 4px}.ark-shift-title{font-weight:900;margin-bottom:8px}.ark-shift-title .ark-required-tag{font-size:12px}
+  .ark-shift-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ark-shift-opt{position:relative}.ark-shift-opt input{position:absolute;opacity:0;pointer-events:none}
+  .ark-shift-opt span{display:flex;min-height:58px;align-items:center;justify-content:center;text-align:center;padding:9px 7px;border:1.5px solid #cfdad4;border-radius:13px;background:#fff;color:#274437;font-weight:800;line-height:1.35;cursor:pointer}
+  .ark-shift-opt input:checked+span{border-color:#1d6b4a;background:#e8f4ed;color:#123f2c;box-shadow:0 0 0 2px rgba(29,107,74,.10)}
+  .ark-shift-help{font-size:12px;color:#69776f;line-height:1.6;margin-top:7px}
+  .ark-gps-required{margin:10px 0 8px;padding:11px 13px;border:1.5px solid #d5a6a6;border-radius:12px;background:#fff7f7;color:#772323;font-weight:800;line-height:1.65}
+  @media(max-width:390px){.ark-shift-grid{gap:6px}.ark-shift-opt span{font-size:13px;padding:8px 5px}}
+  `;
   document.head.appendChild(s);
 }
+function markLabelRequired(inputId){
+  const input=document.getElementById(inputId);if(!input)return;
+  input.required=true;input.setAttribute('aria-required','true');
+  const f=input.closest('form');if(!f)return;
+  const labels=[...f.querySelectorAll('label')];
+  const label=labels.find(x=>x.nextElementSibling===input||x.getAttribute('for')===inputId);
+  if(label&&!label.querySelector('.ark-required-tag'))label.insertAdjacentHTML('beforeend','<span class="ark-required-tag">إلزامي</span>');
+}
+function enforceGpsUi(){
+  if(!isScanForm())return;
+  const gps=document.getElementById('gps');if(!gps)return;
+  let notice=document.getElementById('arkGpsRequired');
+  if(!notice){
+    notice=document.createElement('div');notice.id='arkGpsRequired';notice.className='ark-gps-required';
+    notice.textContent='الموقع إلزامي لإثبات التحضير أو بدء/انتهاء الوردية. لا يمكن إكمال التسجيل بدون إحداثيات فعلية من الجهاز.';
+    gps.parentNode.insertBefore(notice,gps);
+  }
+  const noGps=document.getElementById('noGps');
+  if(noGps){const d=noGps.closest('details');if(d)d.remove();else noGps.remove()}
+}
 function ensureChooser(){
-  if(!isScanForm()||document.getElementById('arkShiftChooser'))return;
-  addStyles();
+  if(!isScanForm())return;
+  addStyles();markLabelRequired('nid');markLabelRequired('phone');enforceGpsUi();
+  if(document.getElementById('arkShiftChooser'))return;
   const f=document.getElementById('f');if(!f)return;
   const actions=f.querySelector('.actions');
   const box=document.createElement('div');box.id='arkShiftChooser';box.className='ark-shift';
-  box.innerHTML=`<div class="ark-shift-title">نوع العملية</div><div class="ark-shift-grid">
-    <label class="ark-shift-opt"><input type="radio" name="arkShiftAction" value="start_shift"><span>بدء الوردية</span></label>
-    <label class="ark-shift-opt"><input type="radio" name="arkShiftAction" value="field_check" checked><span>رصد ميداني</span></label>
-    <label class="ark-shift-opt"><input type="radio" name="arkShiftAction" value="end_shift"><span>انتهاء الوردية</span></label>
-  </div><div class="ark-shift-help">اختر بدء أو انتهاء الوردية عند بداية أو نهاية الدوام. للمسحات أثناء الوردية اترك «رصد ميداني».</div>`;
+  box.innerHTML=`<div class="ark-shift-title">نوع العملية <span class="ark-required-tag">إلزامي</span></div><div class="ark-shift-grid">
+    <label class="ark-shift-opt"><input type="radio" name="arkShiftAction" value="start_shift" required><span>بدء الوردية</span></label>
+    <label class="ark-shift-opt"><input type="radio" name="arkShiftAction" value="field_check" required><span>إثبات التحضير</span></label>
+    <label class="ark-shift-opt"><input type="radio" name="arkShiftAction" value="end_shift" required><span>انتهاء الوردية</span></label>
+  </div><div class="ark-shift-help">يجب اختيار نوع العملية قبل الإرسال. الموقع وصورة الإثبات جزء إلزامي من إكمال التسجيل.</div>`;
   if(actions)f.insertBefore(box,actions);else f.appendChild(box);
+}
+function validateNewScan(body){
+  const action=currentAction();
+  if(!action)throw new Error('اختر نوع العملية: بدء الوردية أو إثبات التحضير أو انتهاء الوردية.');
+  const lat=Number(body&&body.lat),lng=Number(body&&body.lng);
+  if(!body||body.location_status!=='granted'||!Number.isFinite(lat)||!Number.isFinite(lng)){
+    throw new Error('الموقع إلزامي. فعّل خدمة الموقع واسمح للمتصفح باستخدامها ثم أعد المحاولة.');
+  }
+  if(!String(body.national_id||'').trim()||!String(body.phone||'').trim())throw new Error('رقم الهوية ورقم الجوال بيانات إلزامية.');
+  return action;
 }
 
 async function postShift(row){
@@ -97,7 +135,10 @@ window.fetch=async function(input,init){
       else if(body&&body.action==='scan_batch'&&Array.isArray(body.scans))mode='batch';
     }
   }catch(_){}
-  if(mode==='scan'&&body&&body.event_nonce)mapSet(String(body.event_nonce),currentAction());
+  if(mode==='scan'&&body&&body.event_nonce){
+    const action=validateNewScan(body);
+    mapSet(String(body.event_nonce),action);
+  }
   const r=await nativeFetch(input,init);
   if(mode){
     try{
@@ -105,10 +146,10 @@ window.fetch=async function(input,init){
       c.json().then(z=>{
         const token=(body&&body.checkpoint_token)||activeToken();
         if(mode==='scan'){
-          const nonce=String(body.event_nonce||'');const a=mapGet(nonce);
+          const nonce=String(body.event_nonce||''),a=mapGet(nonce);
           if(a&&z&&z.ok)saveShift(String(z.event_id||''),nonce,String(token||''),a);
         }else if(mode==='batch'&&z&&z.ok&&Array.isArray(z.results)){
-          body.scans.forEach((s,i)=>{const nonce=String(s&&s.event_nonce||'');const a=mapGet(nonce);const rr=z.results[i]||{};if(a&&rr&&rr.ok)saveShift(String(rr.event_id||''),nonce,String(s&&s.checkpoint_token||token||''),a)});
+          body.scans.forEach((s,i)=>{const nonce=String(s&&s.event_nonce||''),a=mapGet(nonce),rr=z.results[i]||{};if(a&&rr&&rr.ok)saveShift(String(rr.event_id||''),nonce,String(s&&s.checkpoint_token||token||''),a)});
         }
       }).catch(()=>{});
     }catch(_){}
@@ -116,11 +157,18 @@ window.fetch=async function(input,init){
   return r;
 };
 
-function boot(){ensureChooser();flushShift();}
+document.addEventListener('click',e=>{
+  const t=e.target&&e.target.closest&&e.target.closest('#noGps');
+  if(!t)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  enforceGpsUi();
+},{capture:true});
+
+function boot(){ensureChooser();flushShift()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
-const mo=new MutationObserver(()=>ensureChooser());
+const mo=new MutationObserver(()=>{ensureChooser();enforceGpsUi()});
 try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(_){}
 window.addEventListener('online',flushShift);
-window.addEventListener('pageshow',()=>{ensureChooser();flushShift()});
+window.addEventListener('pageshow',()=>{ensureChooser();enforceGpsUi();flushShift()});
 setInterval(flushShift,60000);
 })();
