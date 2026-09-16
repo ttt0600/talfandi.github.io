@@ -9,6 +9,7 @@ const K_SHARE='arkanat_field_share_v1';
 const K_SHARE_MODE='arkanat_field_share_mode_v1';
 const K_ROUTE='arkanat_field_route_guard_v1';
 const REPAIR_KEY='arkanat_field_route_repair_v1';
+const SHIFT_SCRIPT_ID='fieldShiftAttendanceRuntime';
 
 function params(){
   const q=new URLSearchParams(location.search||'');
@@ -81,6 +82,29 @@ function resolveRoute(){
   }catch(_){}
   return{route:'none'};
 }
+function bootShiftLayer(){
+  const r=resolveRoute();
+  if(r.route!=='scan'||!r.token)return;
+  if(window.__ARK_FIELD_SHIFT_ATTENDANCE_V1||document.getElementById(SHIFT_SCRIPT_ID)||document.getElementById('fieldShiftAttendanceScript'))return;
+  try{
+    const s=document.createElement('script');
+    s.id=SHIFT_SCRIPT_ID;
+    s.src='./shift-attendance.js?v=520';
+    s.async=false;
+    s.onerror=()=>{
+      try{
+        s.remove();
+        if(window.__ARK_FIELD_SHIFT_ATTENDANCE_V1||document.getElementById(SHIFT_SCRIPT_ID))return;
+        const retry=document.createElement('script');
+        retry.id=SHIFT_SCRIPT_ID;
+        retry.src='./shift-attendance.js?v=520-r'+Date.now();
+        retry.async=false;
+        (document.head||document.documentElement).appendChild(retry);
+      }catch(_){}
+    };
+    (document.head||document.documentElement).appendChild(s);
+  }catch(_){}
+}
 function looksLikeOps(){
   try{
     const subtitle=document.getElementById('subtitle');
@@ -93,6 +117,7 @@ function enforce(){
   const r=resolveRoute();
   if(r.route!=='scan'||!r.token)return false;
   setScan(r.token);
+  bootShiftLayer();
   if(!looksLikeOps())return false;
   try{if(typeof TOKEN!=='undefined')TOKEN=r.token}catch(_){}
   try{if(typeof OPS!=='undefined')OPS=null}catch(_){}
@@ -121,17 +146,19 @@ function fallbackRepair(){
 }
 
 resolveRoute();
-window.addEventListener('pageshow',()=>{setTimeout(()=>{if(!enforce())setTimeout(fallbackRepair,350)},0)});
-window.addEventListener('popstate',()=>setTimeout(enforce,0));
-window.addEventListener('hashchange',()=>setTimeout(enforce,0));
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(enforce,0)});
+bootShiftLayer();
+window.addEventListener('pageshow',()=>{bootShiftLayer();setTimeout(()=>{if(!enforce())setTimeout(fallbackRepair,350)},0)});
+window.addEventListener('popstate',()=>{bootShiftLayer();setTimeout(enforce,0)});
+window.addEventListener('hashchange',()=>{bootShiftLayer();setTimeout(enforce,0)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){bootShiftLayer();setTimeout(enforce,0)}});
 document.addEventListener('DOMContentLoaded',()=>{
+  bootShiftLayer();
   enforce();
   let tries=0;
-  const timer=setInterval(()=>{tries++;const fixed=enforce();if(fixed||tries>=20){clearInterval(timer);if(!fixed)fallbackRepair()}},150);
+  const timer=setInterval(()=>{tries++;bootShiftLayer();const fixed=enforce();if(fixed||tries>=20){clearInterval(timer);if(!fixed)fallbackRepair()}},150);
   try{
     const root=document.getElementById('app')||document.documentElement;
-    const mo=new MutationObserver(()=>enforce());
+    const mo=new MutationObserver(()=>{bootShiftLayer();enforce()});
     mo.observe(root,{subtree:true,childList:true,characterData:true});
     setTimeout(()=>mo.disconnect(),8000);
   }catch(_){}
