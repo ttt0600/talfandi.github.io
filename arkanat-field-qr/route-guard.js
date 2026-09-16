@@ -10,6 +10,7 @@ const K_SHARE_MODE='arkanat_field_share_mode_v1';
 const K_ROUTE='arkanat_field_route_guard_v1';
 const REPAIR_KEY='arkanat_field_route_repair_v1';
 const SHIFT_SCRIPT_ID='fieldShiftAttendanceRuntime';
+const UX_SCRIPT_ID='fieldUxFlowRuntime';
 
 function params(){
   const q=new URLSearchParams(location.search||'');
@@ -52,21 +53,25 @@ function resolveRoute(){
   }catch(_){}
   return{route:'none'};
 }
-function bootShiftLayer(){
-  const r=resolveRoute();if(r.route!=='scan'||!r.token)return;
-  if(window.__ARK_FIELD_SHIFT_ATTENDANCE_V1||document.getElementById(SHIFT_SCRIPT_ID)||document.getElementById('fieldShiftAttendanceScript'))return;
+function loadScript(id,flag,src){
+  if(window[flag]||document.getElementById(id))return;
   try{
-    const s=document.createElement('script');s.id=SHIFT_SCRIPT_ID;s.src='./shift-attendance.js?v=521';s.async=false;
-    s.onerror=()=>{try{s.remove();if(window.__ARK_FIELD_SHIFT_ATTENDANCE_V1||document.getElementById(SHIFT_SCRIPT_ID))return;const retry=document.createElement('script');retry.id=SHIFT_SCRIPT_ID;retry.src='./shift-attendance.js?v=521-r'+Date.now();retry.async=false;(document.head||document.documentElement).appendChild(retry)}catch(_){}};
+    const s=document.createElement('script');s.id=id;s.src=src;s.async=false;
+    s.onerror=()=>{try{s.remove();if(window[flag]||document.getElementById(id))return;const retry=document.createElement('script');retry.id=id;retry.src=src+'-r'+Date.now();retry.async=false;(document.head||document.documentElement).appendChild(retry)}catch(_){}};
     (document.head||document.documentElement).appendChild(s);
   }catch(_){}
+}
+function bootScanLayers(){
+  const r=resolveRoute();if(r.route!=='scan'||!r.token)return;
+  if(!window.__ARK_FIELD_SHIFT_ATTENDANCE_V1&&!document.getElementById('fieldShiftAttendanceScript'))loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=522');
+  loadScript(UX_SCRIPT_ID,'__ARK_FIELD_UX_FLOW_V1','./ux-flow.js?v=522');
 }
 function looksLikeOps(){
   try{const subtitle=document.getElementById('subtitle'),app=document.getElementById('app'),s=(subtitle&&subtitle.textContent||'')+' '+(app&&app.textContent||'');return /إدارة العمليات|بيانات المشرف|اسم المشرف/.test(s)&&!!document.getElementById('count')}catch(_){return false}
 }
 function enforce(){
   const r=resolveRoute();if(r.route!=='scan'||!r.token)return false;
-  setScan(r.token);bootShiftLayer();if(!looksLikeOps())return false;
+  setScan(r.token);bootScanLayers();if(!looksLikeOps())return false;
   try{if(typeof TOKEN!=='undefined')TOKEN=r.token}catch(_){}
   try{if(typeof OPS!=='undefined')OPS=null}catch(_){}
   try{if(typeof SHARE!=='undefined')SHARE=null}catch(_){}
@@ -78,14 +83,14 @@ function fallbackRepair(){
   try{const n=Number(sessionStorage.getItem(REPAIR_KEY)||0);if(n>=1)return;sessionStorage.setItem(REPAIR_KEY,String(n+1));const u=new URL(location.origin+location.pathname);u.searchParams.set('p',r.token);u.searchParams.set('__ark_route_repair','1');location.replace(u.href)}catch(_){}
 }
 
-resolveRoute();bootShiftLayer();
-window.addEventListener('pageshow',()=>{bootShiftLayer();setTimeout(()=>{if(!enforce())setTimeout(fallbackRepair,350)},0)});
-window.addEventListener('popstate',()=>{bootShiftLayer();setTimeout(enforce,0)});
-window.addEventListener('hashchange',()=>{bootShiftLayer();setTimeout(enforce,0)});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){bootShiftLayer();setTimeout(enforce,0)}});
+resolveRoute();bootScanLayers();
+window.addEventListener('pageshow',()=>{bootScanLayers();setTimeout(()=>{if(!enforce())setTimeout(fallbackRepair,350)},0)});
+window.addEventListener('popstate',()=>{bootScanLayers();setTimeout(enforce,0)});
+window.addEventListener('hashchange',()=>{bootScanLayers();setTimeout(enforce,0)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){bootScanLayers();setTimeout(enforce,0)}});
 document.addEventListener('DOMContentLoaded',()=>{
-  bootShiftLayer();enforce();let tries=0;
-  const timer=setInterval(()=>{tries++;bootShiftLayer();const fixed=enforce();if(fixed||tries>=20){clearInterval(timer);if(!fixed)fallbackRepair()}},150);
-  try{const root=document.getElementById('app')||document.documentElement;const mo=new MutationObserver(()=>{bootShiftLayer();enforce()});mo.observe(root,{subtree:true,childList:true,characterData:true});setTimeout(()=>mo.disconnect(),8000)}catch(_){}
+  bootScanLayers();enforce();let tries=0;
+  const timer=setInterval(()=>{tries++;bootScanLayers();const fixed=enforce();if(fixed||tries>=20){clearInterval(timer);if(!fixed)fallbackRepair()}},150);
+  try{const root=document.getElementById('app')||document.documentElement;const mo=new MutationObserver(()=>{bootScanLayers();enforce()});mo.observe(root,{subtree:true,childList:true,characterData:true});setTimeout(()=>mo.disconnect(),8000)}catch(_){}
 });
 })();
