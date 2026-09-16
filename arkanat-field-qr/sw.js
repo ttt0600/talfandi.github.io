@@ -1,10 +1,11 @@
-const CACHE='arkanat-field-qr-v5-22-20260916';
-const CORE=['./','./index.html','./reprint.js','./photo-evidence.js','./photo-evidence-ux.js','./route-guard.js','./shift-attendance.js'];
+const CACHE='arkanat-field-qr-v5-23-20260916';
+const CORE=['./','./index.html','./reprint.js','./photo-evidence.js','./photo-evidence-ux.js','./workflow-ux.js','./route-guard.js','./shift-attendance.js'];
 const SCAN_GUARD=`<script id="__ARK_SCAN_ROUTE_GUARD">(()=>{try{const q=new URLSearchParams(location.search),h=new URLSearchParams((location.hash||'').replace(/^#\??/,'')),t=q.get('p')||q.get('field')||h.get('p')||h.get('field');if(!t)return;sessionStorage.setItem('arkanat_field_token_v5',t);sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');sessionStorage.removeItem('arkanat_field_share_v1');window.__ARK_FIELD_ROUTE='scan'}catch(_){}})();<\/script>`;
-const ROUTE_BOOT=`<script id="fieldRouteGuardScript" src="./route-guard.js?v=522"><\/script>`;
-const PHOTO_BOOT=`<script id="fieldPhotoEvidenceScript" src="./photo-evidence.js?v=522"><\/script>`;
-const PHOTO_UX_BOOT=`<script id="fieldPhotoEvidenceUxScript" src="./photo-evidence-ux.js?v=522"><\/script>`;
-const SHIFT_BOOT=`<script id="fieldShiftAttendanceScript" src="./shift-attendance.js?v=522"><\/script>`;
+const ROUTE_BOOT=`<script id="fieldRouteGuardScript" src="./route-guard.js?v=523"><\/script>`;
+const PHOTO_BOOT=`<script id="fieldPhotoEvidenceScript" src="./photo-evidence.js?v=523"><\/script>`;
+const PHOTO_UX_BOOT=`<script id="fieldPhotoEvidenceUxScript" src="./photo-evidence-ux.js?v=523"><\/script>`;
+const WORKFLOW_UX_BOOT=`<script id="fieldWorkflowUxScript" src="./workflow-ux.js?v=523"><\/script>`;
+const SHIFT_BOOT=`<script id="fieldShiftAttendanceScript" src="./shift-attendance.js?v=523"><\/script>`;
 function isScan(url){
   if(url.searchParams.get('p')||url.searchParams.get('field'))return true;
   try{const h=new URLSearchParams((url.hash||'').replace(/^#\??/,''));return !!(h.get('p')||h.get('field'))}catch(_){return false}
@@ -16,13 +17,14 @@ async function injectBoot(response,url){
   if(!text.includes('id="fieldRouteGuardScript"'))boot+=ROUTE_BOOT;
   if(!text.includes('id="fieldPhotoEvidenceScript"'))boot+=PHOTO_BOOT;
   if(!text.includes('id="fieldPhotoEvidenceUxScript"'))boot+=PHOTO_UX_BOOT;
+  if(!text.includes('id="fieldWorkflowUxScript"'))boot+=WORKFLOW_UX_BOOT;
   if(!text.includes('id="fieldShiftAttendanceScript"'))boot+=SHIFT_BOOT;
   const guarded=boot?(text.includes('<head>')?text.replace('<head>','<head>'+boot):boot+text):text;
   return new Response(guarded,{status:response.status,statusText:response.statusText,headers:cleanHtmlHeaders(response.headers)});
 }
 async function freshShell(request,url){
   try{
-    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','522');
+    const shell=new URL('./index.html',self.registration.scope);shell.searchParams.set('__ark_sw','523');
     const response=await fetch(shell.href,{cache:'no-store',credentials:'same-origin',redirect:'follow'});
     if(!response.ok)throw new Error('shell_fetch_failed');
     const raw=response.clone();caches.open(CACHE).then(c=>c.put('./index.html',raw)).catch(()=>{});
@@ -43,7 +45,7 @@ self.addEventListener('activate',event=>{event.waitUntil((async()=>{
     try{
       const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
       await Promise.all(clients.map(async c=>{
-        try{const u=new URL(c.url);if(u.origin!==self.location.origin||!u.pathname.startsWith(new URL(self.registration.scope).pathname))return;if(u.searchParams.get('__ark_first_boot')==='522')return;u.searchParams.set('__ark_first_boot','522');await c.navigate(u.href)}catch(_){}
+        try{const u=new URL(c.url);if(u.origin!==self.location.origin||!u.pathname.startsWith(new URL(self.registration.scope).pathname))return;if(u.searchParams.get('__ark_first_boot')==='523')return;u.searchParams.set('__ark_first_boot','523');await c.navigate(u.href)}catch(_){}
       }));
     }catch(_){}
   }
@@ -51,5 +53,5 @@ self.addEventListener('activate',event=>{event.waitUntil((async()=>{
 self.addEventListener('fetch',event=>{
   const req=event.request;if(req.method!=='GET')return;const url=new URL(req.url);
   if(req.mode==='navigate'&&url.origin===self.location.origin){event.respondWith(freshShell(req,url));return}
-  if(url.origin===self.location.origin&&(url.pathname.endsWith('/reprint.js')||url.pathname.endsWith('/photo-evidence.js')||url.pathname.endsWith('/photo-evidence-ux.js')||url.pathname.endsWith('/route-guard.js')||url.pathname.endsWith('/shift-attendance.js')||url.pathname.endsWith('/index.html'))){event.respondWith(freshAsset(req))}
+  if(url.origin===self.location.origin&&(url.pathname.endsWith('/reprint.js')||url.pathname.endsWith('/photo-evidence.js')||url.pathname.endsWith('/photo-evidence-ux.js')||url.pathname.endsWith('/workflow-ux.js')||url.pathname.endsWith('/route-guard.js')||url.pathname.endsWith('/shift-attendance.js')||url.pathname.endsWith('/index.html'))){event.respondWith(freshAsset(req))}
 });
