@@ -52,13 +52,6 @@ function normalizeInputs(r){
     phone.addEventListener('input',()=>{const v=normalizeDigits(phone.value);if(phone.value!==v)phone.value=v},{passive:true});
   }
 }
-function ensureTopStepper(){
-  const app=document.getElementById('app'),f=document.getElementById('f');if(!app||!f)return;
-  let st=document.getElementById(TOP_STEPPER);if(!st){st=document.createElement('div');st.id=TOP_STEPPER;st.innerHTML='<div class="ark-m-step active">1. البيانات</div><div class="ark-m-step">2. الموقع</div><div class="ark-m-step">3. الإثبات</div>';app.insertBefore(st,f)}
-  const state=document.getElementById('state'),box=document.getElementById('photoEvidenceBox'),txt=(state&&state.textContent)||'';let phase=1;if(box||/تم تسجيل التواجد|المسحة مسجلة مسبقاً/.test(txt))phase=3;else{const send=document.getElementById('send');if(send&&(send.disabled||/جارٍ/.test(send.textContent||'')))phase=2}
-  [...st.children].forEach((el,i)=>{const cls='ark-m-step '+(i+1<phase?'done':i+1===phase?'active':'');if(el.className!==cls)el.className=cls});
-}
-function compactGps(){const gps=document.getElementById('gps'),f=document.getElementById('f');if(!gps||!f)return;const actions=f.querySelector('.actions');if(gps.parentNode!==f){try{f.insertBefore(gps,actions||null)}catch(_){}}if(!document.getElementById(GPS_TITLE)){const t=document.createElement('div');t.id=GPS_TITLE;t.innerHTML='<b>الموقع</b><span>إلزامي</span>';gps.insertBefore(t,gps.firstChild)}}
 function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function deviceProfile(){
   const ua=navigator.userAgent||'',platform=navigator.platform||'';const ios=/iPhone|iPad|iPod/i.test(ua)||(platform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1),android=/Android/i.test(ua);
@@ -79,6 +72,9 @@ function recoverySteps(p){
   if(p.inApp)return['المتصفح داخل التطبيق قد يمنع صلاحية الموقع.','من قائمة التطبيق اختر «فتح في المتصفح» إن كان الخيار متاحاً.','إذا لم يظهر الخيار، انسخ رابط الرصد وافتحه في Safari أو Chrome.'];
   return['اسمح للموقع الحالي باستخدام موقعك من إعدادات المتصفح.','تأكد أن خدمة الموقع في الجهاز مفعلة.','ارجع للصفحة؛ سيحاول النظام المتابعة تلقائياً.'];
 }
+function formReady(){const f=document.getElementById('f'),a=document.querySelector('input[name="arkShiftAction"]:checked');try{return !!(f&&f.checkValidity()&&a)}catch(_){return false}}
+function markPermissionReady(){const gps=document.getElementById('gps');if(!gps)return;gps.innerHTML='<b class="ok">تم السماح بالموقع.</b> سيتم التقاط الموقع عند المتابعة.';schedule()}
+function continueIfReady(){const b=document.getElementById('retryGps')||document.getElementById('send');if(formReady()&&b&&!b.disabled){setTimeout(()=>b.click(),100);return true}markPermissionReady();return false}
 function copyScanLink(btn){
   let token='';try{if(typeof TOKEN!=='undefined'&&TOKEN)token=String(TOKEN);else token=sessionStorage.getItem('arkanat_field_token_v5')||''}catch(_){}if(!token)return;const url=location.origin+location.pathname+'?p='+encodeURIComponent(token);
   const done=()=>{if(btn){btn.textContent='تم نسخ رابط الرصد ✓';setTimeout(()=>{if(btn)btn.textContent='نسخ رابط الرصد'},1800)}};
@@ -89,9 +85,8 @@ function nativeGeoRecovery(host){
   if(typeof HTMLGeolocationElement!=='function'||!host||host.querySelector('geolocation'))return false;
   try{
     const geo=document.createElement('geolocation');geo.id='arkNativeGeoRecovery';geo.setAttribute('lang','ar');host.appendChild(geo);
-    const retry=()=>{const b=document.getElementById('retryGps')||document.getElementById('send');if(b&&!b.disabled)setTimeout(()=>b.click(),80)};
-    geo.addEventListener('location',()=>{try{if(geo.position){host.insertAdjacentHTML('afterbegin','<div class="ark-loc-sub"><b>تم السماح بالموقع.</b> جارٍ استكمال التحقق…</div>');retry()}}catch(_){}});
-    geo.addEventListener('promptaction',()=>{try{if(geo.permissionStatus==='granted')retry()}catch(_){}});
+    geo.addEventListener('location',()=>{try{if(geo.position)continueIfReady()}catch(_){}});
+    geo.addEventListener('promptaction',()=>{try{if(geo.permissionStatus==='granted')continueIfReady()}catch(_){}});
     return true;
   }catch(_){return false}
 }
@@ -106,7 +101,7 @@ function enhanceLocationRecovery(){
 }
 async function resumeAfterSettings(){
   if(recoveryCheckBusy||route()!=='scan'||!deniedDetected())return;recoveryCheckBusy=true;
-  try{const st=await permissionState();if(st==='granted'||st==='prompt'||st==='unknown'){const retry=document.getElementById('retryGps');if(retry&&!retry.disabled)retry.click()}}catch(_){}finally{setTimeout(()=>{recoveryCheckBusy=false},500)}
+  try{const st=await permissionState();if(st==='granted')continueIfReady()}catch(_){}finally{setTimeout(()=>{recoveryCheckBusy=false},500)}
 }
 function ensureTopStepper(){
   const app=document.getElementById('app'),f=document.getElementById('f');if(!app||!f)return;
