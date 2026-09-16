@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
-if(window.__ARK_FIELD_MOBILE_UX_V3)return;
+if(window.__ARK_FIELD_MOBILE_UX_V4)return;
+window.__ARK_FIELD_MOBILE_UX_V4=true;
 window.__ARK_FIELD_MOBILE_UX_V3=true;
 window.__ARK_FIELD_MOBILE_UX_V2=true;
 window.__ARK_FIELD_MOBILE_UX_V1=true;
@@ -8,7 +9,8 @@ window.__ARK_FIELD_MOBILE_UX_V1=true;
 const STYLE_ID='arkMobileUxStyle';
 const TOP_STEPPER='arkMobileTopStepper';
 const GPS_TITLE='arkGpsCompactTitle';
-let scheduled=false,blurTimer=0;
+const LOC_RECOVERY='arkLocationRecovery';
+let scheduled=false,blurTimer=0,leftForSettings=false,recoveryCheckBusy=false;
 
 function addStyles(){
   if(document.getElementById(STYLE_ID))return;
@@ -25,9 +27,10 @@ function addStyles(){
   body.ark-mobile-scan #arkWorkflowBar .ark-wf-btn,body.ark-mobile-scan #arkFieldFlowBar .ark-flow-primary{min-height:48px!important;padding:12px!important;font-size:16px!important;margin-top:7px!important}
   body.ark-keyboard-open #arkWorkflowBar,body.ark-keyboard-open #arkFieldFlowBar{display:none!important}
   body.ark-keyboard-open #nid,body.ark-keyboard-open #phone{scroll-margin-top:88px;scroll-margin-bottom:42vh}
+  #${LOC_RECOVERY}{margin-top:9px;padding:10px;border:1px solid #e0c995;border-radius:11px;background:#fffaf0;color:#4f4025}#${LOC_RECOVERY} .ark-loc-head{font-weight:900;color:#734b08;margin-bottom:5px}#${LOC_RECOVERY} .ark-loc-sub{font-size:12px;line-height:1.65;color:#5f5544}#${LOC_RECOVERY} ol{margin:7px 0 0;padding-right:20px;font-size:12px;line-height:1.75}#${LOC_RECOVERY} details{margin:7px 0 0;padding:0;border:0}#${LOC_RECOVERY} summary{font-size:12px;font-weight:900;color:#355646;cursor:pointer}#${LOC_RECOVERY} geolocation{display:block;width:100%;min-height:48px;margin-top:8px}#${LOC_RECOVERY} .ark-copy-link{margin-top:7px;background:#edf4f0!important;color:#194d37!important}
   @media(max-width:390px){#${TOP_STEPPER} .ark-m-step{font-size:10px;padding:6px 2px}body.ark-mobile-scan .ark-shift-opt span{font-size:12px}body.ark-mobile-scan #app>h2{font-size:22px!important}}
   @media(max-height:680px){body.ark-mobile-scan #app>p.sub{display:none!important}}
-  @media(print){#${TOP_STEPPER},#${GPS_TITLE}{display:none!important}}
+  @media(print){#${TOP_STEPPER},#${GPS_TITLE},#${LOC_RECOVERY}{display:none!important}}
   `;document.head.appendChild(s);
 }
 function route(){if(document.getElementById('nid')&&document.getElementById('phone')&&!document.getElementById('count'))return'scan';if(document.getElementById('count')&&document.getElementById('name'))return'ops';if(document.getElementById('sharePrint'))return'share';return'other'}
@@ -56,7 +59,63 @@ function ensureTopStepper(){
   [...st.children].forEach((el,i)=>{const cls='ark-m-step '+(i+1<phase?'done':i+1===phase?'active':'');if(el.className!==cls)el.className=cls});
 }
 function compactGps(){const gps=document.getElementById('gps'),f=document.getElementById('f');if(!gps||!f)return;const actions=f.querySelector('.actions');if(gps.parentNode!==f){try{f.insertBefore(gps,actions||null)}catch(_){}}if(!document.getElementById(GPS_TITLE)){const t=document.createElement('div');t.id=GPS_TITLE;t.innerHTML='<b>الموقع</b><span>إلزامي</span>';gps.insertBefore(t,gps.firstChild)}}
-function sync(){scheduled=false;addStyles();const r=route();setRouteClass(r);normalizeInputs(r);syncKeyboard();if(r==='scan'&&!isTextEntry(document.activeElement)){ensureTopStepper();compactGps()}}
+function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function deviceProfile(){
+  const ua=navigator.userAgent||'',platform=navigator.platform||'';const ios=/iPhone|iPad|iPod/i.test(ua)||(platform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1),android=/Android/i.test(ua);
+  const inApp=/FBAN|FBAV|Instagram|WhatsApp|Snapchat|TikTok|Line\//i.test(ua)||(android&&(/;\s*wv\)/i.test(ua)||/\bwv\b/i.test(ua)))||(ios&&!/Safari|CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua));
+  let browser='other',label='المتصفح الحالي';
+  if(inApp){browser=ios?'ios_inapp':android?'android_inapp':'inapp';label='متصفح داخل تطبيق'}
+  else if(ios){if(/CriOS/i.test(ua)){browser='ios_chrome';label='Chrome على iPhone / iPad'}else if(/FxiOS/i.test(ua)){browser='ios_firefox';label='Firefox على iPhone / iPad'}else if(/EdgiOS/i.test(ua)){browser='ios_edge';label='Edge على iPhone / iPad'}else if(/OPiOS/i.test(ua)){browser='ios_opera';label='Opera على iPhone / iPad'}else{browser='ios_safari';label='Safari على iPhone / iPad'}}
+  else if(android){if(/SamsungBrowser/i.test(ua)){browser='android_samsung';label='Samsung Internet'}else if(/EdgA/i.test(ua)){browser='android_edge';label='Edge على Android'}else if(/Firefox/i.test(ua)){browser='android_firefox';label='Firefox على Android'}else if(/OPR/i.test(ua)){browser='android_opera';label='Opera على Android'}else{browser='android_chrome';label='Chrome / Chromium على Android'}}
+  return{ios,android,inApp,browser,label};
+}
+async function permissionState(){try{if(navigator.permissions&&navigator.permissions.query){const p=await navigator.permissions.query({name:'geolocation'});return p&&p.state||'unknown'}}catch(_){}return'unknown'}
+function deniedDetected(){const gps=document.getElementById('gps');if(!gps)return false;const t=(gps.textContent||'').replace(/\s+/g,' ');return /صلاحية الموقع مرفوضة|تم رفض صلاحية الموقع|لم يتم السماح للمتصفح باستخدام الموقع/.test(t)}
+function recoverySteps(p){
+  if(p.browser==='ios_safari')return['من Safari افتح قائمة الصفحة بجانب شريط العنوان.','اختر «إعدادات موقع الويب» ثم «الموقع» واختر «سماح».','ارجع للصفحة؛ سيحاول النظام المتابعة تلقائياً.'];
+  if(p.ios&&!p.inApp)return['افتح «الإعدادات» في iPhone / iPad ثم إعدادات المتصفح المستخدم.','افتح «الموقع» واختر السماح أثناء استخدام التطبيق، وفعّل «الموقع الدقيق» إن ظهر.','ارجع للصفحة؛ سيحاول النظام المتابعة تلقائياً.'];
+  if(p.browser==='android_samsung')return['من معلومات الموقع أو إعدادات Samsung Internet افتح أذونات هذا الموقع.','اجعل «الموقع» = سماح، وتأكد أن خدمة الموقع في الجهاز مفعلة.','ارجع للصفحة؛ سيحاول النظام المتابعة تلقائياً.'];
+  if(p.android&&!p.inApp)return['اضغط رمز معلومات الموقع بجانب العنوان ثم «الأذونات / Permissions».','اجعل «الموقع» = سماح، وتأكد أن خدمة الموقع في الجهاز مفعلة.','ارجع للصفحة؛ سيحاول النظام المتابعة تلقائياً.'];
+  if(p.inApp)return['المتصفح داخل التطبيق قد يمنع صلاحية الموقع.','من قائمة التطبيق اختر «فتح في المتصفح» إن كان الخيار متاحاً.','إذا لم يظهر الخيار، انسخ رابط الرصد وافتحه في Safari أو Chrome.'];
+  return['اسمح للموقع الحالي باستخدام موقعك من إعدادات المتصفح.','تأكد أن خدمة الموقع في الجهاز مفعلة.','ارجع للصفحة؛ سيحاول النظام المتابعة تلقائياً.'];
+}
+function copyScanLink(btn){
+  let token='';try{if(typeof TOKEN!=='undefined'&&TOKEN)token=String(TOKEN);else token=sessionStorage.getItem('arkanat_field_token_v5')||''}catch(_){}if(!token)return;const url=location.origin+location.pathname+'?p='+encodeURIComponent(token);
+  const done=()=>{if(btn){btn.textContent='تم نسخ رابط الرصد ✓';setTimeout(()=>{if(btn)btn.textContent='نسخ رابط الرصد'},1800)}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done).catch(()=>fallback())}else fallback();
+  function fallback(){try{const i=document.createElement('input');i.value=url;i.style.position='fixed';i.style.opacity='0';document.body.appendChild(i);i.select();document.execCommand('copy');i.remove();done()}catch(_){}}
+}
+function nativeGeoRecovery(host){
+  if(typeof HTMLGeolocationElement!=='function'||!host||host.querySelector('geolocation'))return false;
+  try{
+    const geo=document.createElement('geolocation');geo.id='arkNativeGeoRecovery';geo.setAttribute('lang','ar');host.appendChild(geo);
+    const retry=()=>{const b=document.getElementById('retryGps')||document.getElementById('send');if(b&&!b.disabled)setTimeout(()=>b.click(),80)};
+    geo.addEventListener('location',()=>{try{if(geo.position){host.insertAdjacentHTML('afterbegin','<div class="ark-loc-sub"><b>تم السماح بالموقع.</b> جارٍ استكمال التحقق…</div>');retry()}}catch(_){}});
+    geo.addEventListener('promptaction',()=>{try{if(geo.permissionStatus==='granted')retry()}catch(_){}});
+    return true;
+  }catch(_){return false}
+}
+function enhanceLocationRecovery(){
+  if(route()!=='scan'||!deniedDetected())return;
+  const gps=document.getElementById('gps');if(!gps||document.getElementById(LOC_RECOVERY))return;const p=deviceProfile();
+  const box=document.createElement('div');box.id=LOC_RECOVERY;box.innerHTML='<div class="ark-loc-head">استعادة صلاحية الموقع</div><div class="ark-loc-sub">لن تفقد بياناتك. اسمح بالموقع ثم ارجع لهذه الصفحة.</div>';
+  const nativeHost=document.createElement('div');nativeHost.id='arkNativeGeoHost';box.appendChild(nativeHost);const nativeOk=nativeGeoRecovery(nativeHost);
+  const details=document.createElement('details');details.open=!nativeOk;details.innerHTML='<summary>'+(nativeOk?'إذا لم يعمل زر السماح، اعرض الخطوات':'طريقة السماح بالموقع على '+escHtml(p.label))+'</summary><ol>'+recoverySteps(p).map(x=>'<li>'+escHtml(x)+'</li>').join('')+'</ol>';box.appendChild(details);
+  if(p.inApp){const copy=document.createElement('button');copy.type='button';copy.className='ark-copy-link';copy.textContent='نسخ رابط الرصد';copy.onclick=()=>copyScanLink(copy);box.appendChild(copy)}
+  const retry=document.getElementById('retryGps');if(retry)retry.textContent=nativeOk?'تحقق من الصلاحية والمواصلة':'أعد المحاولة بعد السماح';gps.appendChild(box);
+}
+async function resumeAfterSettings(){
+  if(recoveryCheckBusy||route()!=='scan'||!deniedDetected())return;recoveryCheckBusy=true;
+  try{const st=await permissionState();if(st==='granted'||st==='prompt'||st==='unknown'){const retry=document.getElementById('retryGps');if(retry&&!retry.disabled)retry.click()}}catch(_){}finally{setTimeout(()=>{recoveryCheckBusy=false},500)}
+}
+function ensureTopStepper(){
+  const app=document.getElementById('app'),f=document.getElementById('f');if(!app||!f)return;
+  let st=document.getElementById(TOP_STEPPER);if(!st){st=document.createElement('div');st.id=TOP_STEPPER;st.innerHTML='<div class="ark-m-step active">1. البيانات</div><div class="ark-m-step">2. الموقع</div><div class="ark-m-step">3. الإثبات</div>';app.insertBefore(st,f)}
+  const state=document.getElementById('state'),box=document.getElementById('photoEvidenceBox'),txt=(state&&state.textContent)||'';let phase=1;if(box||/تم تسجيل التواجد|المسحة مسجلة مسبقاً/.test(txt))phase=3;else{const send=document.getElementById('send');if(send&&(send.disabled||/جارٍ/.test(send.textContent||'')))phase=2}
+  [...st.children].forEach((el,i)=>{const cls='ark-m-step '+(i+1<phase?'done':i+1===phase?'active':'');if(el.className!==cls)el.className=cls});
+}
+function compactGps(){const gps=document.getElementById('gps'),f=document.getElementById('f');if(!gps||!f)return;const actions=f.querySelector('.actions');if(gps.parentNode!==f){try{f.insertBefore(gps,actions||null)}catch(_){}}if(!document.getElementById(GPS_TITLE)){const t=document.createElement('div');t.id=GPS_TITLE;t.innerHTML='<b>الموقع</b><span>إلزامي</span>';gps.insertBefore(t,gps.firstChild)}}
+function sync(){scheduled=false;addStyles();const r=route();setRouteClass(r);normalizeInputs(r);syncKeyboard();if(r==='scan'&&!isTextEntry(document.activeElement)){ensureTopStepper();compactGps();enhanceLocationRecovery()}}
 function schedule(){if(scheduled)return;scheduled=true;(window.requestAnimationFrame||function(fn){return setTimeout(fn,16)})(sync)}
 function boot(){
   addStyles();sync();const root=document.getElementById('app')||document.body;
@@ -64,9 +123,11 @@ function boot(){
   document.addEventListener('input',schedule,true);document.addEventListener('change',schedule,true);
   document.addEventListener('focusin',e=>{clearTimeout(blurTimer);if(isTextEntry(e.target))setKeyboard(true);schedule()},true);
   document.addEventListener('focusout',()=>{clearTimeout(blurTimer);blurTimer=setTimeout(()=>{syncKeyboard();schedule()},180)},true);
-  window.addEventListener('pageshow',schedule);window.addEventListener('resize',schedule);window.addEventListener('orientationchange',()=>setTimeout(schedule,180));
+  window.addEventListener('pageshow',()=>{schedule();if(leftForSettings){leftForSettings=false;setTimeout(resumeAfterSettings,450)}});
+  window.addEventListener('focus',()=>{if(leftForSettings){leftForSettings=false;setTimeout(resumeAfterSettings,450)}});
+  window.addEventListener('resize',schedule);window.addEventListener('orientationchange',()=>setTimeout(schedule,180));
   if(window.visualViewport){window.visualViewport.addEventListener('resize',()=>{if(isTextEntry(document.activeElement))setKeyboard(true);schedule()},{passive:true})}
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(schedule,80)});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&deniedDetected())leftForSettings=true;if(document.visibilityState==='visible'){setTimeout(schedule,80);if(leftForSettings){leftForSettings=false;setTimeout(resumeAfterSettings,450)}}});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
