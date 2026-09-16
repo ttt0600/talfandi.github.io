@@ -5,6 +5,9 @@ window.__ARK_FIELD_MOBILE_FALLBACK_V1=true;
 var pending=false;
 function sync(){
   pending=false;
+  var top=document.getElementById('arkMobileTopStepper');
+  var photo=!!(document.getElementById('photoEvidenceBox')||document.getElementById('arkFieldFlowBar')||document.getElementById('scanMandatoryReceipt'));
+  if(top){try{top.style.display=photo?'none':'grid'}catch(_){}}
   var f=document.getElementById('f'),nid=document.getElementById('nid'),count=document.getElementById('count');
   if(!f||!nid||count)return;
   var a=null;try{a=f.querySelector(':scope > .actions')}catch(_){var xs=f.getElementsByClassName('actions');a=xs&&xs[0]||null}
