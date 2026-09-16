@@ -10,7 +10,8 @@ const K_SHARE_MODE='arkanat_field_share_mode_v1';
 const K_ROUTE='arkanat_field_route_guard_v1';
 const REPAIR_KEY='arkanat_field_route_repair_v1';
 const SHIFT_SCRIPT_ID='fieldShiftAttendanceRuntime';
-const UX_SCRIPT_ID='fieldUxFlowRuntime';
+const PHOTO_UX_SCRIPT_ID='fieldPhotoEvidenceUxRuntime';
+const WORKFLOW_UX_SCRIPT_ID='fieldWorkflowUxRuntime';
 
 function params(){
   const q=new URLSearchParams(location.search||'');
@@ -53,8 +54,8 @@ function resolveRoute(){
   }catch(_){}
   return{route:'none'};
 }
-function loadScript(id,flag,src){
-  if(window[flag]||document.getElementById(id))return;
+function loadScript(id,flag,src,existingId){
+  if(window[flag]||document.getElementById(id)||(existingId&&document.getElementById(existingId)))return;
   try{
     const s=document.createElement('script');s.id=id;s.src=src;s.async=false;
     s.onerror=()=>{try{s.remove();if(window[flag]||document.getElementById(id))return;const retry=document.createElement('script');retry.id=id;retry.src=src+'-r'+Date.now();retry.async=false;(document.head||document.documentElement).appendChild(retry)}catch(_){}};
@@ -63,8 +64,9 @@ function loadScript(id,flag,src){
 }
 function bootScanLayers(){
   const r=resolveRoute();if(r.route!=='scan'||!r.token)return;
-  if(!window.__ARK_FIELD_SHIFT_ATTENDANCE_V1&&!document.getElementById('fieldShiftAttendanceScript'))loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=522');
-  loadScript(UX_SCRIPT_ID,'__ARK_FIELD_UX_FLOW_V1','./ux-flow.js?v=522');
+  loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=524','fieldShiftAttendanceScript');
+  loadScript(PHOTO_UX_SCRIPT_ID,'__ARK_FIELD_PHOTO_UX_V1','./photo-evidence-ux.js?v=524','fieldPhotoEvidenceUxScript');
+  loadScript(WORKFLOW_UX_SCRIPT_ID,'__ARK_FIELD_WORKFLOW_UX_V1','./workflow-ux.js?v=524','fieldWorkflowUxScript');
 }
 function looksLikeOps(){
   try{const subtitle=document.getElementById('subtitle'),app=document.getElementById('app'),s=(subtitle&&subtitle.textContent||'')+' '+(app&&app.textContent||'');return /إدارة العمليات|بيانات المشرف|اسم المشرف/.test(s)&&!!document.getElementById('count')}catch(_){return false}
