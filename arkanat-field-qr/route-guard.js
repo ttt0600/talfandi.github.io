@@ -64,9 +64,9 @@ function loadScript(id,flag,src,existingId){
 }
 function bootScanLayers(){
   const r=resolveRoute();if(r.route!=='scan'||!r.token)return;
-  loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=524','fieldShiftAttendanceScript');
-  loadScript(PHOTO_UX_SCRIPT_ID,'__ARK_FIELD_PHOTO_UX_V1','./photo-evidence-ux.js?v=524','fieldPhotoEvidenceUxScript');
-  loadScript(WORKFLOW_UX_SCRIPT_ID,'__ARK_FIELD_WORKFLOW_UX_V1','./workflow-ux.js?v=524','fieldWorkflowUxScript');
+  loadScript(SHIFT_SCRIPT_ID,'__ARK_FIELD_SHIFT_ATTENDANCE_V1','./shift-attendance.js?v=525','fieldShiftAttendanceScript');
+  loadScript(PHOTO_UX_SCRIPT_ID,'__ARK_FIELD_PHOTO_UX_V1','./photo-evidence-ux.js?v=525','fieldPhotoEvidenceUxScript');
+  loadScript(WORKFLOW_UX_SCRIPT_ID,'__ARK_FIELD_WORKFLOW_UX_V2','./workflow-ux.js?v=525','fieldWorkflowUxScript');
 }
 function looksLikeOps(){
   try{const subtitle=document.getElementById('subtitle'),app=document.getElementById('app'),s=(subtitle&&subtitle.textContent||'')+' '+(app&&app.textContent||'');return /إدارة العمليات|بيانات المشرف|اسم المشرف/.test(s)&&!!document.getElementById('count')}catch(_){return false}
