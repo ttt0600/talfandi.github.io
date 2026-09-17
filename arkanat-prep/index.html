@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#7a171b">
 <title>أركانات | التحضير التشغيلي</title>
-<link rel="stylesheet" href="./print-ui.css?v=20260917-1">
+<link rel="stylesheet" href="./print-ui.css?v=20260917-2">
 </head>
 <body>
 <iframe id="appFrame" src="./app-core.html" title="أركانات - التحضير التشغيلي"></iframe>
@@ -31,12 +31,12 @@
 
       <div class="field">
         <label for="pProject">المشروع</label>
-        <select id="pProject"><option value="">اختاري العميل أولاً</option></select>
+        <select id="pProject" disabled><option value="">اختاري العميل أولاً</option></select>
       </div>
 
       <div class="field">
         <label for="pSite">الموقع</label>
-        <select id="pSite"><option value="">اختاري المشروع أولاً</option></select>
+        <select id="pSite" disabled><option value="">اختاري المشروع أولاً</option></select>
       </div>
 
       <div class="toolbar-actions">
@@ -58,6 +58,7 @@
     <div class="sheet-empty"><div><b>اختاري الموقع المطلوب</b><div style="margin-top:7px">استخدمي البحث السريع أو التدرج: عميل ← مشروع ← موقع.</div></div></div>
   </div>
 </div>
-<script src="./print-ui.js?v=20260917-1" defer></script>
+<script src="./print-ui.js?v=20260917-2" defer></script>
+<script src="./selector-fix.js?v=20260917-2" defer></script>
 </body>
 </html>
