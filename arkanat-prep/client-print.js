@@ -139,8 +139,22 @@ function shiftHours(code){const m=String(code||'').match(/(8|12)$/);return m?Num
 function workHours(a,d){if(!d)return 0;if(d.worked_hours!==null&&d.worked_hours!==undefined&&d.worked_hours!=='')return Number(d.worked_hours)||0;if(['P','SUB','CASH'].includes(d.status))return shiftHours(d.shift_code||a.shift_code)||0;return 0}
 function dayClass(st){if(!st)return'missing';if(['A','W','R','S'].includes(st))return'abs';if(['OFF','O','AL','SK'].includes(st))return'off';if(['SUB','CASH'].includes(st))return'cover';return''}
 function metrics(ds){
- const z={present:0,abs:0,withdraw:0,off:0,coverage:0,missing:0,hours:0};
- CP.guards.forEach(function(a){ds.forEach(function(date){if(!activeOn(a,date))return;const e=dayEntry(a,date);if(!e){z.missing++;return}if(e.status==='P')z.present++;if(e.status==='A')z.abs++;if(e.status==='W')z.withdraw++;if(['OFF','O','AL','SK'].includes(e.status))z.off++;if(['SUB','CASH'].includes(e.status))z.coverage++;z.hours+=workHours(a,e)})});
+ const z={present:0,abs:0,withdraw:0,off:0,coverage:0,missing:0,hours:0,missing_dates:0,missing_guards:0};
+ const md=new Set(),mg=new Set();
+ CP.guards.forEach(function(a){
+  ds.forEach(function(date){
+   if(!activeOn(a,date))return;
+   const e=dayEntry(a,date);
+   if(!e){z.missing++;md.add(date);mg.add(a.id||a.employee_ref||a.full_name);return}
+   if(e.status==='P')z.present++;
+   if(e.status==='A')z.abs++;
+   if(e.status==='W')z.withdraw++;
+   if(['OFF','O','AL','SK'].includes(e.status))z.off++;
+   if(['SUB','CASH'].includes(e.status))z.coverage++;
+   z.hours+=workHours(a,e);
+  });
+ });
+ z.missing_dates=md.size;z.missing_guards=mg.size;
  return z;
 }
 function guardRow(a,idx,ds){
@@ -174,7 +188,7 @@ function finalBlock(m){
  '<div class="cp-legend"><span><b>P</b> حاضر</span><span><b>A</b> غائب</span><span><b>OFF</b> راحة</span><span><b>T</b> استئذان</span><span><b>AL</b> إجازة سنوية</span><span><b>SK</b> مرضية</span><span><b>W</b> انسحاب</span><span><b>R</b> استقالة</span><span><b>S</b> توقف</span><span><b>C</b> تغطية</span><span><b>إجمالي الساعات</b> '+m.hours+'</span></div>'+
  '<div class="cp-approvals"><div class="cp-approval"><b>مسؤول العميل / الموقع</b>الاسم / التوقيع</div><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>مدير إدارة التشغيل</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة العمليات الموحدة</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة الموارد البشرية</b>الاسم / التوقيع</div></div>'+
  '<div class="cp-foot"><span>شركة أركانات للحراسات الأمنية</span><span>'+escp(s.project_name||s.site_name||'')+'</span><span>'+escp(cycleContext().period)+'</span></div>'+
- (m.missing?'<div class="cp-draft">مسودة - يوجد '+m.missing+' يوم/سجل غير مكتمل داخل فترة التكليف</div>':'')+'</div>';
+ (m.missing?'<div class="cp-draft">مسودة غير مكتملة - '+m.missing+' خانة تحضير يومية غير مسجلة</div>':'')+'</div>';
 }
 function renderReport(){
  const c=cycleContext(),ds=dateList(c.start,c.end),m=metrics(ds),perPage=26,chunks=[];
@@ -186,7 +200,7 @@ function renderReport(){
   (pi===chunks.length-1?finalBlock(m):'')+'</section>';
  }).join('');
  $p('cpNotice').style.display=m.missing?'block':'none';
- $p('cpNotice').textContent=m.missing?'تنبيه قبل الإرسال: يوجد '+m.missing+' يوم/سجل غير مكتمل داخل فترة التكليف الفعلية.':'';
+ $p('cpNotice').textContent=m.missing?'الكشف غير مكتمل: توجد '+m.missing+' خانات تحضير يومية غير مسجلة (موظف × يوم)، موزعة على '+m.missing_guards+' حارس و'+m.missing_dates+' تواريخ. يجب استكمالها قبل إرسال الكشف للعميل.':'';
  $p('cpPrint').disabled=false;
  CP.filename='أركانات - كشف حضور - '+safeName(CP.site.project_name||CP.site.site_name||CP.site.client_name)+' - '+safeName(c.region||'')+' - '+safeName(monthName(c.period));
 }
