@@ -15,6 +15,7 @@ const MAX_PENDING_PHOTOS=30;
 const MAX_GALLERY_AGE_MS=30*60*1000;
 const REQUIRED_TTL_MS=2*60*60*1000;
 const PICKER_CANCEL_GRACE_MS=2200;
+const PICKER_OPEN_GUARD_MS=1800;
 let lastPromptedEvent='';
 let requiredEventId='';
 let lastScanResult=null;
@@ -24,6 +25,8 @@ let pickerActive=false;
 let pickerInput=null;
 let pickerEventId='';
 let pickerCancelTimer=0;
+let pickerOpenGuardTimer=0;
+let pickerExternalSeen=false;
 let photoProcessing=false;
 
 function h(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
@@ -36,7 +39,15 @@ function stateEl(){return document.getElementById('state')}
 function hideScanForm(){const f=document.getElementById('f'),gps=document.getElementById('gps');if(f)f.classList.add('hidden');if(gps)gps.classList.add('hidden')}
 function livePhotoBox(eventId){const b=document.getElementById('photoEvidenceBox');return !!(b&&(!eventId||b.dataset.eventId===String(eventId)))}
 function clearPickerTimer(){if(pickerCancelTimer){clearTimeout(pickerCancelTimer);pickerCancelTimer=0}}
-function resetPickerState(){clearPickerTimer();pickerActive=false;pickerInput=null;pickerEventId=''}
+function clearPickerOpenGuard(){if(pickerOpenGuardTimer){clearTimeout(pickerOpenGuardTimer);pickerOpenGuardTimer=0}}
+function isAndroid(){return /Android/i.test(navigator.userAgent||'')}
+function prepareAndroidFileInput(input){
+  if(!input||!isAndroid())return;
+  input.classList.remove('hidden');
+  input.style.position='fixed';input.style.left='-10000px';input.style.top='0';input.style.width='1px';input.style.height='1px';
+  input.style.opacity='0.001';input.style.pointerEvents='none';input.style.overflow='hidden';
+}
+function resetPickerState(){clearPickerTimer();clearPickerOpenGuard();pickerActive=false;pickerInput=null;pickerEventId='';pickerExternalSeen=false}
 function pickerOrProcessing(){return pickerActive||photoProcessing}
 
 function saveRequired(eventId){
@@ -128,12 +139,40 @@ function makePhotoShell(state,eventId){
 
 function openPhotoPicker(input,take,out,eventId){
   if(!input||pickerActive||photoProcessing)return;
-  clearPickerTimer();
+  clearPickerTimer();clearPickerOpenGuard();
   try{input.value=''}catch(_){}
-  pickerActive=true;pickerInput=input;pickerEventId=String(eventId||'');
+  prepareAndroidFileInput(input);
+  const useChooserFallback=isAndroid()&&input.dataset.arkPickerFallback==='1';
+  if(useChooserFallback){try{input.removeAttribute('capture')}catch(_){}}
+  else if(isAndroid()){try{input.setAttribute('capture','environment')}catch(_){}}
+  pickerActive=true;pickerInput=input;pickerEventId=String(eventId||'');pickerExternalSeen=false;
   if(take)take.disabled=true;
   if(out)out.innerHTML='<span class="sub">الكاميرا مفتوحة. التقط الصورة ثم اختر «استخدام الصورة» للعودة وإكمال التسجيل.</span>';
-  try{input.click()}catch(e){resetPickerState();if(take)take.disabled=false;if(out)out.innerHTML='<p class="bad">تعذر فتح الكاميرا على هذا المتصفح. حاول مرة أخرى أو افتح الرابط في المتصفح الافتراضي للجهاز.</p>'}
+  let launched=false;
+  try{
+    if(isAndroid()&&typeof input.showPicker==='function'){input.showPicker();launched=true}
+    else{input.click();launched=true}
+  }catch(e){
+    try{input.click();launched=true}catch(_){}
+  }
+  if(!launched){
+    resetPickerState();if(take)take.disabled=false;
+    if(out)out.innerHTML='<p class="bad">تعذر فتح الكاميرا على هذا المتصفح. حاول مرة أخرى أو افتح الرابط في المتصفح الافتراضي للجهاز.</p>';
+    return
+  }
+  if(isAndroid()){
+    pickerOpenGuardTimer=setTimeout(()=>{
+      if(!pickerActive||photoProcessing||pickerExternalSeen)return;
+      if(input.files&&input.files.length)return;
+      let focused=true;try{focused=document.hasFocus()}catch(_){}
+      if(document.visibilityState==='visible'&&focused){
+        input.dataset.arkPickerFallback='1';
+        resetPickerState();
+        if(take)take.disabled=false;
+        if(out&&document.body.contains(out))out.innerHTML='<span class="warn">لم تفتح الكاميرا على هذا المتصفح. اضغط «التقاط صورة للموقع» مرة أخرى وسيستخدم النظام طريقة فتح بديلة تلقائياً.</span>';
+      }
+    },PICKER_OPEN_GUARD_MS)
+  }
 }
 function markPickerCancelled(input,take,out){
   if(input!==pickerInput&&pickerInput)return;
@@ -167,7 +206,8 @@ function renderPhotoStep(eventId,force=false){
     let meta=null,metaPromise=null,processing=false;
     const loadMeta=(forceMeta=false)=>{if(meta&&!forceMeta)return Promise.resolve(meta);if(metaPromise&&!forceMeta)return metaPromise;metaPromise=apiJson({action:'meta',event_id:eventId,checkpoint_token:getToken()}).then(z=>{meta=z;metaPromise=null;if(z.already_uploaded){completeRegistration('صورة الإثبات محفوظة ومربوطة بالمسحة.');return z}if(!processing&&!pickerActive&&out&&document.body.contains(out))out.innerHTML='<span class="ok">الكاميرا جاهزة. التقط صورة الموقع لإكمال التسجيل.</span>';return z}).catch(e=>{metaPromise=null;if(!processing&&!pickerActive&&out&&document.body.contains(out))out.innerHTML='<span class="warn">سيعاد ربط بيانات المسحة تلقائياً عند التقاط الصورة.</span>';throw e});return metaPromise};
     loadMeta().catch(()=>{});
-    take.onclick=()=>openPhotoPicker(input,take,out,eventId);
+    window.__ARK_FIELD_PHOTO_OPEN=()=>openPhotoPicker(input,take,out,eventId);
+    take.onclick=()=>window.__ARK_FIELD_PHOTO_OPEN();
     const processFile=async(file)=>{
       if(processing||!file)return;
       resetPickerState();
@@ -181,8 +221,8 @@ function renderPhotoStep(eventId,force=false){
         out.querySelector('#fieldPhotoApprove').onclick=async()=>{const approve=out.querySelector('#fieldPhotoApprove'),retake=out.querySelector('#fieldPhotoRetake');approve.disabled=true;retake.disabled=true;photoProcessing=true;out.insertAdjacentHTML('beforeend','<div id="fieldPhotoUploading"><div class="spin"></div><div class="center">جارٍ حفظ الصورة وإكمال التسجيل…</div></div>');const row={event_id:eventId,checkpoint_token:getToken(),blob:made.blob,width_px:made.width,height_px:made.height,captured_client_ts:captured,queued_at:Date.now()};try{await uploadRow(row);URL.revokeObjectURL(u);photoProcessing=false;completeRegistration('تم حفظ صورة الإثبات وربطها بالمسحة.')}catch(e){photoProcessing=false;if(e&&e.permanent){URL.revokeObjectURL(u);out.innerHTML='<p class="bad">'+h(e.message||'تعذر قبول الصورة.')+'</p><p class="warn">التسجيل ما زال غير مكتمل حتى حفظ صورة صالحة.</p><div class="actions"><button id="fieldPhotoRetryCapture" type="button">إعادة التصوير</button></div>';const rb=out.querySelector('#fieldPhotoRetryCapture');rb.onclick=()=>openPhotoPicker(input,take,out,eventId);return}let queued=false;try{await dbPut(row);queued=true}catch(_){}URL.revokeObjectURL(u);if(queued)completeRegistration('تم التقاط صورة الإثبات وحفظها على الجهاز، وستُرفع تلقائياً عند توفر الاتصال.',true);else out.innerHTML='<p class="bad">تعذر حفظ الصورة حالياً.</p><p class="warn">التسجيل غير مكتمل؛ أعد المحاولة قبل إغلاق الصفحة.</p>'}};
       }catch(e){processing=false;photoProcessing=false;out.innerHTML='<p class="bad">'+h(e.message||'تعذر تجهيز الصورة.')+'</p><p class="warn">التسجيل غير مكتمل حتى حفظ الصورة.</p>';take.disabled=false}
     };
-    input.onchange=()=>{clearPickerTimer();const file=input.files&&input.files[0];if(file){const stableFile=file;resetPickerState();processFile(stableFile)}else markPickerCancelled(input,take,out)};
-    input.oncancel=()=>markPickerCancelled(input,take,out);
+    input.onchange=()=>{clearPickerTimer();clearPickerOpenGuard();const file=input.files&&input.files[0];try{input.setAttribute('capture','environment');delete input.dataset.arkPickerFallback}catch(_){}if(file){const stableFile=file;resetPickerState();processFile(stableFile)}else markPickerCancelled(input,take,out)};
+    input.oncancel=()=>{try{input.setAttribute('capture','environment')}catch(_){};markPickerCancelled(input,take,out)};
   };mount();
 }
 
@@ -210,11 +250,13 @@ setTimeout(()=>{
 setTimeout(flushPhotoQueue,1800);
 window.addEventListener('online',()=>setTimeout(flushPhotoQueue,800));
 document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){if(pickerActive)pickerExternalSeen=true;return}
   if(document.visibilityState!=='visible')return;
   setTimeout(flushPhotoQueue,700);
   if(pickerActive){schedulePickerCancelFallback();return}
   if(photoProcessing)return;
   restorePhotoUiIfNeeded();
 });
+window.addEventListener('blur',()=>{if(pickerActive)pickerExternalSeen=true});
 window.addEventListener('pageshow',()=>{if(pickerActive){schedulePickerCancelFallback();return}restorePhotoUiIfNeeded()});
 })();
