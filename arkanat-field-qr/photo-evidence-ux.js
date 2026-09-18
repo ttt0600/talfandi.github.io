@@ -36,7 +36,7 @@ function sync(){
   scheduled=false;injectStyles();const state=document.getElementById('state');if(!state){removeBar();return}const box=document.getElementById('photoEvidenceBox'),take=document.getElementById('fieldPhotoTake'),preview=document.getElementById('fieldPhotoPreview'),approve=document.getElementById('fieldPhotoApprove'),retake=document.getElementById('fieldPhotoRetake'),uploading=document.getElementById('fieldPhotoUploading'),txt=state.textContent||'';
   if(box&&uploading){ensureProgress('uploading');ensureBar('uploading','جارٍ حفظ الصورة وإكمال التسجيل… لا تغلق الصفحة.');return}
   if(box&&preview&&approve){ensureProgress('review');ensureBar('review','تم التقاط الصورة، لكن التسجيل لم يكتمل بعد.','حفظ الصورة وإنهاء التسجيل',()=>approve.click(),retake?()=>retake.click():null,'إعادة التصوير');return}
-  if(box&&take){ensureProgress('camera');ensureBar('camera','التسجيل غير مكتمل. التقط صورة للموقع.','التقاط صورة للموقع',()=>take.click());return}
+  if(box&&take){ensureProgress('camera');ensureBar('camera','التسجيل غير مكتمل. التقط صورة للموقع.','التقاط صورة للموقع',()=>{if(typeof window.__ARK_FIELD_PHOTO_OPEN==='function')window.__ARK_FIELD_PHOTO_OPEN();else take.click()});return}
   if(txt.includes('اكتملت الخطوات المطلوبة ويمكن إغلاق الصفحة')||txt.includes('تم حفظ صورة الإثبات وربطها بالمسحة')){ensureProgress('success');ensureBar('success','✓ اكتمل التسجيل بالكامل. يمكنك إغلاق الصفحة الآن.');return}
   if(!document.getElementById('scanMandatoryReceipt')){removeBar();lastProgressKey=''}
 }
