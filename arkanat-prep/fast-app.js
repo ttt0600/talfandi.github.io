@@ -31,7 +31,11 @@ function initPeriodOptions(selected){
  const el=$('period');if(!el)return;
  const [y,m]=selected.split('-').map(Number),vals=[];
  for(let k=-12;k<=1;k++){const d=new Date(y,m-1+k,1),v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');vals.push(v)}
- el.innerHTML=vals.reverse().map(v=>'<option value="'+v+'">دورة '+monthLabel(v)+'</option>').join('');
+ const next=new Date(y,m,1),nextVal=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0');
+ el.innerHTML=vals.reverse().map(v=>{
+   const tag=v===selected?' — الحالية':v===nextVal?' — القادمة / للتجهيز':'';
+   return '<option value="'+v+'">دورة '+monthLabel(v)+tag+'</option>';
+ }).join('');
  el.value=selected;
 }
 function period(){return $('period').value||ry().slice(0,7)}
@@ -64,14 +68,26 @@ const fast=(a,p={},t=12000)=>req(API,a,p,t);
 const login=(p)=>req(API,'start',p,10000);
 
 function syncContextUi(){
+ const future=S.ctx?.cycle_state==='future';
+ if(future&&S.tab!=='month')S.tab='month';
  const monthly=S.tab==='month';
- const df=$('dayField');if(df)df.classList.toggle('hidden',monthly);
- const mt=$('metrics');if(mt)mt.classList.toggle('hidden',monthly);
+ const df=$('dayField');if(df)df.classList.toggle('hidden',monthly||future);
+ const mt=$('metrics');if(mt)mt.classList.toggle('hidden',monthly||future);
+ document.querySelectorAll('.tab').forEach(t=>{
+   const blocked=future&&t.dataset.tab!=='month';
+   t.disabled=blocked;
+   t.title=blocked?'الدورة القادمة متاحة للتجهيز المسبق فقط؛ يبدأ التحضير اليومي عند بدء الدورة.':'';
+ });
  const pb=$('printBtn');if(pb)pb.textContent='طباعة التحضير الشهري';
+ const sb=$('submitBtn');if(sb){sb.disabled=future;sb.title=future?'لا يمكن إقفال دورة مستقبلية قبل بدءها.':''}
 }
 function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab));syncContextUi()}
 function loading(msg='جاري تحميل بيانات المنطقة...'){tabUI();$('metrics').innerHTML='';$('sourceBanner').classList.add('hidden');$('mainView').innerHTML='<div class="card empty" style="min-height:180px"><div><span class="loading"></span><div style="margin-top:10px;font-weight:900">'+esc(msg)+'</div><div class="sub" style="margin-top:6px">يتم تحميل البيانات المطلوبة فقط.</div></div></div>'}
-function sourceBanner(){const m=S.ctx?.metrics||{},b=$('sourceBanner');b.classList.remove('hidden');b.innerHTML='<div><b>بيانات المنطقة جاهزة</b><div><span>'+Number(m.employees||0)+' تكليفاً نشطاً · '+esc(S.ctx?.roster_note||'')+'</span></div></div><div class="pill ok">تحميل خفيف</div>'}
+function sourceBanner(){
+ const m=S.ctx?.metrics||{},b=$('sourceBanner'),future=S.ctx?.cycle_state==='future';
+ b.classList.remove('hidden');
+ b.innerHTML='<div><b>'+(future?'الدورة القادمة جاهزة للتجهيز المسبق':'بيانات المنطقة جاهزة')+'</b><div><span>'+Number(m.employees||0)+' تكليفاً نشطاً · '+esc(S.ctx?.roster_note||'')+'</span></div></div><div class="pill '+(future?'warn':'ok')+'">'+(future?'تجهيز مسبق':'تحميل خفيف')+'</div>';
+}
 function metrics(){const m=S.day?.metrics||{};$('metrics').innerHTML='<div class="card metric"><b>'+Number(m.employees||0)+'</b><span>مطلوب تحضيرهم</span></div><div class="card metric ok"><b>'+Number(m.confirmed||0)+'</b><span>تم تحضيرهم</span></div><div class="card metric '+(Number(m.pending||0)?'bad':'ok')+'"><b>'+Number(m.pending||0)+'</b><span>بدون تحضير</span></div><div class="card metric '+(Number(m.exceptions||0)?'warn':'ok')+'"><b>'+Number(m.exceptions||0)+'</b><span>استثناءات</span></div>'}
 function applyCtx(){
  if(!S.ctx)return false;
@@ -96,7 +112,8 @@ async function bootstrap(){
  try{
   const d=await fast('bootstrap',{period:period(),date:work()},10000);if(q!==S.seq)return;
   S.ctx=d.context;S.day=d.day;$('workDate').value=d.date;S.region=S.ctx?.region_code||S.region;if(S.region)localStorage.setItem('arkPrepRegion',S.region);
-  applyCtx();writeCache();$('saveState').textContent='جاهز · '+new Date().toLocaleTimeString('ar-SA');$('saveState').onclick=null;render()
+  if(S.ctx?.cycle_state==='future')S.tab='month';
+  applyCtx();writeCache();$('saveState').textContent=(S.ctx?.cycle_state==='future'?'الدورة القادمة · تجهيز مسبق':'جاهز · '+new Date().toLocaleTimeString('ar-SA'));$('saveState').onclick=null;render()
  }catch(e){
   if(q!==S.seq)return;
   if(cached){$('saveState').textContent='آخر نسخة محفوظة · تعذر التحديث — اضغطي لإعادة المحاولة';$('saveState').onclick=bootstrap;toast(e.message,true);return}
