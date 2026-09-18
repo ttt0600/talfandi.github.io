@@ -11,6 +11,7 @@ function friendlyError(msg){
  if(/failed to fetch|networkerror|load failed/i.test(s))return 'تعذر الاتصال بخدمة التحضير. تحققي من الاتصال ثم أعيدي المحاولة.';
  if(/timeout|تأخر الاتصال/i.test(s))return 'تأخر الاتصال بخدمة التحضير. أعيدي المحاولة.';
  if(/session_expired/i.test(s))return 'انتهت الجلسة. سجلي الدخول مرة أخرى.';
+ if(/DATE_OUTSIDE_CYCLE/i.test(s))return 'التاريخ المحدد خارج دورة التحضير. تم ضبطه تلقائياً داخل الفترة.';
  return s.length>160?'حدث خطأ أثناء تنفيذ العملية. أعيدي المحاولة.':s;
 }
 function cacheKey(){return 'arkPrepCache:v4:'+(S.region||'unknown')+':'+period()+':'+work()}
@@ -25,6 +26,14 @@ function writeCache(){
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function toast(t,b=false){const x=$('toast');x.textContent=t;x.className='toast'+(b?' bad':'');x.classList.remove('hidden');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.add('hidden'),3000)}
 function ry(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()),x=Object.fromEntries(p.map(i=>[i.type,i.value]));return x.year+'-'+x.month+'-'+x.day}
+function monthLabel(p){const z=String(p).split('-').map(Number);return new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{month:'long',year:'numeric'}).format(new Date(z[0],z[1]-1,1))}
+function initPeriodOptions(selected){
+ const el=$('period');if(!el)return;
+ const [y,m]=selected.split('-').map(Number),vals=[];
+ for(let k=-12;k<=1;k++){const d=new Date(y,m-1+k,1),v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');vals.push(v)}
+ el.innerHTML=vals.reverse().map(v=>'<option value="'+v+'">دورة '+monthLabel(v)+'</option>').join('');
+ el.value=selected;
+}
 function period(){return $('period').value||ry().slice(0,7)}
 function work(){return $('workDate').value||ry()}
 function dates(a,b){const o=[];let d=new Date(a+'T12:00:00'),z=new Date(b+'T12:00:00');while(d<=z){o.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1)}return o}
@@ -54,11 +63,31 @@ async function req(url,action,payload={},timeout=12000){
 const fast=(a,p={},t=12000)=>req(API,a,p,t);
 const login=(p)=>req(API,'start',p,10000);
 
-function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab))}
+function syncContextUi(){
+ const monthly=S.tab==='month';
+ const df=$('dayField');if(df)df.classList.toggle('hidden',monthly);
+ const mt=$('metrics');if(mt)mt.classList.toggle('hidden',monthly);
+ const pb=$('printBtn');if(pb)pb.textContent='طباعة التحضير الشهري';
+}
+function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab));syncContextUi()}
 function loading(msg='جاري تحميل بيانات المنطقة...'){tabUI();$('metrics').innerHTML='';$('sourceBanner').classList.add('hidden');$('mainView').innerHTML='<div class="card empty" style="min-height:180px"><div><span class="loading"></span><div style="margin-top:10px;font-weight:900">'+esc(msg)+'</div><div class="sub" style="margin-top:6px">يتم تحميل البيانات المطلوبة فقط.</div></div></div>'}
 function sourceBanner(){const m=S.ctx?.metrics||{},b=$('sourceBanner');b.classList.remove('hidden');b.innerHTML='<div><b>بيانات المنطقة جاهزة</b><div><span>'+Number(m.employees||0)+' تكليفاً نشطاً · '+esc(S.ctx?.roster_note||'')+'</span></div></div><div class="pill ok">تحميل خفيف</div>'}
 function metrics(){const m=S.day?.metrics||{};$('metrics').innerHTML='<div class="card metric"><b>'+Number(m.employees||0)+'</b><span>مطلوب تحضيرهم</span></div><div class="card metric ok"><b>'+Number(m.confirmed||0)+'</b><span>تم تحضيرهم</span></div><div class="card metric '+(Number(m.pending||0)?'bad':'ok')+'"><b>'+Number(m.pending||0)+'</b><span>بدون تحضير</span></div><div class="card metric '+(Number(m.exceptions||0)?'warn':'ok')+'"><b>'+Number(m.exceptions||0)+'</b><span>استثناءات</span></div>'}
-function applyCtx(){if(!S.ctx)return;const a=S.ctx.cycle_start,b=S.ctx.cycle_end;$('workDate').min=a;$('workDate').max=b;if(!work()||work()<a||work()>b)$('workDate').value=(ry()>=a&&ry()<=b)?ry():b;$('regionLabel').textContent=S.ctx.region_name+' · '+period()+' · '+a+' ← '+b}
+function applyCtx(){
+ if(!S.ctx)return false;
+ const a=S.ctx.cycle_start,b=S.ctx.cycle_end,w=$('workDate');w.min=a;w.max=b;
+ let changed=false,v=w.value;
+ if(!v||v<a||v>b){w.value=(ry()>=a&&ry()<=b)?ry():b;changed=true}
+ $('regionLabel').textContent=S.ctx.region_name+' · '+monthLabel(period())+' · '+a+' ← '+b;
+ syncContextUi();
+ return changed;
+}
+function normalizeWorkDate(){
+ if(!S.ctx)return false;
+ const w=$('workDate'),a=S.ctx.cycle_start,b=S.ctx.cycle_end,v=w.value;
+ if(!v||v<a||v>b){w.value=(ry()>=a&&ry()<=b)?ry():b;return true}
+ return false;
+}
 async function bootstrap(){
  if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;
  const cached=readCache();
@@ -127,11 +156,11 @@ $('loginBtn').onclick=async()=>{const national_id=$('opId').value.trim(),mobile=
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{S.tab=t.dataset.tab;S.site=null;S.siteData=null;render()});
 $('addBtn').onclick=()=>assignmentModal();
 $('period').onchange=async()=>{$('workDate').value=period()+'-01';S.employee=null;await bootstrap()};
-$('workDate').onchange=async()=>{S.site=null;S.siteData=null;S.issues=null;await refreshDay(true)};
+$('workDate').onchange=async()=>{normalizeWorkDate();S.site=null;S.siteData=null;S.issues=null;await refreshDay(true)};
 $('logoutBtn').onclick=()=>{localStorage.removeItem('arkPrepToken');localStorage.removeItem('arkPrepRegion');for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith('arkPrepCache:'))sessionStorage.removeItem(k)}S.token='';S.region='';S.ctx=null;S.day=null;showLogin()};
-$('printBtn').onclick=()=>S.ctx?window.print():toast('انتظري اكتمال التحميل',true);
+$('printBtn').onclick=()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(window.openClientPrint)return window.openClientPrint();toast('خدمة الطباعة ما زالت قيد التهيئة',true)};
 $('submitBtn').onclick=async()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(!await confirmUI('إقفال التحضير مبدئياً','سيتم فحص الأيام والحقول الأساسية قبل الإقفال.','ابدأ الفحص'))return;try{const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)}catch(e){toast(e.message,true)}};
 $('exportBtn').onclick=exportCsv;
 
-const d=ry();$('period').value=d.slice(0,7);$('workDate').value=d;
+const d=ry();initPeriodOptions(d.slice(0,7));$('workDate').value=d;syncContextUi();
 if(S.token){showApp();bootstrap()}else showLogin();
