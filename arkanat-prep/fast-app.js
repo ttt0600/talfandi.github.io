@@ -2,10 +2,26 @@
 const API_LOGIN='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,seq:0};
 const STATUS={P:'حاضر',OFF:'راحة',A:'غياب',T:'استئذان / غياب بإذن',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'موقوف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'بديل / تغطية',CASH:'تغطية كاش',OTHER:'أخرى'};
 const SHIFTS=[['D8','صباحي 8 ساعات'],['E8','مسائي 8 ساعات'],['N8','ليلي 8 ساعات'],['D12','نهاري 12 ساعة'],['N12','ليلي 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
+function friendlyError(msg){
+ const s=String(msg||'');
+ if(/permission denied/i.test(s))return 'تعذر الوصول إلى خدمة التحضير. أعيدي المحاولة بعد تحديث الصفحة.';
+ if(/failed to fetch|networkerror|load failed/i.test(s))return 'تعذر الاتصال بخدمة التحضير. تحققي من الاتصال ثم أعيدي المحاولة.';
+ if(/timeout|تأخر الاتصال/i.test(s))return 'تأخر الاتصال بخدمة التحضير. أعيدي المحاولة.';
+ if(/session_expired/i.test(s))return 'انتهت الجلسة. سجلي الدخول مرة أخرى.';
+ return s.length>160?'حدث خطأ أثناء تنفيذ العملية. أعيدي المحاولة.':s;
+}
+function cacheKey(){return 'arkPrepCache:v4:'+(S.region||'unknown')+':'+period()+':'+work()}
+function readCache(){
+ try{const x=JSON.parse(sessionStorage.getItem(cacheKey())||'null');if(!x||!x.t||Date.now()-x.t>10*60*1000)return null;return x}catch{return null}
+}
+function writeCache(){
+ try{if(S.ctx&&S.day)sessionStorage.setItem(cacheKey(),JSON.stringify({t:Date.now(),ctx:S.ctx,day:S.day,date:work()}))}catch{}
+}
+
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function toast(t,b=false){const x=$('toast');x.textContent=t;x.className='toast'+(b?' bad':'');x.classList.remove('hidden');clearTimeout(x._t);x._t=setTimeout(()=>x.classList.add('hidden'),3000)}
@@ -25,10 +41,16 @@ async function req(url,action,payload={},timeout=12000){
   const body={action,...payload};if(S.token)body.token=S.token;
   const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:ctrl.signal});
   let d;try{d=await r.json()}catch{d={ok:false,message:'تعذر قراءة رد الخادم'}}
-  if(!r.ok||d?.ok===false){if(d?.code==='SESSION_EXPIRED'){localStorage.removeItem('arkPrepToken');S.token='';showLogin()}throw new Error(d?.message||d?.code||'تعذر تنفيذ العملية')}
+  if(!r.ok||d?.ok===false){
+   if(d?.code==='SESSION_EXPIRED'){localStorage.removeItem('arkPrepToken');S.token='';S.ctx=null;S.day=null;showLogin()}
+   const tech=d?.message||d?.code||'تعذر تنفيذ العملية';console.error('[Arkanat Prep]',action,tech);throw new Error(friendlyError(tech))
+  }
   return d;
- }catch(e){if(e?.name==='AbortError')throw new Error('تأخر الاتصال بالنظام');throw e}
- finally{clearTimeout(tm)}
+ }catch(e){
+  if(e?.name==='AbortError')throw new Error(friendlyError('تأخر الاتصال'));
+  if(e instanceof Error)throw new Error(friendlyError(e.message));
+  throw new Error('حدث خطأ أثناء الاتصال بخدمة التحضير.');
+ }finally{clearTimeout(tm)}
 }
 const fast=(a,p={},t=12000)=>req(API,a,p,t);
 const login=(p)=>req(API_LOGIN,'start',p,15000);
@@ -39,11 +61,23 @@ function sourceBanner(){const m=S.ctx?.metrics||{},b=$('sourceBanner');b.classLi
 function metrics(){const m=S.day?.metrics||{};$('metrics').innerHTML='<div class="card metric"><b>'+Number(m.employees||0)+'</b><span>مطلوب تحضيرهم</span></div><div class="card metric ok"><b>'+Number(m.confirmed||0)+'</b><span>تم تحضيرهم</span></div><div class="card metric '+(Number(m.pending||0)?'bad':'ok')+'"><b>'+Number(m.pending||0)+'</b><span>بدون تحضير</span></div><div class="card metric '+(Number(m.exceptions||0)?'warn':'ok')+'"><b>'+Number(m.exceptions||0)+'</b><span>استثناءات</span></div>'}
 function applyCtx(){if(!S.ctx)return;const a=S.ctx.cycle_start,b=S.ctx.cycle_end;$('workDate').min=a;$('workDate').max=b;if(!work()||work()<a||work()>b)$('workDate').value=(ry()>=a&&ry()<=b)?ry():b;$('regionLabel').textContent=S.ctx.region_name+' · '+period()+' · '+a+' ← '+b}
 async function bootstrap(){
- if(!S.token)return showLogin();const q=++S.seq;S.ctx=null;S.day=null;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;loading();$('saveState').textContent='جاري تحميل البيانات...';
- try{const d=await fast('bootstrap',{period:period(),date:work()},12000);if(q!==S.seq)return;S.ctx=d.context;S.day=d.day;$('workDate').value=d.date;applyCtx();$('saveState').textContent='جاهز · '+new Date().toLocaleTimeString('ar-SA');render()}
- catch(e){if(q!==S.seq)return;$('saveState').textContent='تعذر التحميل — اضغطي لإعادة المحاولة';$('saveState').onclick=bootstrap;$('mainView').innerHTML='<div class="card empty"><div><b>تعذر تحميل البيانات</b><div class="sub">'+esc(e.message)+'</div><button id="retry" class="btn primary" style="margin-top:10px">إعادة المحاولة</button></div></div>';$('retry').onclick=bootstrap;toast(e.message,true)}
+ if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;
+ const cached=readCache();
+ if(cached){S.ctx=cached.ctx;S.day=cached.day;$('workDate').value=cached.date||work();applyCtx();render();$('saveState').textContent='عرض سريع · جاري التحقق من آخر البيانات...'}
+ else{S.ctx=null;S.day=null;loading();$('saveState').textContent='جاري تحميل البيانات...'}
+ try{
+  const d=await fast('bootstrap',{period:period(),date:work()},10000);if(q!==S.seq)return;
+  S.ctx=d.context;S.day=d.day;$('workDate').value=d.date;S.region=S.ctx?.region_code||S.region;if(S.region)localStorage.setItem('arkPrepRegion',S.region);
+  applyCtx();writeCache();$('saveState').textContent='جاهز · '+new Date().toLocaleTimeString('ar-SA');$('saveState').onclick=null;render()
+ }catch(e){
+  if(q!==S.seq)return;
+  if(cached){$('saveState').textContent='آخر نسخة محفوظة · تعذر التحديث — اضغطي لإعادة المحاولة';$('saveState').onclick=bootstrap;toast(e.message,true);return}
+  $('saveState').textContent='تعذر التحميل — اضغطي لإعادة المحاولة';$('saveState').onclick=bootstrap;
+  $('mainView').innerHTML='<div class="card empty"><div><b>تعذر تحميل البيانات</b><div class="sub">'+esc(e.message)+'</div><button id="retry" class="btn primary" style="margin-top:10px">إعادة المحاولة</button></div></div>';
+  $('retry').onclick=bootstrap;toast(e.message,true)
+ }
 }
-async function refreshDay(draw=true){try{S.day=await fast('day',{period:period(),date:work()},10000);metrics();if(draw&&(S.tab==='today'||S.tab==='sites'))render()}catch(e){toast(e.message,true)}}
+async function refreshDay(draw=true){try{S.day=await fast('day',{period:period(),date:work()},9000);writeCache();metrics();if(draw&&(S.tab==='today'||S.tab==='sites'))render()}catch(e){toast(e.message,true)}}
 function render(){tabUI();if(!S.ctx||!S.day)return loading();sourceBanner();metrics();if(S.tab==='today')today();else if(S.tab==='sites')sites();else if(S.tab==='month')month();else gaps()}
 
 function siteCard(s){const p=Number(s.pending||0),x=Number(s.exceptions||0),e=Number(s.expected||0),c=Number(s.confirmed||0),pct=e?Math.round(c*100/e):100,cls=p?'attention critical':x?'attention':'complete';return '<article class="card siteCard '+cls+'" data-site="'+esc(s.site_code||'__MISSING__')+'"><div class="siteTop"><div><div class="siteName">'+esc(s.site_name||'بدون موقع')+'</div><div class="siteMeta">'+esc(s.client_name||'')+(s.project_name?' · '+esc(s.project_name):'')+'</div></div><div class="guardStatus '+(p?'bad':x?'warn':'ok')+'">'+(p?p+' ناقص':x?x+' استثناء':'مكتمل')+'</div></div><div class="siteCounts"><span class="pill">'+e+' حارس</span><span class="pill ok">'+c+' محضر</span>'+(p?'<span class="pill bad">'+p+' بدون تحضير</span>':'')+'</div><div class="progress '+(!p?'done':'')+'"><span style="width:'+pct+'%"></span></div><div class="siteActions"><button class="btn secondary openSite" data-site="'+esc(s.site_code||'__MISSING__')+'">فتح الموقع</button></div></article>'}
@@ -71,12 +105,12 @@ function assignmentModal(a=null){if(!S.ctx)return toast('انتظري اكتما
 
 async function exportCsv(){if(!S.ctx)return toast('انتظري اكتمال التحميل',true);const b=$('exportBtn'),o=b.textContent;b.disabled=true;b.textContent='...';try{const d=await fast('export',{period:period()},20000),u=URL.createObjectURL(new Blob(['\ufeff'+(d.csv||'')],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=u;a.download=d.filename||'arkanat-prep.csv';a.click();URL.revokeObjectURL(u);toast('تم تجهيز CSV')}catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent=o}}
 
-$('loginBtn').onclick=async()=>{const national_id=$('opId').value.trim(),mobile=$('opMobile').value.trim(),region=$('opRegion').value;if(!/^\d{10}$/.test(national_id)||!/^05\d{8}$/.test(mobile)||!region)return toast('تحققي من الهوية والجوال والمنطقة',true);$('loginBtn').disabled=true;try{const d=await login({national_id,mobile,region});S.token=d.token;localStorage.setItem('arkPrepToken',S.token);showApp();await bootstrap()}catch(e){toast(e.message,true)}finally{$('loginBtn').disabled=false}};
+$('loginBtn').onclick=async()=>{const national_id=$('opId').value.trim(),mobile=$('opMobile').value.trim(),region=$('opRegion').value;if(!/^\d{10}$/.test(national_id)||!/^05\d{8}$/.test(mobile)||!region)return toast('تحققي من الهوية والجوال والمنطقة',true);$('loginBtn').disabled=true;try{const d=await login({national_id,mobile,region});S.token=d.token;S.region=d.region_code||region;localStorage.setItem('arkPrepToken',S.token);localStorage.setItem('arkPrepRegion',S.region);showApp();await bootstrap()}catch(e){toast(e.message,true)}finally{$('loginBtn').disabled=false}};
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{S.tab=t.dataset.tab;S.site=null;S.siteData=null;render()});
 $('addBtn').onclick=()=>assignmentModal();
 $('period').onchange=async()=>{$('workDate').value=period()+'-01';S.employee=null;await bootstrap()};
 $('workDate').onchange=async()=>{S.site=null;S.siteData=null;S.issues=null;await refreshDay(true)};
-$('logoutBtn').onclick=()=>{localStorage.removeItem('arkPrepToken');S.token='';S.ctx=null;S.day=null;showLogin()};
+$('logoutBtn').onclick=()=>{localStorage.removeItem('arkPrepToken');localStorage.removeItem('arkPrepRegion');sessionStorage.clear();S.token='';S.region='';S.ctx=null;S.day=null;showLogin()};
 $('printBtn').onclick=()=>S.ctx?window.print():toast('انتظري اكتمال التحميل',true);
 $('submitBtn').onclick=async()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(!await confirmUI('إقفال التحضير مبدئياً','سيتم فحص الأيام والحقول الأساسية قبل الإقفال.','ابدأ الفحص'))return;try{const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)}catch(e){toast(e.message,true)}};
 $('exportBtn').onclick=exportCsv;
