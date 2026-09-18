@@ -1,5 +1,4 @@
 
-const API_LOGIN='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
 let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,seq:0};
@@ -53,7 +52,7 @@ async function req(url,action,payload={},timeout=12000){
  }finally{clearTimeout(tm)}
 }
 const fast=(a,p={},t=12000)=>req(API,a,p,t);
-const login=(p)=>req(API_LOGIN,'start',p,15000);
+const login=(p)=>req(API,'start',p,10000);
 
 function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab))}
 function loading(msg='جاري تحميل بيانات المنطقة...'){tabUI();$('metrics').innerHTML='';$('sourceBanner').classList.add('hidden');$('mainView').innerHTML='<div class="card empty" style="min-height:180px"><div><span class="loading"></span><div style="margin-top:10px;font-weight:900">'+esc(msg)+'</div><div class="sub" style="margin-top:6px">يتم تحميل البيانات المطلوبة فقط.</div></div></div>'}
