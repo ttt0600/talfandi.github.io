@@ -142,15 +142,14 @@ function openPhotoPicker(input,take,out,eventId){
   clearPickerTimer();clearPickerOpenGuard();
   try{input.value=''}catch(_){}
   prepareAndroidFileInput(input);
-  const useChooserFallback=isAndroid()&&input.dataset.arkPickerFallback==='1';
-  if(useChooserFallback){try{input.removeAttribute('capture')}catch(_){}}
-  else if(isAndroid()){try{input.setAttribute('capture','environment')}catch(_){}}
+  const useClickFallback=isAndroid()&&input.dataset.arkPickerFallback==='click';
+  if(isAndroid()){try{input.setAttribute('capture','environment')}catch(_){}}
   pickerActive=true;pickerInput=input;pickerEventId=String(eventId||'');pickerExternalSeen=false;
   if(take)take.disabled=true;
   if(out)out.innerHTML='<span class="sub">الكاميرا مفتوحة. التقط الصورة ثم اختر «استخدام الصورة» للعودة وإكمال التسجيل.</span>';
   let launched=false;
   try{
-    if(isAndroid()&&typeof input.showPicker==='function'){input.showPicker();launched=true}
+    if(isAndroid()&&!useClickFallback&&typeof input.showPicker==='function'){input.showPicker();launched=true}
     else{input.click();launched=true}
   }catch(e){
     try{input.click();launched=true}catch(_){}
@@ -166,10 +165,10 @@ function openPhotoPicker(input,take,out,eventId){
       if(input.files&&input.files.length)return;
       let focused=true;try{focused=document.hasFocus()}catch(_){}
       if(document.visibilityState==='visible'&&focused){
-        input.dataset.arkPickerFallback='1';
+        input.dataset.arkPickerFallback='click';
         resetPickerState();
         if(take)take.disabled=false;
-        if(out&&document.body.contains(out))out.innerHTML='<span class="warn">لم تفتح الكاميرا على هذا المتصفح. اضغط «التقاط صورة للموقع» مرة أخرى وسيستخدم النظام طريقة فتح بديلة تلقائياً.</span>';
+        if(out&&document.body.contains(out))out.innerHTML='<span class="warn">لم تستجب الكاميرا بالطريقة الأولى. اضغط «التقاط صورة للموقع» مرة أخرى وسيستخدم النظام طريقة فتح متوافقة بديلة مع إبقاء التصوير بالكاميرا.</span>';
       }
     },PICKER_OPEN_GUARD_MS)
   }
