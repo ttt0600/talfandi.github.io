@@ -19,7 +19,7 @@
 <body>
 <main><div class="brand">أركانات للحراسات الأمنية</div><div id="subtitle" class="sub">نظام الرصد الميداني السريع</div><section class="card"><div id="app"></div></section></main>
 <script>
-const VERSION='FIELD-QR-V5.39-20260918';
+const VERSION='FIELD-QR-V5.40-20260918';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/guard-control-uat-helper';
 const BASE=location.origin+location.pathname;
 const QKEY='arkanat_field_queue_v5',CKEY='arkanat_field_queue_crypto_v5',RKEY='arkanat_field_retry_v5';
@@ -74,9 +74,9 @@ function scanView(){
   }
   f.onsubmit=e=>{e.preventDefault();submitPresence()};preflightPermission();setTimeout(async()=>{await flush();show()},1600);window.addEventListener('online',async()=>{await flush();show()})
 }
-if('serviceWorker'in navigator){const registerFieldWorker=()=>navigator.serviceWorker.register('./sw.js?v=539',{scope:'./',updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',registerFieldWorker,{once:true});else registerFieldWorker()}
+if('serviceWorker'in navigator){const registerFieldWorker=()=>navigator.serviceWorker.register('./sw.js?v=540',{scope:'./',updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',registerFieldWorker,{once:true});else registerFieldWorker()}
 if(OPS)opsView();else if(TOKEN)scanView();else if(SHARE)app.innerHTML='<div class="spin"></div>';else app.innerHTML='<h2>الرابط غير مكتمل</h2><p class="sub">استخدم رابط العمليات أو امسح QR معتمداً.</p>';
 </script>
-<script defer src="./reprint.js?v=539"></script>
+<script defer src="./reprint.js?v=540"></script>
 </body>
 </html>
