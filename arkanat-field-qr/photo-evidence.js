@@ -222,7 +222,7 @@ function renderPhotoStep(eventId,force=false){
       }catch(e){processing=false;photoProcessing=false;out.innerHTML='<p class="bad">'+h(e.message||'تعذر تجهيز الصورة.')+'</p><p class="warn">التسجيل غير مكتمل حتى حفظ الصورة.</p>';take.disabled=false}
     };
     input.onchange=()=>{clearPickerTimer();clearPickerOpenGuard();const file=input.files&&input.files[0];try{input.setAttribute('capture','environment');delete input.dataset.arkPickerFallback}catch(_){}if(file){const stableFile=file;resetPickerState();processFile(stableFile)}else markPickerCancelled(input,take,out)};
-    input.oncancel=()=>{try{input.setAttribute('capture','environment')}catch(_){};markPickerCancelled(input,take,out)};
+    input.oncancel=()=>{try{input.setAttribute('capture','environment');delete input.dataset.arkPickerFallback}catch(_){};markPickerCancelled(input,take,out)};
   };mount();
 }
 
