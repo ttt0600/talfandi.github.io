@@ -116,29 +116,18 @@ async function loadSelectedSite(){
  const s=CP.sites.find(function(x){return x.code===code});if(!s)return;
  CP.site=s;CP.guards=[];$p('cpPrint').disabled=true;
  $p('cpNotice').style.display='block';$p('cpNotice').textContent='جاري تجهيز بيانات الكشف...';
- $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز التحضير الشهري</b></div><div style="margin-top:6px">يتم تحميل سجلات موظفي هذا الموقع فقط.</div></div></div>';
+ $p('cpProgress').textContent='جاري التحميل';
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز التحضير الشهري</b></div><div style="margin-top:6px">يتم تحميل سجلات هذا الموقع فقط في طلب واحد.</div></div></div>';
  try{
   const ctx=cycleContext();
-  let roster=await api('roster',{period:ctx.period,q:s.site_name},12000);
-  let rows=(roster.rows||[]).filter(function(x){return x.site_code===code});
-  if(!rows.length&&s.project_name){
-   roster=await api('roster',{period:ctx.period,q:s.project_name},12000);
-   rows=(roster.rows||[]).filter(function(x){return x.site_code===code});
-  }
+  const roster=await api('roster',{period:ctx.period,q:'@site:'+code},15000);
+  const rows=roster.rows||[];
   if(!rows.length)throw new Error('لا توجد تكليفات محفوظة لهذا الموقع في دورة التحضير المحددة.');
-  const guards=new Array(rows.length);let next=0,done=0;
-  async function worker(){
-   while(next<rows.length){
-    const i=next++;
-    const d=await api('employee',{assignment_id:rows[i].id},12000);
-    guards[i]=d.assignment;done++;
-    $p('cpProgress').textContent='جاري التحميل '+done+'/'+rows.length;
-   }
-  }
-  await Promise.all(Array.from({length:Math.min(6,rows.length)},function(){return worker()}));
-  CP.guards=guards.filter(Boolean);$p('cpProgress').textContent=CP.guards.length+' حارس';
+  CP.guards=rows;
+  $p('cpProgress').textContent=CP.guards.length+' حارس';
   renderReport();
  }catch(e){
+  $p('cpProgress').textContent='';
   $p('cpNotice').style.display='block';$p('cpNotice').textContent=e.message;
   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تجهيز الكشف</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
  }
