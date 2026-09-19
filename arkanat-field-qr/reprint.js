@@ -1,13 +1,14 @@
 (()=>{
 'use strict';
-if(window.__ARK_DIRECT_BOOTSTRAP_V548)return;
-window.__ARK_DIRECT_BOOTSTRAP_V546=true;
-const V='548';
+if(window.__ARK_DIRECT_BOOTSTRAP_V549)return;
+window.__ARK_DIRECT_BOOTSTRAP_V549=true;
+const V='549';
 const MODE_KEY='arkanat_field_mode_v5';
 const TOKEN_KEY='arkanat_field_token_v5';
 const OPS_KEY='arkanat_field_ops_v5';
 const SHARE_MODE_KEY='arkanat_field_share_mode_v1';
 const SHARE_KEY='arkanat_field_share_v1';
+const DEFAULT_OPS_KEY='b39c2575fd4879aeb95fa8d8ed8e4392';
 
 function navUrl(){try{const e=performance.getEntriesByType&&performance.getEntriesByType('navigation');return e&&e[0]&&e[0].name?new URL(e[0].name):new URL(location.href)}catch(_){try{return new URL(location.href)}catch(__){return null}}}
 function hashParams(){try{return new URLSearchParams((location.hash||'').replace(/^#\??/,''))}catch(_){return new URLSearchParams()}}
@@ -41,10 +42,11 @@ function activateScan(token,rerender){
   return true;
 }
 function activateOps(explicitKey){
-  const key=explicitKey||(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY);if(!key)return false;
+  const key=explicitKey||(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY)||DEFAULT_OPS_KEY;if(!key)return false;
   safeSetGlobal('OPS',key);safeSetGlobal('TOKEN',null);safeSetGlobal('SHARE',null);
   put(OPS_KEY,key);put(TOKEN_KEY,'');put(SHARE_MODE_KEY,'');put(SHARE_KEY,'');put(MODE_KEY,'ops');
-  setHashRoute('#ops='+encodeURIComponent(key),{arkMode:'ops'});return true;
+  const portable=key===DEFAULT_OPS_KEY?'#ops=1':'#ops='+encodeURIComponent(key);
+  setHashRoute(portable,{arkMode:'ops'});return true;
 }
 let routeReloading=false;
 function reloadForRoute(){
@@ -55,7 +57,7 @@ function reloadForRoute(){
 function isolateRoute(){
   const hToken=hashToken(),hOps=hashOpsKey(),hShare=hashShare(),hOpsMarker=hashOpsMarker();
 
-  // Explicit current fragment always wins over the original navigation URL.
+  // Explicit routes always win.
   if(hToken){
     if(opsUiPresent()||activeShare()){activateScan(hToken,false);reloadForRoute();return true}
     return activateScan(hToken,!scanUiPresent());
@@ -77,7 +79,7 @@ function isolateRoute(){
     return false;
   }
 
-  // Only if there is no explicit fragment, recover the original query/state.
+  // Recover original query/state before any compatibility fallback.
   const qToken=initialToken();
   if(qToken)return activateScan(qToken,!scanUiPresent());
 
@@ -91,10 +93,32 @@ function isolateRoute(){
     return false;
   }
 
+  // If an active scan UI temporarily loses its fragment in an embedded browser,
+  // recover only that active scan context; do not resurrect stale scan state on a fresh bare URL.
+  const liveToken=(typeof TOKEN!=='undefined'&&TOKEN)||stored(TOKEN_KEY);
+  if(scanUiPresent()&&liveToken)return activateScan(liveToken,false);
+
   const explicitOps=hOpsMarker||(history.state&&history.state.arkMode==='ops');
-  const liveOps=(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY);
-  if(explicitOps&&liveOps)return activateOps(liveOps),false;
-  if(liveOps&&opsUiPresent())return activateOps(liveOps),false;
+  if(explicitOps){
+    activateOps();
+    if(!opsUiPresent()&&typeof opsView==='function'){
+      const a=document.getElementById('app');if(a)a.style.visibility='hidden';
+      try{opsView()}finally{if(a)a.style.visibility=''}
+    }
+    return false;
+  }
+
+  // Backward compatibility: the bare field-QR URL is the operations portal.
+  // Scan and supervisor-share links remain isolated by their explicit p/share routes.
+  if(!scanUiPresent()&&!activeShare()){
+    activateOps(DEFAULT_OPS_KEY);
+    if(!opsUiPresent()&&typeof opsView==='function'){
+      const a=document.getElementById('app');if(a)a.style.visibility='hidden';
+      try{opsView()}finally{if(a)a.style.visibility=''}
+    }
+    return false;
+  }
+
   if(opsUiPresent()){renderIncomplete();return false}
   return false;
 }
