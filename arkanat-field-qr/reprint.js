@@ -18,7 +18,7 @@ function initialOps(){const q=initialParams();return q.get('ops')||''}
 function hashOpsKey(){try{const v=hashParams().get('ops')||'';return v&&v!=='1'?v:''}catch(_){return''}}
 function hashOpsMarker(){const raw=(location.hash||'').replace(/^#/,'');if(raw==='ops'||raw==='ops=1')return true;try{return hashParams().get('ops')==='1'}catch(_){return false}}
 function hashShare(){try{return hashParams().get('share')||''}catch(_){return''}}
-function activeShare(){const hs=hashShare();if(hs)return hs;try{if(history.state&&history.state.arkShare)return String(history.state.arkShare)}catch(_){};return stored(SHARE_MODE_KEY)==='1'?stored(SHARE_KEY):''}
+function activeShare(){const hs=hashShare();if(hs)return hs;try{if(history.state&&history.state.arkShare)return String(history.state.arkShare)}catch(_){};return''}
 function scanUiPresent(){return !!(document.getElementById('f')&&document.getElementById('nid')&&document.getElementById('phone')&&!document.getElementById('count'))}
 function opsUiPresent(){return !!document.getElementById('count')}
 function safeSetGlobal(name,value){try{if(name==='TOKEN')TOKEN=value;else if(name==='OPS')OPS=value;else if(name==='SHARE')SHARE=value}catch(_){}}
@@ -50,7 +50,7 @@ function isolateRoute(){
   const ht=hashToken()||initialToken();
   if(ht)return activateScan(ht,!scanUiPresent());
   const liveToken=(typeof TOKEN!=='undefined'&&TOKEN)||stored(TOKEN_KEY);
-  if(liveToken&&(scanUiPresent()||stored(MODE_KEY)==='scan'))return activateScan(liveToken,!scanUiPresent());
+  if(liveToken&&scanUiPresent())return activateScan(liveToken,false);
   const hop=hashOpsKey();
   if(hop){
     activateOps(hop);
@@ -79,11 +79,11 @@ function isolateRoute(){
   const explicitOps=hashOpsMarker()||(history.state&&history.state.arkMode==='ops');
   const liveOps=(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY);
   if(explicitOps&&liveOps)return activateOps(liveOps),false;
-  if(liveOps&&(opsUiPresent()||stored(MODE_KEY)==='ops'))return activateOps(liveOps),false;
+  if(liveOps&&opsUiPresent())return activateOps(liveOps),false;
   if(opsUiPresent()){renderIncomplete();return false}
   return false;
 }
-function activeScan(){try{if(hashToken()||initialToken())return true;if(typeof TOKEN!=='undefined'&&TOKEN)return true;return stored(MODE_KEY)==='scan'&&!!stored(TOKEN_KEY)}catch(_){return false}}
+function activeScan(){try{if(hashToken()||initialToken())return true;if(typeof TOKEN!=='undefined'&&TOKEN)return true;return false}catch(_){return false}}
 function load(src,id,flag,retry){return new Promise(resolve=>{try{if(flag&&window[flag])return resolve(true);if(document.getElementById(id))return resolve(true);const s=document.createElement('script');s.id=id;s.async=true;s.src=src+'?v='+V+(retry?'-r'+Date.now():'');s.onload=()=>resolve(true);s.onerror=()=>{try{s.remove()}catch(_){};if(!retry)load(src,id,flag,true).then(resolve);else resolve(false)};(document.head||document.documentElement).appendChild(s)}catch(_){resolve(false)}})}
 function later(fn,ms){return setTimeout(fn,ms)}
 function refreshWorkerLater(){later(()=>{try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}},2200)}
@@ -95,7 +95,7 @@ function bootGuard(){
   later(()=>load('./workflow-ux.js','directWorkflow545','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
   later(()=>load('./photo-evidence-ux.js','directPhotoUx545','__ARK_FIELD_PHOTO_UX_V2',false),700);
 }
-function boot(){isolateRoute();if(activeScan())bootGuard();else if(activeShare())load('./reprint-core.js','fieldReprintCore545',null,false);else if(opsUiPresent()||stored(MODE_KEY)==='ops')load('./reprint-core.js','fieldReprintCore545',null,false);refreshWorkerLater()}
+function boot(){isolateRoute();if(activeScan())bootGuard();else if(activeShare())load('./reprint-core.js','fieldReprintCore545',null,false);else if(opsUiPresent())load('./reprint-core.js','fieldReprintCore545',null,false);refreshWorkerLater()}
 isolateRoute();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('pageshow',()=>{isolateRoute();if(activeScan())bootGuard();refreshWorkerLater()});
