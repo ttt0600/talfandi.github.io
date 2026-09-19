@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.__ARK_REPRINT_CORE_V548)return;
-window.__ARK_REPRINT_CORE_V546=true;
+if(window.__ARK_REPRINT_CORE_V549)return;
+window.__ARK_REPRINT_CORE_V549=true;
 
 const REPRINT_API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/field-qr-reprint';
 const MAX_SELECT=5;
