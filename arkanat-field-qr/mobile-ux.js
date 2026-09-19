@@ -52,7 +52,7 @@ function normalizeInputs(r){
     phone.addEventListener('input',()=>{const v=normalizeDigits(phone.value);if(phone.value!==v)phone.value=v},{passive:true});
   }
 }
-function escHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function deviceProfile(){
   const ua=navigator.userAgent||'',platform=navigator.platform||'';const ios=/iPhone|iPad|iPod/i.test(ua)||(platform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1),android=/Android/i.test(ua);
   const inApp=/FBAN|FBAV|Instagram|WhatsApp|Snapchat|TikTok|Line\//i.test(ua)||(android&&(/;\s*wv\)/i.test(ua)||/\bwv\b/i.test(ua)))||(ios&&!/Safari|CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua));
