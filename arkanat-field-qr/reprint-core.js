@@ -174,10 +174,9 @@ function loadPhotoEvidence(){
 
 function boot(){
   let explicitShare='',storedShare='',shareMode=false;
-  try{explicitShare=new URLSearchParams(location.hash.replace(/^#/,'' )).get('share')||'';storedShare=sessionStorage.getItem('arkanat_field_share_v1')||'';shareMode=sessionStorage.getItem('arkanat_field_share_mode_v1')==='1'}catch(_){}
+  try{explicitShare=new URLSearchParams(location.hash.replace(/^#/,'')).get('share')||'';storedShare=sessionStorage.getItem('arkanat_field_share_v1')||'';shareMode=sessionStorage.getItem('arkanat_field_share_mode_v1')==='1'}catch(_){}
   if(explicitShare){shareView(explicitShare);return}
-  if((typeof TOKEN!=='undefined')&&TOKEN&&(typeof OPS!=='undefined')&&OPS){try{sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.setItem('arkanat_field_token_v5',TOKEN)}catch(_){}location.reload();return}
-  if((typeof TOKEN!=='undefined')&&TOKEN){enhanceScanPermissionAssistant();loadPhotoEvidence();return}
+  if((typeof TOKEN!=='undefined')&&TOKEN)return;
   if((typeof OPS!=='undefined')&&OPS){enhanceOps();return}
   if(shareMode&&storedShare){shareView(storedShare);return}
   app.innerHTML='<h2>تعذر تحميل الصفحة المعتمدة</h2><p class="sub">استخدم رابط العمليات المعتمد أو رابط المشاركة الصالح.</p>';
