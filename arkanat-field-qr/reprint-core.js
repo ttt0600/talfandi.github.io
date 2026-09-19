@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-if(window.__ARK_REPRINT_CORE_V545)return;
+if(window.__ARK_REPRINT_CORE_V546)return;
 window.__ARK_REPRINT_CORE_V545=true;
 
 const REPRINT_API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/field-qr-reprint';
@@ -169,7 +169,7 @@ async function enhanceScanPermissionAssistant(){
 
 function loadPhotoEvidence(){
   if(doc.getElementById('fieldPhotoEvidenceScript'))return;
-  const s=doc.createElement('script');s.id='fieldPhotoEvidenceScript';s.src='./photo-evidence.js?v=545';s.async=true;doc.head.appendChild(s);
+  const s=doc.createElement('script');s.id='fieldPhotoEvidenceScript';s.src='./photo-evidence.js?v=546';s.async=true;doc.head.appendChild(s);
 }
 
 function boot(){
