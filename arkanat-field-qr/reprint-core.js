@@ -169,7 +169,7 @@ async function enhanceScanPermissionAssistant(){
 
 function loadPhotoEvidence(){
   if(doc.getElementById('fieldPhotoEvidenceScript'))return;
-  const s=doc.createElement('script');s.id='fieldPhotoEvidenceScript';s.src='./photo-evidence.js?v=512';s.async=true;doc.head.appendChild(s);
+  const s=doc.createElement('script');s.id='fieldPhotoEvidenceScript';s.src='./photo-evidence.js?v=545';s.async=true;doc.head.appendChild(s);
 }
 
 function boot(){
