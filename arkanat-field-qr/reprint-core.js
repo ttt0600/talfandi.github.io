@@ -1,8 +1,9 @@
 (()=>{
 'use strict';
+if(window.__ARK_REPRINT_CORE_V545)return;
+window.__ARK_REPRINT_CORE_V545=true;
 
 const REPRINT_API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/field-qr-reprint';
-const DEFAULT_OPS_KEY='b39c2575fd4879aeb95fa8d8ed8e4392';
 const MAX_SELECT=5;
 const doc=document;
 
@@ -101,7 +102,7 @@ function enhanceOps(){
 async function shareView(rawShare){
   addStyles();
   try{sessionStorage.setItem('arkanat_field_share_v1',rawShare);sessionStorage.setItem('arkanat_field_share_mode_v1','1');sessionStorage.removeItem('arkanat_field_ops_v5')}catch(_){}
-  try{history.replaceState(null,'',BASE)}catch(_){}
+  try{history.replaceState({arkMode:'share',arkShare:rawShare},'',BASE+'#share='+encodeURIComponent(rawShare))}catch(_){}
   doc.getElementById('subtitle').textContent='إعادة طباعة أكواد QR للمشرف';
   app.innerHTML='<h2>أكواد QR المعتمدة</h2><p class="sub">يمكن طباعتها أو حفظها PDF. كل QR في صفحة A4 مستقلة.</p><div id="shareState"><div class="spin"></div></div><div id="printArea" class="hidden"><div class="actions screen-only"><button id="sharePrint" type="button">طباعة / حفظ PDF</button></div><div id="qrGrid" class="print-grid"></div></div>';
   const st=doc.getElementById('shareState');
@@ -179,12 +180,7 @@ function boot(){
   if((typeof TOKEN!=='undefined')&&TOKEN){enhanceScanPermissionAssistant();loadPhotoEvidence();return}
   if((typeof OPS!=='undefined')&&OPS){enhanceOps();return}
   if(shareMode&&storedShare){shareView(storedShare);return}
-  if(typeof OPS!=='undefined'){
-    OPS=DEFAULT_OPS_KEY;
-    try{sessionStorage.setItem('arkanat_field_ops_v5',OPS);sessionStorage.removeItem('arkanat_field_share_mode_v1')}catch(_){}
-    if(typeof opsView==='function'){opsView();enhanceOps();return}
-  }
-  app.innerHTML='<h2>تعذر تحميل صفحة العمليات</h2><p class="sub">حدّث الصفحة ثم حاول مرة أخرى.</p>';
+  app.innerHTML='<h2>تعذر تحميل الصفحة المعتمدة</h2><p class="sub">استخدم رابط العمليات المعتمد أو رابط المشاركة الصالح.</p>';
 }
 
 if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
