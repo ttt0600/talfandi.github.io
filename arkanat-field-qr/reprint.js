@@ -1,12 +1,13 @@
 (()=>{
 'use strict';
-if(window.__ARK_DIRECT_BOOTSTRAP_V544)return;
-window.__ARK_DIRECT_BOOTSTRAP_V543=true;
-const V='544';
+if(window.__ARK_DIRECT_BOOTSTRAP_V545)return;
+window.__ARK_DIRECT_BOOTSTRAP_V545=true;
+const V='545';
 const MODE_KEY='arkanat_field_mode_v5';
 const TOKEN_KEY='arkanat_field_token_v5';
 const OPS_KEY='arkanat_field_ops_v5';
 const SHARE_MODE_KEY='arkanat_field_share_mode_v1';
+const SHARE_KEY='arkanat_field_share_v1';
 
 function navUrl(){try{const e=performance.getEntriesByType&&performance.getEntriesByType('navigation');return e&&e[0]&&e[0].name?new URL(e[0].name):new URL(location.href)}catch(_){try{return new URL(location.href)}catch(__){return null}}}
 function hashParams(){try{return new URLSearchParams((location.hash||'').replace(/^#\??/,''))}catch(_){return new URLSearchParams()}}
@@ -16,6 +17,8 @@ function initialToken(){const q=initialParams();const st=history.state&&history.
 function initialOps(){const q=initialParams();return q.get('ops')||''}
 function hashOpsKey(){try{const v=hashParams().get('ops')||'';return v&&v!=='1'?v:''}catch(_){return''}}
 function hashOpsMarker(){const raw=(location.hash||'').replace(/^#/,'');if(raw==='ops'||raw==='ops=1')return true;try{return hashParams().get('ops')==='1'}catch(_){return false}}
+function hashShare(){try{return hashParams().get('share')||''}catch(_){return''}}
+function activeShare(){const hs=hashShare();if(hs)return hs;try{if(history.state&&history.state.arkShare)return String(history.state.arkShare)}catch(_){};return stored(SHARE_MODE_KEY)==='1'?stored(SHARE_KEY):''}
 function scanUiPresent(){return !!(document.getElementById('f')&&document.getElementById('nid')&&document.getElementById('phone')&&!document.getElementById('count'))}
 function opsUiPresent(){return !!document.getElementById('count')}
 function safeSetGlobal(name,value){try{if(name==='TOKEN')TOKEN=value;else if(name==='OPS')OPS=value;else if(name==='SHARE')SHARE=value}catch(_){}}
@@ -66,6 +69,13 @@ function isolateRoute(){
     }
     return false;
   }
+  const share=activeShare();
+  if(share){
+    safeSetGlobal('SHARE',share);safeSetGlobal('OPS',null);safeSetGlobal('TOKEN',null);
+    put(SHARE_KEY,share);put(SHARE_MODE_KEY,'1');put(OPS_KEY,'');put(TOKEN_KEY,'');put(MODE_KEY,'share');
+    setHashRoute('#share='+encodeURIComponent(share),{arkMode:'share',arkShare:share});
+    return false;
+  }
   const explicitOps=hashOpsMarker()||(history.state&&history.state.arkMode==='ops');
   const liveOps=(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY);
   if(explicitOps&&liveOps)return activateOps(liveOps),false;
@@ -79,13 +89,13 @@ function later(fn,ms){return setTimeout(fn,ms)}
 function refreshWorkerLater(){later(()=>{try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}},2200)}
 function bootGuard(){
   if(!activeScan())return;
-  load('./shift-attendance.js','directShift544','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
-  load('./mobile-ux.js','directMobile544','__ARK_FIELD_MOBILE_UX_V4',false);
-  later(()=>load('./photo-evidence.js','directPhoto544','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
-  later(()=>load('./workflow-ux.js','directWorkflow544','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
-  later(()=>load('./photo-evidence-ux.js','directPhotoUx544','__ARK_FIELD_PHOTO_UX_V2',false),700);
+  load('./shift-attendance.js','directShift545','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
+  load('./mobile-ux.js','directMobile545','__ARK_FIELD_MOBILE_UX_V4',false);
+  later(()=>load('./photo-evidence.js','directPhoto545','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
+  later(()=>load('./workflow-ux.js','directWorkflow545','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
+  later(()=>load('./photo-evidence-ux.js','directPhotoUx545','__ARK_FIELD_PHOTO_UX_V2',false),700);
 }
-function boot(){isolateRoute();if(activeScan())bootGuard();else if(!opsUiPresent()&&stored(MODE_KEY)!=='ops'){}else load('./reprint-core.js','fieldReprintCore544',null,false);refreshWorkerLater()}
+function boot(){isolateRoute();if(activeScan())bootGuard();else if(activeShare())load('./reprint-core.js','fieldReprintCore545',null,false);else if(opsUiPresent()||stored(MODE_KEY)==='ops')load('./reprint-core.js','fieldReprintCore545',null,false);refreshWorkerLater()}
 isolateRoute();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('pageshow',()=>{isolateRoute();if(activeScan())bootGuard();refreshWorkerLater()});
