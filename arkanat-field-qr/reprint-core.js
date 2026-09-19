@@ -7,7 +7,7 @@ const REPRINT_API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/field-q
 const MAX_SELECT=5;
 const doc=document;
 
-function h(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function h(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 async function rpPost(body,ms=30000){
   const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
@@ -46,7 +46,7 @@ function getSelected(root){return [...root.querySelectorAll('input[data-batch]:c
 
 function renderResults(root,rows){
   if(!rows.length){root.innerHTML='<p class="sub">لا توجد دفعات مطابقة.</p>';return}
-  root.innerHTML=rows.map(r=>`<label class="rp-item"><input type="checkbox" data-batch="${h(r.batch_code)}"><span><span class="rp-code">${h(r.batch_code)}</span><br><b>${h(r.supervisor_name||'')}</b><div class="rp-meta">${h(r.supervisor_employee_id||'بدون رقم وظيفي')} · QR ${h(r.qr_assigned??r.qr_requested??0)} · مستخدم ${h(r.qr_scanned??0)} · مثبت ${h(r.qr_established??0)}${r.created_at?' · '+h(new Date(r.created_at).toLocaleDateString('ar-SA')):''}</div></span></label>`).join('');
+  root.innerHTML=rows.map(r=>`<label class="rp-item"><input type="checkbox" data-batch="${h(r.batch_code)}"><span><span class="rp-code">${h(r.batch_code)}</span><br><b>${h(r.supervisor_name||'')}</b><div class="rp-meta">${h(r.supervisor_employee_id||'بدون رقم وظيفي')} · QR ${h(r.qr_assigned!=null?r.qr_assigned:(r.qr_requested!=null?r.qr_requested:0))} · مستخدم ${h(r.qr_scanned!=null?r.qr_scanned:0)} · مثبت ${h(r.qr_established!=null?r.qr_established:0)}${r.created_at?' · '+h(new Date(r.created_at).toLocaleDateString('ar-SA')):''}</div></span></label>`).join('');
 }
 
 async function putTokensInPrint(tokens,messageTarget){
