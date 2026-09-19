@@ -1,4 +1,4 @@
-const CACHE='arkanat-field-qr-v5-43-20260919';
+const CACHE='arkanat-field-qr-v5-44-20260919';
 const CORE=['./index.html','./reprint.js','./shift-attendance.js','./mobile-ux.js','./photo-evidence.js','./workflow-ux.js','./photo-evidence-ux.js'];
 
 function keyFor(url){const name=url.pathname.split('/').pop()||'index.html';return './'+(name||'index.html')}
@@ -45,6 +45,13 @@ self.addEventListener('activate',event=>{event.waitUntil((async()=>{
 self.addEventListener('fetch',event=>{
   const req=event.request;if(req.method!=='GET')return;
   const url=new URL(req.url);if(url.origin!==self.location.origin)return;
-  if(req.mode==='navigate'){event.respondWith(networkFirstNavigation(req,event.preloadResponse));return}
+  if(req.mode==='navigate'){
+    const scanToken=url.searchParams.get('p')||url.searchParams.get('field');
+    if(scanToken){
+      const clean=url.origin+url.pathname+'#p='+encodeURIComponent(scanToken);
+      event.respondWith(Response.redirect(clean,302));return;
+    }
+    event.respondWith(networkFirstNavigation(req,event.preloadResponse));return
+  }
   if(isRuntime(url))event.respondWith(cacheFirstCurrent(req,keyFor(url)));
 });
