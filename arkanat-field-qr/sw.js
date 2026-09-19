@@ -1,39 +1,51 @@
-const CACHE='arkanat-field-qr-v5-44-20260919';
-const CORE=['./index.html','./reprint.js','./shift-attendance.js','./mobile-ux.js','./photo-evidence.js','./workflow-ux.js','./photo-evidence-ux.js'];
+const CACHE='arkanat-field-qr-v5-45-20260919';
+const V='545';
+const CORE=[
+  './index.html',
+  './reprint.js?v='+V,
+  './shift-attendance.js?v='+V,
+  './mobile-ux.js?v='+V,
+  './photo-evidence.js?v='+V,
+  './workflow-ux.js?v='+V,
+  './photo-evidence-ux.js?v='+V
+];
 
-function keyFor(url){const name=url.pathname.split('/').pop()||'index.html';return './'+(name||'index.html')}
 async function currentCache(){return await caches.open(CACHE)}
 async function precacheFresh(){
-  const c=await currentCache();
-  await Promise.all(CORE.map(async key=>{
-    const r=await fetch(new Request(key,{cache:'no-store'}));
+  const c=await currentCache(),ok=new Set();
+  await Promise.allSettled(CORE.map(async key=>{
+    const req=new Request(key,{cache:'no-store'});
+    const r=await fetch(req);
     if(!r.ok)throw new Error('precache_failed:'+key+':'+r.status);
-    await c.put(key,r.clone());
+    await c.put(req,r.clone());ok.add(key);
   }));
+  if(!ok.has('./index.html')||!ok.has('./reprint.js?v='+V))throw new Error('critical_precache_failed');
 }
-async function cacheFirstCurrent(request,key){
-  const c=await currentCache(),k=key||keyFor(new URL(request.url)),hit=await c.match(k);
+async function cacheFirstExact(request){
+  const c=await currentCache(),hit=await c.match(request,{ignoreSearch:false});
   if(hit)return hit;
   try{
     const r=await fetch(request,{cache:'no-store'});
-    if(r.ok)await c.put(k,r.clone());
+    if(r.ok)await c.put(request,r.clone());
     return r;
   }catch(_){
     return new Response('Offline',{status:503,statusText:'Offline'});
   }
 }
 async function networkFirstNavigation(request,preload){
-  const c=await currentCache(),key='./index.html';
+  const c=await currentCache(),fallback=new Request('./index.html');
   try{
     const pre=preload?await preload:null;
     const r=pre&&pre.ok?pre:await fetch(request,{cache:'no-store'});
-    if(r&&r.ok)await c.put(key,r.clone());
+    if(r&&r.ok)await c.put(fallback,r.clone());
     if(r)return r;
   }catch(_){}
-  const hit=await c.match(key);
+  const hit=await c.match(fallback);
   return hit||new Response('Offline',{status:503,statusText:'Offline'});
 }
-function isRuntime(url){return /\/(?:reprint|shift-attendance|mobile-ux|photo-evidence|workflow-ux|photo-evidence-ux|index)\.js?$/.test(url.pathname)||url.pathname.endsWith('/index.html')||url.pathname.endsWith('/arkanat-field-qr/')}
+function isRuntime(url){
+  return /\/(?:reprint|shift-attendance|mobile-ux|photo-evidence|workflow-ux|photo-evidence-ux)\.js$/.test(url.pathname);
+}
 
 self.addEventListener('install',event=>{event.waitUntil((async()=>{await precacheFresh();await self.skipWaiting()})())});
 self.addEventListener('activate',event=>{event.waitUntil((async()=>{
@@ -45,13 +57,6 @@ self.addEventListener('activate',event=>{event.waitUntil((async()=>{
 self.addEventListener('fetch',event=>{
   const req=event.request;if(req.method!=='GET')return;
   const url=new URL(req.url);if(url.origin!==self.location.origin)return;
-  if(req.mode==='navigate'){
-    const scanToken=url.searchParams.get('p')||url.searchParams.get('field');
-    if(scanToken){
-      const clean=url.origin+url.pathname+'#p='+encodeURIComponent(scanToken);
-      event.respondWith(Response.redirect(clean,302));return;
-    }
-    event.respondWith(networkFirstNavigation(req,event.preloadResponse));return
-  }
-  if(isRuntime(url))event.respondWith(cacheFirstCurrent(req,keyFor(url)));
+  if(req.mode==='navigate'){event.respondWith(networkFirstNavigation(req,event.preloadResponse));return}
+  if(isRuntime(url))event.respondWith(cacheFirstExact(req));
 });
