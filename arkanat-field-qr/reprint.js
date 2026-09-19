@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 if(window.__ARK_DIRECT_BOOTSTRAP_V546)return;
-window.__ARK_DIRECT_BOOTSTRAP_V545=true;
+window.__ARK_DIRECT_BOOTSTRAP_V546=true;
 const V='546';
 const MODE_KEY='arkanat_field_mode_v5';
 const TOKEN_KEY='arkanat_field_token_v5';
