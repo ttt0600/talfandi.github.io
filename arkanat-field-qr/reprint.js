@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
-if(window.__ARK_DIRECT_BOOTSTRAP_V543)return;
+if(window.__ARK_DIRECT_BOOTSTRAP_V544)return;
 window.__ARK_DIRECT_BOOTSTRAP_V543=true;
-const V='543';
+const V='544';
 const MODE_KEY='arkanat_field_mode_v5';
 const TOKEN_KEY='arkanat_field_token_v5';
 const OPS_KEY='arkanat_field_ops_v5';
@@ -12,7 +12,7 @@ function navUrl(){try{const e=performance.getEntriesByType&&performance.getEntri
 function hashParams(){try{return new URLSearchParams((location.hash||'').replace(/^#\??/,''))}catch(_){return new URLSearchParams()}}
 function initialParams(){const u=navUrl();return u?u.searchParams:new URLSearchParams()}
 function hashToken(){const h=hashParams();return h.get('p')||h.get('field')||''}
-function initialToken(){const q=initialParams();return q.get('p')||q.get('field')||''}
+function initialToken(){const q=initialParams();const st=history.state&&history.state.arkToken?String(history.state.arkToken):'';return q.get('p')||q.get('field')||st||''}
 function initialOps(){const q=initialParams();return q.get('ops')||''}
 function hashOpsKey(){try{const v=hashParams().get('ops')||'';return v&&v!=='1'?v:''}catch(_){return''}}
 function hashOpsMarker(){const raw=(location.hash||'').replace(/^#/,'');if(raw==='ops'||raw==='ops=1')return true;try{return hashParams().get('ops')==='1'}catch(_){return false}}
@@ -30,7 +30,7 @@ function activateScan(token,rerender){
   safeSetGlobal('TOKEN',token);safeSetGlobal('OPS',null);safeSetGlobal('SHARE',null);
   put(TOKEN_KEY,token);put(OPS_KEY,'');put(SHARE_MODE_KEY,'');put(MODE_KEY,'scan');
   window.__ARK_SCAN_CONTEXT_LOCK=true;
-  setHashRoute('#p='+encodeURIComponent(token),{arkMode:'scan'});
+  setHashRoute('#p='+encodeURIComponent(token),{arkMode:'scan',arkToken:token});
   if(rerender&&!scanUiPresent()&&typeof scanView==='function'){
     const a=document.getElementById('app');if(a)a.style.visibility='hidden';
     try{scanView()}finally{if(a)a.style.visibility=''}
@@ -79,13 +79,13 @@ function later(fn,ms){return setTimeout(fn,ms)}
 function refreshWorkerLater(){later(()=>{try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}},2200)}
 function bootGuard(){
   if(!activeScan())return;
-  load('./shift-attendance.js','directShift543','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
-  load('./mobile-ux.js','directMobile543','__ARK_FIELD_MOBILE_UX_V4',false);
-  later(()=>load('./photo-evidence.js','directPhoto543','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
-  later(()=>load('./workflow-ux.js','directWorkflow543','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
-  later(()=>load('./photo-evidence-ux.js','directPhotoUx543','__ARK_FIELD_PHOTO_UX_V2',false),700);
+  load('./shift-attendance.js','directShift544','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
+  load('./mobile-ux.js','directMobile544','__ARK_FIELD_MOBILE_UX_V4',false);
+  later(()=>load('./photo-evidence.js','directPhoto544','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
+  later(()=>load('./workflow-ux.js','directWorkflow544','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
+  later(()=>load('./photo-evidence-ux.js','directPhotoUx544','__ARK_FIELD_PHOTO_UX_V2',false),700);
 }
-function boot(){isolateRoute();if(activeScan())bootGuard();else if(!opsUiPresent()&&stored(MODE_KEY)!=='ops'){}else load('./reprint-core.js','fieldReprintCore543',null,false);refreshWorkerLater()}
+function boot(){isolateRoute();if(activeScan())bootGuard();else if(!opsUiPresent()&&stored(MODE_KEY)!=='ops'){}else load('./reprint-core.js','fieldReprintCore544',null,false);refreshWorkerLater()}
 isolateRoute();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('pageshow',()=>{isolateRoute();if(activeScan())bootGuard();refreshWorkerLater()});
