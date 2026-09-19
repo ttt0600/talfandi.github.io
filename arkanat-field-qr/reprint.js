@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
-if(window.__ARK_DIRECT_BOOTSTRAP_V541)return;
+if(window.__ARK_DIRECT_BOOTSTRAP_V542)return;
 window.__ARK_DIRECT_BOOTSTRAP_V536=true;
-const V='541';
+const V='542';
 const MODE_KEY='arkanat_field_mode_v5';
 const TOKEN_KEY='arkanat_field_token_v5';
 const OPS_KEY='arkanat_field_ops_v5';
@@ -14,6 +14,7 @@ function initialParams(){const u=navUrl();return u?u.searchParams:new URLSearchP
 function hashToken(){const h=hashParams();return h.get('p')||h.get('field')||''}
 function initialToken(){const q=initialParams();return q.get('p')||q.get('field')||''}
 function initialOps(){const q=initialParams();return q.get('ops')||''}
+function hashOpsKey(){try{const v=hashParams().get('ops')||'';return v&&v!=='1'?v:''}catch(_){return''}}
 function hashOpsMarker(){const raw=(location.hash||'').replace(/^#/,'');if(raw==='ops'||raw==='ops=1')return true;try{return hashParams().get('ops')==='1'}catch(_){return false}}
 function scanUiPresent(){return !!(document.getElementById('f')&&document.getElementById('nid')&&document.getElementById('phone')&&!document.getElementById('count'))}
 function opsUiPresent(){return !!document.getElementById('count')}
@@ -36,18 +37,36 @@ function activateScan(token,rerender){
   }
   return true;
 }
-function activateOps(){
-  const key=(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY);if(!key)return false;
+function activateOps(explicitKey){
+  const key=explicitKey||(typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY);if(!key)return false;
   safeSetGlobal('OPS',key);safeSetGlobal('TOKEN',null);safeSetGlobal('SHARE',null);
   put(OPS_KEY,key);put(TOKEN_KEY,'');put(SHARE_MODE_KEY,'');put(MODE_KEY,'ops');
-  setHashRoute('#ops=1',{arkMode:'ops'});return true;
+  setHashRoute('#ops='+encodeURIComponent(key),{arkMode:'ops'});return true;
 }
 function isolateRoute(){
   const ht=hashToken()||initialToken();
   if(ht)return activateScan(ht,!scanUiPresent());
   const liveToken=(typeof TOKEN!=='undefined'&&TOKEN)||stored(TOKEN_KEY);
   if(liveToken&&(scanUiPresent()||stored(MODE_KEY)==='scan'))return activateScan(liveToken,!scanUiPresent());
-  const explicitOps=!!initialOps()||hashOpsMarker()||(history.state&&history.state.arkMode==='ops');
+  const hop=hashOpsKey();
+  if(hop){
+    activateOps(hop);
+    if(!opsUiPresent()&&typeof opsView==='function'){
+      const a=document.getElementById('app');if(a)a.style.visibility='hidden';
+      try{opsView()}finally{if(a)a.style.visibility=''}
+    }
+    return false;
+  }
+  const qop=initialOps();
+  if(qop){
+    activateOps(qop);
+    if(!opsUiPresent()&&typeof opsView==='function'){
+      const a=document.getElementById('app');if(a)a.style.visibility='hidden';
+      try{opsView()}finally{if(a)a.style.visibility=''}
+    }
+    return false;
+  }
+  const explicitOps=hashOpsMarker()||(history.state&&history.state.arkMode==='ops');
   if(explicitOps&&((typeof OPS!=='undefined'&&OPS)||stored(OPS_KEY)))return activateOps(),false;
   if(opsUiPresent()||((typeof OPS!=='undefined'&&OPS)&&!explicitOps)){renderIncomplete();return false}
   return false;
@@ -58,13 +77,13 @@ function later(fn,ms){return setTimeout(fn,ms)}
 function refreshWorkerLater(){later(()=>{try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}},2200)}
 function bootGuard(){
   if(!activeScan())return;
-  load('./shift-attendance.js','directShift541','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
-  load('./mobile-ux.js','directMobile541','__ARK_FIELD_MOBILE_UX_V4',false);
-  later(()=>load('./photo-evidence.js','directPhoto541','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
-  later(()=>load('./workflow-ux.js','directWorkflow541','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
-  later(()=>load('./photo-evidence-ux.js','directPhotoUx541','__ARK_FIELD_PHOTO_UX_V2',false),700);
+  load('./shift-attendance.js','directShift542','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
+  load('./mobile-ux.js','directMobile542','__ARK_FIELD_MOBILE_UX_V4',false);
+  later(()=>load('./photo-evidence.js','directPhoto542','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
+  later(()=>load('./workflow-ux.js','directWorkflow542','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
+  later(()=>load('./photo-evidence-ux.js','directPhotoUx542','__ARK_FIELD_PHOTO_UX_V2',false),700);
 }
-function boot(){isolateRoute();if(activeScan())bootGuard();else if(!opsUiPresent()&&stored(MODE_KEY)!=='ops'){}else load('./reprint-core.js','fieldReprintCore541',null,false);refreshWorkerLater()}
+function boot(){isolateRoute();if(activeScan())bootGuard();else if(!opsUiPresent()&&stored(MODE_KEY)!=='ops'){}else load('./reprint-core.js','fieldReprintCore542',null,false);refreshWorkerLater()}
 isolateRoute();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('pageshow',()=>{isolateRoute();if(activeScan())bootGuard();refreshWorkerLater()});
