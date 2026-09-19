@@ -34,7 +34,7 @@ try{
   if(qTOKEN){sessionStorage.setItem('arkanat_field_token_v5',qTOKEN);sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');OPS=null;SHARE=null}
   else if(qOPS){sessionStorage.setItem('arkanat_field_ops_v5',qOPS);sessionStorage.removeItem('arkanat_field_token_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');TOKEN=null;SHARE=null}
   else if(qSHARE){sessionStorage.setItem('arkanat_field_share_v1',qSHARE);sessionStorage.setItem('arkanat_field_share_mode_v1','1');sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_token_v5');OPS=null;TOKEN=null}
-  else{OPS=null;TOKEN=null;SHARE=null}
+  else{OPS=null;TOKEN=null;SHARE=null;sessionStorage.removeItem('arkanat_field_ops_v5');sessionStorage.removeItem('arkanat_field_token_v5');sessionStorage.removeItem('arkanat_field_share_mode_v1');sessionStorage.removeItem('arkanat_field_mode_v5')}
   if(qTOKEN)history.replaceState({arkMode:'scan',arkToken:qTOKEN},'',BASE+'#p='+encodeURIComponent(qTOKEN));
   else if(qOPS)history.replaceState({arkMode:'ops'},'',BASE+'#ops='+encodeURIComponent(qOPS));
   else if(qSHARE)history.replaceState({arkMode:'share',arkShare:qSHARE},'',BASE+'#share='+encodeURIComponent(qSHARE))
