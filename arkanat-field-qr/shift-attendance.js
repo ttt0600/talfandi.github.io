@@ -18,7 +18,7 @@ function readObj(key){try{const x=JSON.parse(localStorage.getItem(key)||'{}');re
 function writeObj(key,x){try{localStorage.setItem(key,JSON.stringify(x))}catch(_){}}
 function readArr(key){try{const x=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(x)?x:[]}catch(_){return[]}}
 function writeArr(key,x){try{localStorage.setItem(key,JSON.stringify(x.slice(-MAX_PENDING)))}catch(_){}}
-function mapSet(nonce,action,assignment){if(!nonce||!ACTIONS.has(action))return;const x=readObj(MAP_KEY);x[nonce]={action,assignment:ASSIGNMENTS.has(assignment)?assignment:'',at:Date.now()};const keys=Object.keys(x).sort((a,b)=>Number(x[a]?.at||0)-Number(x[b]?.at||0));while(keys.length>MAX_MAP)delete x[keys.shift()];writeObj(MAP_KEY,x)}
+function mapSet(nonce,action,assignment){if(!nonce||!ACTIONS.has(action))return;const x=readObj(MAP_KEY);x[nonce]={action,assignment:ASSIGNMENTS.has(assignment)?assignment:'',at:Date.now()};const keys=Object.keys(x).sort((a,b)=>Number((x[a]&&x[a].at)||0)-Number((x[b]&&x[b].at)||0));while(keys.length>MAX_MAP)delete x[keys.shift()];writeObj(MAP_KEY,x)}
 function mapGet(nonce){const v=readObj(MAP_KEY)[nonce];return v&&ACTIONS.has(v.action)?{action:v.action,assignment:ASSIGNMENTS.has(v.assignment)?v.assignment:''}:null}
 function mapDel(nonce){const x=readObj(MAP_KEY);if(x[nonce]){delete x[nonce];writeObj(MAP_KEY,x)}}
 function currentAction(){const r=document.querySelector('input[name="arkShiftAction"]:checked');return r&&ACTIONS.has(r.value)?r.value:''}
