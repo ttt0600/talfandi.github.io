@@ -15,12 +15,12 @@
 @page{size:A4 portrait;margin:8mm}
 @media print{html,body{width:210mm;margin:0!important;padding:0!important;background:#fff!important}body *{visibility:hidden!important}#printArea,#printArea *{visibility:visible!important}#printArea{position:absolute!important;top:0!important;right:0!important;left:0!important;width:100%!important;margin:0!important;padding:0!important}#printArea .screen-only{display:none!important}.print-grid{display:block!important;width:100%!important;margin:0!important;padding:0!important}.qr-card{display:flex!important;width:194mm!important;height:281mm!important;min-height:281mm!important;margin:0!important;padding:0!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;page-break-inside:avoid!important;break-inside:avoid-page!important;page-break-after:always!important;break-after:page!important;background:#fff!important}.qr-card:last-child{page-break-after:auto!important;break-after:auto!important}.qr-card canvas,.qr-card img{width:175mm!important;height:175mm!important;max-width:175mm!important;max-height:175mm!important;object-fit:contain!important}}
 </style>
-<!-- FIELD-QR-V5.42-ROUTE-COMPAT -->
+<!-- FIELD-QR-V5.43-ROUTE-COMPAT -->
 </head>
 <body>
 <main><div class="brand">أركانات للحراسات الأمنية</div><div id="subtitle" class="sub">نظام الرصد الميداني السريع</div><section class="card"><div id="app"></div></section></main>
 <script>
-const VERSION='FIELD-QR-V5.42-20260919';
+const VERSION='FIELD-QR-V5.43-20260919';
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/guard-control-uat-helper';
 const BASE=location.origin+location.pathname;
 const QKEY='arkanat_field_queue_v5',CKEY='arkanat_field_queue_crypto_v5',RKEY='arkanat_field_retry_v5';
@@ -85,9 +85,9 @@ function scanView(){
   }
   f.onsubmit=e=>{e.preventDefault();submitPresence()};preflightPermission();setTimeout(async()=>{await flush();show()},1600);window.addEventListener('online',async()=>{await flush();show()})
 }
-if('serviceWorker'in navigator){const registerFieldWorker=()=>navigator.serviceWorker.register('./sw.js?v=542',{scope:'./',updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',registerFieldWorker,{once:true});else registerFieldWorker()}
+if('serviceWorker'in navigator){const registerFieldWorker=()=>navigator.serviceWorker.register('./sw.js?v=543',{scope:'./',updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',registerFieldWorker,{once:true});else registerFieldWorker()}
 if(OPS)opsView();else if(TOKEN)scanView();else if(SHARE)app.innerHTML='<div class="spin"></div>';else app.innerHTML='<h2>الرابط غير مكتمل</h2><p class="sub">استخدم رابط العمليات أو امسح QR معتمداً.</p>';
 </script>
-<script defer src="./reprint.js?v=542"></script>
+<script defer src="./reprint.js?v=543"></script>
 </body>
 </html>
