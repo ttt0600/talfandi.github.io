@@ -21,7 +21,7 @@ function addStyles(){
   @media print{#${BAR}{display:none!important}body.ark-workflow-active main{padding-bottom:0!important}.ark-wf-mirrored{display:inline-block!important}}
   `;document.head.appendChild(s);
 }
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
 function visible(el){if(!el)return false;const st=getComputedStyle(el);return st.display!=='none'&&st.visibility!=='hidden'&&!el.classList.contains('hidden')}
 function text(el){return (el&&el.textContent||'').trim()}
 function isScan(){return !!(document.getElementById('f')&&document.getElementById('nid')&&document.getElementById('phone')&&!document.getElementById('count'))}
