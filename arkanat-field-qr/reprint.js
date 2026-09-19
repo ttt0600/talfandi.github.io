@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
-if(window.__ARK_DIRECT_BOOTSTRAP_V545)return;
+if(window.__ARK_DIRECT_BOOTSTRAP_V546)return;
 window.__ARK_DIRECT_BOOTSTRAP_V545=true;
-const V='545';
+const V='546';
 const MODE_KEY='arkanat_field_mode_v5';
 const TOKEN_KEY='arkanat_field_token_v5';
 const OPS_KEY='arkanat_field_ops_v5';
@@ -89,13 +89,13 @@ function later(fn,ms){return setTimeout(fn,ms)}
 function refreshWorkerLater(){later(()=>{try{if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistration('./').then(r=>{if(r)r.update().catch(()=>{})}).catch(()=>{})}catch(_){}},2200)}
 function bootGuard(){
   if(!activeScan())return;
-  load('./shift-attendance.js','directShift545','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
-  load('./mobile-ux.js','directMobile545','__ARK_FIELD_MOBILE_UX_V4',false);
-  later(()=>load('./photo-evidence.js','directPhoto545','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
-  later(()=>load('./workflow-ux.js','directWorkflow545','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
-  later(()=>load('./photo-evidence-ux.js','directPhotoUx545','__ARK_FIELD_PHOTO_UX_V2',false),700);
+  load('./shift-attendance.js','directShift546','__ARK_FIELD_SHIFT_ATTENDANCE_V2',false);
+  load('./mobile-ux.js','directMobile546','__ARK_FIELD_MOBILE_UX_V4',false);
+  later(()=>load('./photo-evidence.js','directPhoto546','__ARK_FIELD_PHOTO_EVIDENCE_V2',false),180);
+  later(()=>load('./workflow-ux.js','directWorkflow546','__ARK_FIELD_WORKFLOW_UX_V4',false),320);
+  later(()=>load('./photo-evidence-ux.js','directPhotoUx546','__ARK_FIELD_PHOTO_UX_V2',false),700);
 }
-function boot(){isolateRoute();if(activeScan())bootGuard();else if(activeShare())load('./reprint-core.js','fieldReprintCore545',null,false);else if(opsUiPresent())load('./reprint-core.js','fieldReprintCore545',null,false);refreshWorkerLater()}
+function boot(){isolateRoute();if(activeScan())bootGuard();else if(activeShare())load('./reprint-core.js','fieldReprintCore546',null,false);else if(opsUiPresent())load('./reprint-core.js','fieldReprintCore546',null,false);refreshWorkerLater()}
 isolateRoute();
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 window.addEventListener('pageshow',()=>{isolateRoute();if(activeScan())bootGuard();refreshWorkerLater()});
