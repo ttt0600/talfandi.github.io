@@ -334,18 +334,24 @@ async function loadEmployee(id){
 }
 function futureAssignment(){
  const a=S.employee,p=$('attendancePanel');if(!a||!p)return;
+ const workDays=a.work_days_per_week??'غير محدد',dailyHours=a.daily_hours??'غير محدد';
  p.innerHTML='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.employee_ref||'بدون رقم وظيفي')+'</div></div><button id="editAssignment" class="btn primary">تعديل خطة التكليف</button></div>'+
  '<div class="grid2" style="margin-top:14px">'+
  '<div class="field"><label>المشروع</label><div class="card" style="padding:10px">'+esc(a.project_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>الموقع</label><div class="card" style="padding:10px">'+esc(a.site_name||'غير محدد')+'</div></div>'+
- '<div class="field"><label>الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>المشرف</label><div class="card" style="padding:10px">'+esc(a.supervisor_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>نوع التكليف</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
+ '<div class="field"><label>أيام العمل أسبوعياً</label><div class="card" style="padding:10px">'+esc(workDays)+'</div></div>'+
+ '<div class="field"><label>ساعات العمل اليومية</label><div class="card" style="padding:10px">'+esc(dailyHours)+'</div></div>'+
+ '<div class="field"><label>تصنيف الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>تفصيل وقت الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
  '<div class="field"><label>بداية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
  '<div class="field"><label>نهاية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.end_date||S.ctx.cycle_end).slice(0,10))+'</div></div>'+
- '</div><div class="notice" style="margin-top:14px">هذه خطة مستقبلية فقط. عند بدء الدورة سيعمل التحضير اليومي على التكليفات المعتمدة في هذه الخطة.</div>';
+ '</div>'+
+ (a.notes?'<div class="notice" style="margin-top:14px"><b>ملاحظات تشغيلية:</b> '+esc(a.notes)+'</div>':'')+
+ '<div class="notice" style="margin-top:14px">هذه خطة مستقبلية فقط. عند بدء الدورة سيعمل التحضير اليومي على التكليفات المعتمدة في هذه الخطة.</div>';
  $('editAssignment').onclick=()=>assignmentModal(a);
 }
-
 function dayClass(s){return s==='OFF'||s==='O'?'off':['A','W','R','S'].includes(s)?'abs':s==='CASH'?'cash':s?'filled':''}
 function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return;const ds=dates(S.ctx.cycle_start,S.ctx.cycle_end),m=Object.fromEntries((a.days||[]).map(x=>[String(x.date).slice(0,10),x]));let h='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.project_name||'')+' · '+esc(a.site_name||'')+'</div></div><button id="editAssignment" class="btn ghost">تعديل</button></div><div class="quick"><div class="field"><label>من</label><input id="qFrom" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_start+'"></div><div class="field"><label>إلى</label><input id="qTo" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_end+'"></div><div class="field"><label>الحالة</label><select id="qStatus">';['P','OFF','A','T','AL','SK','O'].forEach(c=>h+='<option value="'+c+'">'+STATUS[c]+'</option>');h+='</select></div><button id="qFill" class="btn secondary">تعبئة</button></div><div class="calendar" id="cal"></div>';p.innerHTML=h;ds.forEach(d=>{const e=m[d],b=document.createElement('button');b.className='day '+dayClass(e?.status);b.innerHTML='<div class="n">'+d.slice(8,10)+'/'+d.slice(5,7)+'</div><div class="st">'+(e?esc(STATUS[e.status]||e.status):'—')+'</div>';b.onclick=()=>dayModal({assignment_id:a.id,employee_ref:a.employee_ref,full_name:a.full_name,shift_code:a.shift_code,...e},d,()=>loadEmployee(a.id));$('cal').appendChild(b)});$('editAssignment').onclick=()=>assignmentModal(a);$('qFill').onclick=async()=>{const f=$('qFrom').value,t=$('qTo').value;if(!f||!t||f>t)return toast('تحققي من النطاق',true);const ds=dates(f,t),st=$('qStatus').value;if(!await confirmUI('تعبئة النطاق','سيتم تطبيق '+STATUS[st]+' على '+ds.length+' يوماً.','تطبيق'))return;try{await fast('bulkFill',{assignment_id:a.id,dates:ds,status:st,shift_code:a.shift_code||null},12000);await loadEmployee(a.id);if(ds.includes(work()))refreshDay(false);toast('تمت التعبئة')}catch(e){toast(e.message,true)}}}
 async function gaps(){
@@ -398,7 +404,71 @@ function dayModal(e,d,done){
  };
 }
 
-function assignmentModal(a=null){if(!S.ctx)return toast('انتظري اكتمال التحميل',true);let opts='<option value="">اختاري الموقع</option>';(S.ctx.sites||[]).forEach(s=>opts+='<option value="'+esc(s.site_code)+'" '+(a?.site_code===s.site_code?'selected':'')+'>'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>');let sh='';SHIFTS.forEach(x=>sh+='<option value="'+x[0]+'" '+(a?.shift_code===x[0]?'selected':'')+'>'+x[1]+'</option>');modal('<h3>'+(a?'تعديل التكليف':'إضافة موظف / تكليف')+'</h3><div class="field"><label>بحث في قاعدة الموظفين</label><input id="empSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="empSug" class="suggestions hidden"></div></div><div class="grid2" style="margin-top:10px"><div class="field"><label>الرقم الوظيفي</label><input id="empRef" value="'+esc(a?.employee_ref||'')+'"></div><div class="field"><label>الاسم *</label><input id="empName" value="'+esc(a?.full_name||'')+'"></div></div><div class="field" style="margin-top:10px"><label>الموقع</label><select id="siteSel">'+opts+'</select></div><div class="grid2" style="margin-top:10px"><div class="field"><label>الوردية</label><select id="shift">'+sh+'</select></div><div class="field"><label>نوع التكليف</label><select id="atype"><option value="PRIMARY">أساسي</option><option value="RELIEF_FIXED">بديل راحة ثابت</option><option value="TEMP_COVERAGE">تغطية مؤقتة</option><option value="NEW_HIRE">موظف جديد</option><option value="OTHER">أخرى</option></select></div><div class="field"><label>البداية</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div><div class="field"><label>النهاية</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div></div><div class="modal-actions"><button id="saveA" class="btn primary">حفظ التكليف</button><button id="cancelA" class="btn ghost">إلغاء</button></div>');if(a)$('atype').value=a.assignment_type||'PRIMARY';let tm;$('empSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(async()=>{const q=$('empSearch').value.trim();if(q.length<2)return $('empSug').classList.add('hidden');try{const d=await fast('searchEmployee',{q},8000),b=$('empSug');b.innerHTML='';(d.rows||[]).forEach(e=>{const x=document.createElement('div');x.className='suggestion';x.innerHTML='<b>'+esc(e.full_name)+'</b><div class="sub">'+esc(e.employee_id)+'</div>';x.onclick=()=>{$('empRef').value=e.employee_id;$('empName').value=e.full_name;b.classList.add('hidden')};b.appendChild(x)});b.classList.toggle('hidden',!(d.rows||[]).length)}catch{}},250)};$('cancelA').onclick=closeModal;$('saveA').onclick=async()=>{const p={id:a?.id||null,period:period(),employee_ref:$('empRef').value.trim()||null,full_name:$('empName').value.trim(),job_title:a?.job_title||'حارس أمن',site_code:$('siteSel').value||null,shift_code:$('shift').value,assignment_type:$('atype').value,start_date:$('startDate').value,end_date:$('endDate').value};if(!p.full_name)return toast('اسم الموظف مطلوب',true);try{await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم الحفظ')}catch(e){toast(e.message,true)}}}
+function assignmentModal(a=null){
+ if(!S.ctx)return toast('انتظري اكتمال التحميل',true);
+ let opts='<option value="">اختاري الموقع</option>';
+ (S.ctx.sites||[]).forEach(s=>opts+='<option value="'+esc(s.site_code)+'" '+(a?.site_code===s.site_code?'selected':'')+'>'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>');
+ let sh='';SHIFTS.forEach(x=>sh+='<option value="'+x[0]+'" '+(a?.shift_code===x[0]?'selected':'')+'>'+x[1]+'</option>');
+ modal(
+ '<h3>'+(a?'تعديل التكليف':'إضافة موظف / تكليف')+'</h3>'+
+ '<div class="notice">هذه الشاشة تحفظ بيانات التكليف التشغيلي المستخدمة في ملفات التايم شيت. الهوية والجوال والحساب البنكي وحالة التأمينات تبقى بيانات مرجعية خارج شاشة التحضير ولا يعاد إدخالها هنا.</div>'+
+ '<div class="field" style="margin-top:10px"><label>بحث في قاعدة الموظفين</label><input id="empSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="empSug" class="suggestions hidden"></div></div>'+
+ '<div class="grid2" style="margin-top:10px"><div class="field"><label>الرقم الوظيفي</label><input id="empRef" value="'+esc(a?.employee_ref||'')+'"></div><div class="field"><label>الاسم *</label><input id="empName" value="'+esc(a?.full_name||'')+'"></div></div>'+
+ '<div class="field" style="margin-top:10px"><label>الموقع *</label><select id="siteSel">'+opts+'</select></div>'+
+ '<div class="grid2" style="margin-top:10px">'+
+   '<div class="field"><label>المشرف</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف التشغيلي"></div>'+
+   '<div class="field"><label>نوع التكليف</label><select id="atype"><option value="PRIMARY">أساسي</option><option value="RELIEF_FIXED">بديل راحة ثابت</option><option value="TEMP_COVERAGE">تغطية مؤقتة</option><option value="NEW_HIRE">موظف جديد</option><option value="OTHER">أخرى</option></select></div>'+
+   '<div class="field"><label>أيام العمل أسبوعياً</label><input id="workDays" type="number" min="0" max="7" step="0.5" value="'+esc(a?.work_days_per_week??'')+'" placeholder="مثال: 6 أو 7"></div>'+
+   '<div class="field"><label>ساعات العمل اليومية</label><input id="dailyHours" type="number" min="1" max="24" step="0.5" value="'+esc(a?.daily_hours??'')+'" placeholder="مثال: 8 أو 12"></div>'+
+   '<div class="field"><label>تصنيف الوردية</label><select id="shift">'+sh+'</select></div>'+
+   '<div class="field"><label>تفصيل وقت الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: 8ص–4م أو 8م–4ص"></div>'+
+   '<div class="field"><label>البداية</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div>'+
+   '<div class="field"><label>النهاية</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div>'+
+ '</div>'+
+ '<div class="field" style="margin-top:10px"><label>ملاحظات تشغيلية</label><textarea id="assignmentNotes" rows="2" placeholder="مباشرة، نقل، استثناء تكليف، أو ملاحظة تشغيلية">'+esc(a?.notes||'')+'</textarea></div>'+
+ '<div class="modal-actions"><button id="saveA" class="btn primary">حفظ التكليف</button><button id="cancelA" class="btn ghost">إلغاء</button></div>'
+ );
+ if(a)$('atype').value=a.assignment_type||'PRIMARY';
+ let tm;
+ $('empSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(async()=>{
+   const q=$('empSearch').value.trim();
+   if(q.length<2)return $('empSug').classList.add('hidden');
+   try{
+     const d=await fast('searchEmployee',{q},8000),b=$('empSug');b.innerHTML='';
+     (d.rows||[]).forEach(e=>{
+       const x=document.createElement('div');x.className='suggestion';
+       x.innerHTML='<b>'+esc(e.full_name)+'</b><div class="sub">'+esc(e.employee_id)+(e.job_title?' · '+esc(e.job_title):'')+'</div>';
+       x.onclick=()=>{$('empRef').value=e.employee_id;$('empName').value=e.full_name;b.classList.add('hidden')};
+       b.appendChild(x)
+     });
+     b.classList.toggle('hidden',!(d.rows||[]).length)
+   }catch{}
+ },250)};
+ $('cancelA').onclick=closeModal;
+ $('saveA').onclick=async()=>{
+   const p={
+    id:a?.id||null,period:period(),
+    employee_ref:$('empRef').value.trim()||null,
+    full_name:$('empName').value.trim(),
+    job_title:a?.job_title||'حارس أمن',
+    site_code:$('siteSel').value||null,
+    supervisor_name:$('supervisorName').value.trim()||null,
+    work_days_per_week:$('workDays').value||null,
+    daily_hours:$('dailyHours').value||null,
+    shift_code:$('shift').value||null,
+    shift_detail:$('shiftDetail').value.trim()||null,
+    assignment_type:$('atype').value,
+    start_date:$('startDate').value,
+    end_date:$('endDate').value,
+    notes:$('assignmentNotes').value.trim()||null
+   };
+   if(!p.full_name)return toast('اسم الموظف مطلوب',true);
+   if(!p.site_code)return toast('اختيار الموقع مطلوب',true);
+   if(p.start_date&&p.end_date&&p.start_date>p.end_date)return toast('تاريخ البداية يجب أن يسبق تاريخ النهاية',true);
+   try{await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم حفظ التكليف')}
+   catch(e){toast(e.message,true)}
+ }
+}
 
 async function exportCsv(){if(!S.ctx)return toast('انتظري اكتمال التحميل',true);const b=$('exportBtn'),o=b.textContent;b.disabled=true;b.textContent='...';try{const d=await fast('export',{period:period()},20000),u=URL.createObjectURL(new Blob(['\ufeff'+(d.csv||'')],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=u;a.download=d.filename||'arkanat-prep.csv';a.click();URL.revokeObjectURL(u);toast('تم تجهيز CSV')}catch(e){toast(e.message,true)}finally{b.disabled=false;b.textContent=o}}
 
