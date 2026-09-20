@@ -2,7 +2,7 @@
 (function(){
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const STATUS_PRINT={P:'P',OFF:'OFF',A:'A',T:'T',AL:'AL',SK:'SK',S:'S',W:'W',R:'R',O:'O',SUB:'C',CASH:'C',OTHER:'-'};
-const CP={sites:[],guards:[],site:null,filename:'',mode:'client',period:'',ctx:null,periods:[]};
+const CP={sites:[],guards:[],coverageEvents:[],site:null,filename:'',mode:'client',period:'',ctx:null,periods:[]};
 const $p=function(id){return document.getElementById(id)};
 const escp=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})};
 const safeName=function(s){return String(s||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim()};
@@ -162,14 +162,14 @@ function fillSites(prefer,load){
  if(load&&$p('cpSite').value)loadSelectedSite();else emptyStage();
 }
 function emptyStage(){
- CP.site=null;CP.guards=[];CP.filename='';$p('cpPrint').disabled=true;$p('cpProgress').textContent='';$p('cpNotice').style.display='none';
+ CP.site=null;CP.guards=[];CP.coverageEvents=[];CP.filename='';$p('cpPrint').disabled=true;$p('cpProgress').textContent='';$p('cpNotice').style.display='none';
  $p('cpStage').innerHTML='<div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">سيتم تجهيز كشف التحضير الشهري للموقع المحدد فقط.</div></div></div>';
 }
 
 async function loadSelectedSite(){
  const code=$p('cpSite').value;if(!code)return emptyStage();
  const s=CP.sites.find(function(x){return x.code===code});if(!s)return;
- CP.site=s;CP.guards=[];$p('cpPrint').disabled=true;
+ CP.site=s;CP.guards=[];CP.coverageEvents=[];$p('cpPrint').disabled=true;
  $p('cpNotice').style.display='block';$p('cpNotice').textContent='جاري تجهيز بيانات الكشف...';
  $p('cpProgress').textContent='جاري التحميل';
  $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">يتم تحميل سجلات هذا الموقع فقط.</div></div></div>';
@@ -178,6 +178,7 @@ async function loadSelectedSite(){
   if(CP.mode==='internal'){
    const d=await api('printSiteMonth',{period:ctx.period,site_code:code},15000);
    CP.guards=d.guards||[];
+   CP.coverageEvents=d.coverage_events||[];
    if(d.site)CP.site=Object.assign({},s,{
     code:d.site.site_code||code,site_name:d.site.site_name||s.site_name,
     project_code:d.site.project_code||s.project_code,project_name:d.site.project_name||s.project_name,
@@ -310,6 +311,25 @@ function internalEvents(){
     note:d.note||''
    });
   });
+ });
+ CP.coverageEvents.forEach(function(e){
+   rows.push({
+    date:cleanDate(e.date)||'',
+    name:e.executor_name||'تغطية غير مسماة',
+    employee_ref:e.executor_employee_ref||'',
+    status:e.coverage_type==='CASH'?'CASH':'C',
+    shift:e.shift_code||'',
+    worked_hours:'',
+    overtime_hours:'',
+    replacement:e.executor_name||e.executor_employee_ref||'',
+    cash:e.cash_amount==null?'':e.cash_amount,
+    exception_label:e.event_label||'تغطية تاريخية',
+    workflow_status:e.status==='CONFIRMED'?'مؤكد':'مفتوح',
+    review_lane:e.coverage_type==='CASH'?'المالية':'العمليات',
+    action_note:'',
+    review_note:e.verification_state==='UNRESOLVED'?'يحتاج مراجعة المصدر':'',
+    note:[e.note,e.source_sheet&&e.source_row?('المصدر: '+e.source_sheet+' / صف '+e.source_row):''].filter(Boolean).join(' | ')
+   });
  });
  return rows.sort(function(a,b){return a.date.localeCompare(b.date)||a.name.localeCompare(b.name,'ar')});
 }
