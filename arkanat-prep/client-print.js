@@ -16,7 +16,7 @@ function ensureShell(){
  const root=document.createElement('div');
  root.id='clientPrintShell';root.className='client-print-shell';root.setAttribute('aria-hidden','true');
  root.innerHTML='<div class="cp-toolbar"><div class="cp-toolbar-in">'+
- '<div id="cpCycle" class="cp-cycle"></div>'+ '<div class="cp-field"><label>دورة التحضير للطباعة</label><select id="cpPeriod"></select></div>'+
+ '<div id="cpCycle" class="cp-cycle"></div>'+ '<div class="cp-field"><label id="cpPeriodLabel">الشهر للطباعة</label><select id="cpPeriod"></select></div>'+
  '<div class="cp-field" style="grid-column:1/-1"><label>نوع التايم شيت</label><div class="cp-mode"><button id="cpModeClient" class="active">تايم شيت العميل</button><button id="cpModeInternal">التايم شيت الداخلي</button></div><div id="cpModeNote" class="cp-mode-note">نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.</div></div>'+
  '<div class="cp-field"><label>العميل</label><select id="cpClient"></select></div>'+
  '<div class="cp-field"><label>المشروع</label><select id="cpProject"></select></div>'+
@@ -35,14 +35,18 @@ function ensureShell(){
  $p('cpModeClient').onclick=function(){setPrintMode('client')};
  $p('cpModeInternal').onclick=function(){setPrintMode('internal')};
 }
-function setPrintMode(mode){
- CP.mode=mode==='internal'?'internal':'client';
+async function setPrintMode(mode){
+ const next=mode==='internal'?'internal':'client';
+ if(CP.mode===next)return;
+ const prefer=$p('cpSite')&&$p('cpSite').value||'';
+ CP.mode=next;
  $p('cpModeClient').classList.toggle('active',CP.mode==='client');
  $p('cpModeInternal').classList.toggle('active',CP.mode==='internal');
+ $p('cpPeriodLabel').textContent=CP.mode==='client'?'شهر العميل للطباعة':'دورة التحضير الداخلية للطباعة';
  $p('cpModeNote').textContent=CP.mode==='client'
-  ?'نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.'
-  :'نسخة داخلية مشتركة بين العمليات والموارد البشرية والمالية؛ تتضمن الوردية والساعات والاستثناءات والتغطيات وبيانات الكاش والملاحظات التشغيلية.';
- if($p('cpSite').value)loadSelectedSite(); else emptyStage();
+  ?'تايم شيت العميل يغطي الشهر الميلادي كاملاً من يوم 1 حتى آخر يوم في الشهر، ولا يعرض التفاصيل المالية أو ملاحظات العمل الداخلية.'
+  :'التايم شيت الداخلي يتبع دورة العمليات والموارد والمالية المعتمدة، ويعرض الاستثناءات والتغطيات والأثر التشغيلي والمالي.';
+ if(CP.period)await loadPrintPeriod(CP.period,prefer); else emptyStage();
 }
 
 
@@ -93,32 +97,35 @@ function periodOptionText(p){
 }
 async function loadPrintPeriod(period,preferSite){
  if(!period)return;
- CP.period=period;CP.ctx=null;CP.sites=[];CP.guards=[];CP.site=null;CP.filename='';
+ CP.period=period;CP.ctx=null;CP.sites=[];CP.guards=[];CP.coverageEvents=[];CP.site=null;CP.filename='';
  $p('cpClient').innerHTML='<option value="">جاري تحميل العملاء...</option>';
  $p('cpProject').innerHTML='<option value="">—</option>';
  $p('cpSite').innerHTML='<option value="">—</option>';
  $p('cpPrint').disabled=true;
- $p('cpProgress').textContent='جاري تحميل دورة '+monthName(period);
- $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:8px"><b>جاري تحميل أرشيف التحضير</b></div></div></div>';
+ const modeLabel=CP.mode==='client'?'شهر العميل':'الدورة الداخلية';
+ $p('cpProgress').textContent='جاري تحميل '+modeLabel+' '+monthName(period);
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:8px"><b>جاري تحميل بيانات '+modeLabel+'</b></div></div></div>';
  try{
-   const d=await api('printCatalog',{period:period},12000);
+   const action=CP.mode==='client'?'printClientCatalog':'printCatalog';
+   const d=await api(action,{period:period},12000);
    CP.ctx={region_name:d.region_name||'',cycle_start:d.cycle_start,cycle_end:d.cycle_end,source:d.source||'live'};
    CP.sites=(d.sites||[]).map(function(s){return {
      code:s.site_code,site_code:s.site_code,site_name:s.site_name,project_code:s.project_code,
      project_name:s.project_name,client_name:s.client_name,city:s.city,guard_count:s.guard_count
    }});
    const ctx=cycleContext();
-   $p('cpCycle').innerHTML='<b>دورة التحضير:</b> '+escp(monthName(ctx.period))+' <span>·</span> '+fmtDate(ctx.start)+' ← '+fmtDate(ctx.end)+' <span>·</span> '+escp(ctx.region)+(CP.ctx?.source==='archive'?' <span>·</span> أرشيف تاريخي':'');
+   const head=CP.mode==='client'?'شهر العميل':'الدورة الداخلية';
+   $p('cpCycle').innerHTML='<b>'+head+':</b> '+escp(monthName(ctx.period))+' <span>·</span> '+fmtDate(ctx.start)+' ← '+fmtDate(ctx.end)+' <span>·</span> '+escp(ctx.region)+(CP.ctx?.source==='archive'?' <span>·</span> أرشيف تاريخي':'');
    $p('cpProgress').textContent=CP.sites.length+' موقع';
    if(!CP.sites.length){
      $p('cpClient').innerHTML='<option value="">لا توجد مواقع</option>';
-     $p('cpStage').innerHTML='<div class="cp-empty"><div><b>لا توجد بيانات قابلة للطباعة لهذه الدورة</b><div style="margin-top:7px">اختاري دورة أخرى من قائمة دورات الطباعة.</div></div></div>';
+     $p('cpStage').innerHTML='<div class="cp-empty"><div><b>لا توجد بيانات قابلة للطباعة لهذه الفترة</b><div style="margin-top:7px">اختاري شهراً أو دورة أخرى من قائمة الطباعة.</div></div></div>';
      return;
    }
    rebuildClients(preferSite||'');
  }catch(e){
    $p('cpProgress').textContent='';
-   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تحميل دورة الطباعة</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
+   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تحميل فترة الطباعة</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
  }
 }
 
@@ -173,23 +180,19 @@ async function loadSelectedSite(){
  CP.site=s;CP.guards=[];CP.coverageEvents=[];$p('cpPrint').disabled=true;
  $p('cpNotice').style.display='block';$p('cpNotice').textContent='جاري تجهيز بيانات الكشف...';
  $p('cpProgress').textContent='جاري التحميل';
- $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">يتم تحميل سجلات هذا الموقع فقط.</div></div></div>';
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">'+(CP.mode==='client'?'فترة العميل: من أول الشهر إلى آخر يوم فيه.':'الفترة الداخلية: حسب دورة التحضير المعتمدة.')+'</div></div></div>';
  try{
   const ctx=cycleContext();
-  if(CP.mode==='internal'||CP.ctx?.source==='archive'){
-   const d=await api('printSiteMonth',{period:ctx.period,site_code:code},15000);
-   CP.guards=d.guards||[];
-   CP.coverageEvents=CP.mode==='internal'?(d.coverage_events||[]):[];
-   if(d.site)CP.site=Object.assign({},s,{
+  const action=CP.mode==='client'?'printClientSiteMonth':'printSiteMonth';
+  const d=await api(action,{period:ctx.period,site_code:code},15000);
+  CP.guards=d.guards||[];
+  CP.coverageEvents=CP.mode==='internal'?(d.coverage_events||[]):[];
+  if(d.site)CP.site=Object.assign({},s,{
     code:d.site.site_code||code,site_name:d.site.site_name||s.site_name,
     project_code:d.site.project_code||s.project_code,project_name:d.site.project_name||s.project_name,
     client_name:d.site.client_name||s.client_name,city:d.site.city||s.city
-   });
-  }else{
-   const roster=await api('roster',{period:ctx.period,q:'@site:'+code},15000);
-   CP.guards=roster.rows||[];
-  }
-  if(!CP.guards.length)throw new Error('لا توجد تكليفات محفوظة لهذا الموقع في دورة التحضير المحددة.');
+  });
+  if(!CP.guards.length)throw new Error('لا توجد تكليفات محفوظة لهذا الموقع في الفترة المحددة.');
   $p('cpProgress').textContent=CP.guards.length+' حارس';
   renderReport();
  }catch(e){
@@ -277,7 +280,7 @@ function pageHeader(page,total,ds){
   ?'<span>PRJ: '+escp(s.project_code||'—')+'</span><span>SIT: '+escp(s.code||s.site_code||'—')+'</span>'
   :'';
  return '<div class="cp-head"><div class="cp-brand"><div class="cp-brand-mark"></div><div class="cp-brand-ar">أركانات للحراسات الأمنية</div><div class="cp-brand-en">ARKANAT for Security Guards</div></div>'+
- '<div class="cp-center"><div class="cp-title">'+escp(title)+'</div><div class="cp-meta"><span>'+escp(c.region)+(s.city?' - '+escp(s.city):'')+'</span><span>العميل: '+escp(clientKey(s))+'</span><span>المشروع: '+escp(projectKey(s))+'</span>'+extra+'<span>دورة '+escp(monthName(c.period))+'</span><span>'+fmtDate(ds[0])+' إلى '+fmtDate(ds[ds.length-1])+'</span></div></div>'+
+ '<div class="cp-center"><div class="cp-title">'+escp(title)+'</div><div class="cp-meta"><span>'+escp(c.region)+(s.city?' - '+escp(s.city):'')+'</span><span>العميل: '+escp(clientKey(s))+'</span><span>المشروع: '+escp(projectKey(s))+'</span>'+extra+'<span>'+(CP.mode==='internal'?'الدورة الداخلية: ':'شهر العميل: ')+escp(monthName(c.period))+'</span><span>'+fmtDate(ds[0])+' إلى '+fmtDate(ds[ds.length-1])+'</span></div></div>'+
  '<div class="cp-page-num"><b>'+page+'/'+total+'</b>صفحة</div></div>';
 }
 
@@ -287,8 +290,8 @@ function finalBlock(m){
   ?'<div class="cp-approvals"><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة العمليات الموحدة</b>الاسم / التوقيع</div><div class="cp-approval"><b>الموارد البشرية</b>الاسم / التوقيع</div><div class="cp-approval"><b>الإدارة المالية</b>الاسم / التوقيع</div><div class="cp-approval"><b>المراجعة</b>الاسم / التوقيع</div></div>'
   :'<div class="cp-approvals"><div class="cp-approval"><b>مسؤول العميل / الموقع</b>الاسم / التوقيع</div><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>ممثل أركانات / العمليات</b>الاسم / التوقيع</div></div>';
  const banner=CP.mode==='internal'
-  ?'<div class="cp-internal-banner">مستند داخلي للمصالحة بين العمليات والموارد البشرية والمالية — يعرض محركات الأثر المالي والتشغيلي ولا يرسل للعميل.</div>'
-  :'<div class="cp-client-block">كشف تشغيلي لإثبات الحضور والتنفيذ واعتماد العميل، ولا يتضمن بيانات الرواتب أو مبالغ التغطية أو الملاحظات الداخلية.</div>';
+  ?'<div class="cp-internal-banner">مستند داخلي للمصالحة بين العمليات والموارد البشرية والمالية — يتبع دورة التحضير الداخلية ويعرض محركات الأثر المالي والتشغيلي ولا يرسل للعميل.</div>'
+  :'<div class="cp-client-block">كشف العميل يغطي الشهر الميلادي من يوم 1 حتى آخر يوم في الشهر لإثبات الحضور والتنفيذ والاعتماد، ولا يتضمن بيانات الرواتب أو مبالغ التغطية أو الملاحظات الداخلية.</div>';
  const internalImpact=CP.mode==='internal'
   ?'<div class="cp-kpis" style="margin-top:1.2mm"><div class="cp-kpi"><b>غياب للحسم</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>انسحاب للحسم</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>تغطية كاش</b><strong>'+m.cash_total.toFixed(2)+'</strong></div><div class="cp-kpi"><b>إضافي مسجل</b><strong>'+m.overtime_total.toFixed(1)+'</strong></div></div>'+
    '<div class="cp-legend"><span>مراجعة HR: <b>'+m.hr_cases+'</b></span><span>مراجعة المالية: <b>'+m.finance_cases+'</b></span><span>مراجعة العمليات: <b>'+m.operations_cases+'</b></span><span>مفتوح/قيد المعالجة: <b>'+m.open_cases+'</b></span><span>بانتظار المراجعة: <b>'+m.review_cases+'</b></span><span>مغلق: <b>'+m.closed_cases+'</b></span></div>'
@@ -399,8 +402,9 @@ async function openClientPrint(){
  const sh=$p('clientPrintShell');sh.classList.add('open');sh.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
  CP.mode='client';CP.period='';CP.ctx=null;CP.sites=[];CP.guards=[];CP.site=null;
  $p('cpModeClient').classList.add('active');$p('cpModeInternal').classList.remove('active');
- $p('cpModeNote').textContent='نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.';
- $p('cpCycle').innerHTML='<b>دورات الطباعة:</b> جاري تحميل الأرشيف...';
+ $p('cpPeriodLabel').textContent='شهر العميل للطباعة';
+ $p('cpModeNote').textContent='تايم شيت العميل يغطي الشهر الميلادي كاملاً من يوم 1 حتى آخر يوم في الشهر، ولا يعرض التفاصيل المالية أو ملاحظات العمل الداخلية.';
+ $p('cpCycle').innerHTML='<b>أشهر الطباعة:</b> جاري تحميل الأرشيف...';
  $p('cpPeriod').innerHTML='<option value="">جاري تحميل الدورات...</option>';
  try{
    const p=await api('printPeriods',{},12000);
