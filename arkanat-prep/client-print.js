@@ -88,7 +88,8 @@ function periodStateLabel(s){
  return s==='current'?'الحالية':s==='future'?'قادمة / للتجهيز':'سابقة';
 }
 function periodOptionText(p){
- return monthName(p.period)+' — '+periodStateLabel(p.state)+(p.entry_count?' · '+p.entry_count+' سجل':'');
+ const src=p.source==='archive'?' · أرشيف تاريخي':'';
+ return monthName(p.period)+' — '+periodStateLabel(p.state)+src+(p.entry_count?' · '+p.entry_count+' سجل':'');
 }
 async function loadPrintPeriod(period,preferSite){
  if(!period)return;
@@ -107,7 +108,7 @@ async function loadPrintPeriod(period,preferSite){
      project_name:s.project_name,client_name:s.client_name,city:s.city,guard_count:s.guard_count
    }});
    const ctx=cycleContext();
-   $p('cpCycle').innerHTML='<b>دورة التحضير:</b> '+escp(monthName(ctx.period))+' <span>·</span> '+fmtDate(ctx.start)+' ← '+fmtDate(ctx.end)+' <span>·</span> '+escp(ctx.region);
+   $p('cpCycle').innerHTML='<b>دورة التحضير:</b> '+escp(monthName(ctx.period))+' <span>·</span> '+fmtDate(ctx.start)+' ← '+fmtDate(ctx.end)+' <span>·</span> '+escp(ctx.region)+(CP.ctx?.source==='archive'?' <span>·</span> أرشيف تاريخي':'');
    $p('cpProgress').textContent=CP.sites.length+' موقع';
    if(!CP.sites.length){
      $p('cpClient').innerHTML='<option value="">لا توجد مواقع</option>';
