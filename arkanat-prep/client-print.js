@@ -231,6 +231,18 @@ function metrics(ds){
    if(e.workflow_status==='CLOSED')z.closed_cases++;
   });
  });
+ CP.coverageEvents.forEach(function(e){
+   const q=Number(e.quantity||1);
+   z.coverage+=q;
+   z.cash_total+=Number(e.cash_amount||0);
+   if(e.coverage_type==='CASH'){
+     z.finance_cases+=e.status==='OPEN'?1:0;
+   }else{
+     z.operations_cases+=e.status==='OPEN'?1:0;
+   }
+   if(e.status==='OPEN')z.open_cases++;
+   if(e.status==='CONFIRMED')z.closed_cases++;
+ });
  z.missing_dates=md.size;z.missing_guards=mg.size;
  return z;
 }
