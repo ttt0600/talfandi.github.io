@@ -37,3 +37,16 @@
  .cp-table{font-size:4.65pt}.cp-table th,.cp-table td{height:4.05mm;padding:.18mm .08mm}.cp-table thead th{height:5mm}
  .cp-final{break-inside:avoid}.cp-brand-ar{font-size:9pt}.cp-title{font-size:9pt}.cp-kpi{min-height:7.8mm}.cp-kpi strong{font-size:8.5pt}
 }
+
+.cp-mode{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cp-mode button{min-height:38px;border-radius:9px;border:1px solid #c9b9b8;background:#fff;color:#641419;font-weight:900;padding:8px 12px;cursor:pointer}
+.cp-mode button.active{background:#7a171b;color:#fff;border-color:#7a171b;box-shadow:inset 0 -2px 0 #af971c}
+.cp-mode-note{font-size:10px;color:#6f6a67;line-height:1.5}
+.cp-internal-banner{border:1px solid #d8c77e;background:#fbf7e9;color:#5c4c0f;border-radius:1.2mm;padding:1mm 2mm;font-size:5.6pt;font-weight:900;margin-bottom:1.2mm}
+.cp-ledger{width:100%;border-collapse:collapse;table-layout:fixed;font-size:6pt}
+.cp-ledger th,.cp-ledger td{border:1px solid #8c817d;padding:1mm .8mm;text-align:right;vertical-align:top;line-height:1.25}
+.cp-ledger th{background:#332624;color:#fff;text-align:center;font-weight:900}
+.cp-ledger td.num{text-align:center}
+.cp-ledger-wrap{margin-top:1.5mm}
+.cp-ledger-title{font-size:8pt;font-weight:950;color:#7a171b;margin:0 0 1mm}
+.cp-client-block{border:1px solid #d6c9a8;background:#fffdf7;color:#5e514c;border-radius:1.2mm;padding:1mm 2mm;font-size:5.4pt;margin-bottom:1.2mm}
