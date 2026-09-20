@@ -168,6 +168,15 @@ function today(){
 }
 function sites(){const all=S.day?.sites||[];$('mainView').innerHTML='<div class="sectionHead"><div><h2>المواقع</h2><div class="sub">بحث سريع في اليوم المحدد.</div></div></div><div class="card viewCard"><input id="siteSearch" class="search" placeholder="بحث بالعميل أو المشروع أو الموقع"></div><div id="allSites" class="siteGrid" style="margin-top:10px"></div>';const draw=()=>{const q=$('siteSearch').value.trim().toLowerCase(),a=all.filter(s=>!q||[s.site_name,s.project_name,s.client_name].some(v=>String(v||'').toLowerCase().includes(q)));$('allSites').innerHTML=a.map(siteCard).join('')||'<div class="card empty">لا توجد نتائج</div>';wireSites()};$('siteSearch').oninput=draw;draw()}
 async function openSite(k){if(k==='__MISSING__'){S.tab='gaps';return gaps()}S.site=k;$('mainView').innerHTML='<div class="card empty" style="min-height:160px"><div><span class="loading"></span><div style="margin-top:8px">جاري تحميل الموقع فقط...</div></div></div>';try{S.siteData=await fast('site',{period:period(),date:work(),site_code:k},10000);if(S.site===k)siteDetail()}catch(e){toast(e.message,true);render()}}
+function classifyLocalException(e){
+ const st=e.status||'';
+ if(!st){e.exception_level='action';e.exception_reason='لم يتم تسجيل حالة اليوم';return e}
+ if(['A','W','R','S'].includes(st)){e.exception_level='action';e.exception_reason=STATUS[st]||st;return e}
+ if(['SUB','CASH'].includes(st)&&!String(e.replacement_employee_ref||'').trim()&&!String(e.replacement_name||'').trim()){e.exception_level='action';e.exception_reason='تغطية بدون تحديد المنفذ';return e}
+ if(st==='CASH'&&(e.cash_amount===null||e.cash_amount===undefined||e.cash_amount==='')){e.exception_level='action';e.exception_reason='تغطية كاش بدون مبلغ';return e}
+ if(['T','AL','SK','O','OTHER','SUB','CASH'].includes(st)){e.exception_level='review';e.exception_reason=st==='SUB'||st==='CASH'?'تغطية مسجلة تحتاج مراجعة داخلية':STATUS[st]||st;return e}
+ e.exception_level='complete';e.exception_reason=null;return e
+}
 function siteDetail(){
  const g=S.siteData;if(!g)return render();
  const rows=g.employees||[];
@@ -201,8 +210,8 @@ function guardRow(e){
   (p?'<div class="quickActions"><button class="quickBtn present qStatus" data-a="'+e.assignment_id+'" data-s="P">حاضر</button><button class="quickBtn off qStatus" data-a="'+e.assignment_id+'" data-s="OFF">راحة</button><button class="quickBtn absent qStatus" data-a="'+e.assignment_id+'" data-s="A">غياب</button><button class="quickBtn qMore" data-a="'+e.assignment_id+'">المزيد…</button></div>':'')+
   '</div>';
 }
-function wireGuards(){document.querySelectorAll('.editDay,.qMore').forEach(b=>b.onclick=()=>dayModal((S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a),work(),()=>siteDetail()));document.querySelectorAll('.qStatus').forEach(b=>b.onclick=async()=>{const e=(S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a);b.disabled=true;try{await fast('saveDay',{payload:{assignment_id:e.assignment_id,date:work(),status:b.dataset.s,shift_code:e.shift_code||null}},10000);e.status=b.dataset.s;siteDetail();refreshDay(false);toast('تم الحفظ')}catch(x){toast(x.message,true);b.disabled=false}})}
-async function bulkPresent(){const ids=[...document.querySelectorAll('.guardCheck:checked')].map(x=>x.value);if(!ids.length)return toast('حددي الحراس أولاً',true);if(!await confirmUI('تأكيد الحضور','سيتم تسجيل '+ids.length+' حارساً كحاضر.','تأكيد'))return;try{await fast('bulkPresent',{date:work(),assignment_ids:ids},12000);(S.siteData?.employees||[]).forEach(e=>{if(ids.includes(e.assignment_id))e.status='P'});siteDetail();refreshDay(false);toast('تم التأكيد')}catch(e){toast(e.message,true)}}
+function wireGuards(){document.querySelectorAll('.editDay,.qMore').forEach(b=>b.onclick=()=>dayModal((S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a),work(),()=>siteDetail()));document.querySelectorAll('.qStatus').forEach(b=>b.onclick=async()=>{const e=(S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a);b.disabled=true;try{await fast('saveDay',{payload:{assignment_id:e.assignment_id,date:work(),status:b.dataset.s,shift_code:e.shift_code||null}},10000);e.status=b.dataset.s;classifyLocalException(e);siteDetail();refreshDay(false);toast('تم الحفظ')}catch(x){toast(x.message,true);b.disabled=false}})}
+async function bulkPresent(){const ids=[...document.querySelectorAll('.guardCheck:checked')].map(x=>x.value);if(!ids.length)return toast('حددي الحراس أولاً',true);if(!await confirmUI('تأكيد الحضور','سيتم تسجيل '+ids.length+' حارساً كحاضر.','تأكيد'))return;try{await fast('bulkPresent',{date:work(),assignment_ids:ids},12000);(S.siteData?.employees||[]).forEach(e=>{if(ids.includes(e.assignment_id)){e.status='P';classifyLocalException(e)}});siteDetail();refreshDay(false);toast('تم التأكيد')}catch(e){toast(e.message,true)}}
 
 async function month(){$('mainView').innerHTML='<div class="monthLayout"><section class="card roster"><input id="rosterSearch" class="search" placeholder="بحث بالاسم أو الرقم أو الموقع"><div id="rosterList" class="roster-list"><div class="empty" style="min-height:120px"><span class="loading"></span></div></div></section><section id="attendancePanel" class="card attendance"><div class="empty"><b>اختاري موظفاً</b></div></section></div>';let tm;$('rosterSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>loadRoster($('rosterSearch').value.trim()),250)};await loadRoster('')}
 async function loadRoster(q){try{const d=await fast('roster',{period:period(),q},10000);S.roster=d.rows||[];drawRoster()}catch(e){toast(e.message,true)}}
@@ -246,7 +255,7 @@ function dayModal(e,d,done){
    cash_amount:$('cash')?.value||null
   };
   $('saveD').disabled=true;
-  try{await fast('saveDay',{payload:p},10000);closeModal();done&&done();if(d===work())refreshDay(false);toast('تم الحفظ')}
+  try{await fast('saveDay',{payload:p},10000);Object.assign(e,p);classifyLocalException(e);closeModal();done&&done();if(d===work())refreshDay(false);toast('تم الحفظ')}
   catch(x){toast(x.message,true);$('saveD').disabled=false}
  };
 }
