@@ -2,7 +2,7 @@
 (function(){
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const STATUS_PRINT={P:'P',OFF:'OFF',A:'A',T:'T',AL:'AL',SK:'SK',S:'S',W:'W',R:'R',O:'O',SUB:'C',CASH:'C',OTHER:'-'};
-const CP={sites:[],guards:[],site:null,filename:'',mode:'client'};
+const CP={sites:[],guards:[],site:null,filename:'',mode:'client',period:'',ctx:null,periods:[]};
 const $p=function(id){return document.getElementById(id)};
 const escp=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})};
 const safeName=function(s){return String(s||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim()};
@@ -16,7 +16,7 @@ function ensureShell(){
  const root=document.createElement('div');
  root.id='clientPrintShell';root.className='client-print-shell';root.setAttribute('aria-hidden','true');
  root.innerHTML='<div class="cp-toolbar"><div class="cp-toolbar-in">'+
- '<div id="cpCycle" class="cp-cycle"></div>'+
+ '<div id="cpCycle" class="cp-cycle"></div>'+ '<div class="cp-field"><label>دورة التحضير للطباعة</label><select id="cpPeriod"></select></div>'+
  '<div class="cp-field" style="grid-column:1/-1"><label>نوع التايم شيت</label><div class="cp-mode"><button id="cpModeClient" class="active">تايم شيت العميل</button><button id="cpModeInternal">التايم شيت الداخلي</button></div><div id="cpModeNote" class="cp-mode-note">نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.</div></div>'+
  '<div class="cp-field"><label>العميل</label><select id="cpClient"></select></div>'+
  '<div class="cp-field"><label>المشروع</label><select id="cpProject"></select></div>'+
@@ -27,6 +27,7 @@ function ensureShell(){
  '<div id="cpStage" class="cp-stage"><div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">ثم اختاري نسخة العميل أو النسخة الداخلية حسب الاستخدام.</div></div></div></div>';
  document.body.appendChild(root);
  $p('cpClose').onclick=closeClientPrint;
+ $p('cpPeriod').onchange=function(){loadPrintPeriod($p('cpPeriod').value)};
  $p('cpClient').onchange=function(){fillProjects()};
  $p('cpProject').onchange=function(){fillSites()};
  $p('cpSite').onchange=loadSelectedSite;
@@ -72,6 +73,9 @@ function dateList(start,end){
  return out;
 }
 function cycleContext(){
+ if(CP.ctx&&CP.period){
+  return {period:CP.period,region:CP.ctx.region_name||'',start:CP.ctx.cycle_start,end:CP.ctx.cycle_end};
+ }
  try{
   if(typeof S!=='undefined'&&S.ctx){
    return {period:document.getElementById('period')&&document.getElementById('period').value||S.ctx.period,region:S.ctx.region_name,start:S.ctx.cycle_start,end:S.ctx.cycle_end};
@@ -80,6 +84,44 @@ function cycleContext(){
  const p=document.getElementById('period')&&document.getElementById('period').value||new Date().toISOString().slice(0,7);
  return {period:p,region:'',start:p+'-01',end:p+'-28'};
 }
+function periodStateLabel(s){
+ return s==='current'?'الحالية':s==='future'?'قادمة / للتجهيز':'سابقة';
+}
+function periodOptionText(p){
+ return monthName(p.period)+' — '+periodStateLabel(p.state)+(p.entry_count?' · '+p.entry_count+' سجل':'');
+}
+async function loadPrintPeriod(period,preferSite){
+ if(!period)return;
+ CP.period=period;CP.ctx=null;CP.sites=[];CP.guards=[];CP.site=null;CP.filename='';
+ $p('cpClient').innerHTML='<option value="">جاري تحميل العملاء...</option>';
+ $p('cpProject').innerHTML='<option value="">—</option>';
+ $p('cpSite').innerHTML='<option value="">—</option>';
+ $p('cpPrint').disabled=true;
+ $p('cpProgress').textContent='جاري تحميل دورة '+monthName(period);
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:8px"><b>جاري تحميل أرشيف التحضير</b></div></div></div>';
+ try{
+   const d=await api('printCatalog',{period:period},12000);
+   CP.ctx={region_name:d.region_name||'',cycle_start:d.cycle_start,cycle_end:d.cycle_end};
+   CP.sites=(d.sites||[]).map(function(s){return {
+     code:s.site_code,site_code:s.site_code,site_name:s.site_name,project_code:s.project_code,
+     project_name:s.project_name,client_name:s.client_name,city:s.city,guard_count:s.guard_count
+   }});
+   const ctx=cycleContext();
+   $p('cpCycle').innerHTML='<b>دورة التحضير:</b> '+escp(monthName(ctx.period))+' <span>·</span> '+fmtDate(ctx.start)+' ← '+fmtDate(ctx.end)+' <span>·</span> '+escp(ctx.region);
+   $p('cpProgress').textContent=CP.sites.length+' موقع';
+   if(!CP.sites.length){
+     $p('cpClient').innerHTML='<option value="">لا توجد مواقع</option>';
+     $p('cpStage').innerHTML='<div class="cp-empty"><div><b>لا توجد بيانات قابلة للطباعة لهذه الدورة</b><div style="margin-top:7px">اختاري دورة أخرى من قائمة دورات الطباعة.</div></div></div>';
+     return;
+   }
+   rebuildClients(preferSite||'');
+ }catch(e){
+   $p('cpProgress').textContent='';
+   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تحميل دورة الطباعة</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
+ }
+}
+
+
 function catalogFromState(){
  const map=new Map(),sources=[];
  try{if(typeof S!=='undefined'&&S.ctx&&S.ctx.sites)sources.push.apply(sources,S.ctx.sites)}catch(e){}
@@ -322,21 +364,33 @@ function closeClientPrint(){
 async function openClientPrint(){
  ensureShell();
  const sh=$p('clientPrintShell');sh.classList.add('open');sh.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
- const c=cycleContext();
- $p('cpCycle').innerHTML='<b>دورة التحضير:</b> '+escp(monthName(c.period))+' <span>·</span> '+fmtDate(c.start)+' ← '+fmtDate(c.end)+' <span>·</span> '+escp(c.region||'');
- CP.sites=catalogFromState();
- if(!CP.sites.length){$p('cpStage').innerHTML='<div class="cp-empty"><div><b>لا توجد مواقع متاحة للطباعة</b><div style="margin-top:7px">حمّلي بيانات المنطقة أولاً ثم أعيدي المحاولة.</div></div></div>';return}
- let prefer='';
- try{prefer=S.site||(S.employee&&S.employee.site_code)||''}catch(e){}
- rebuildClients(prefer);
- if(prefer&&CP.sites.some(function(x){return x.code===prefer})){
-  const ps=CP.sites.find(function(x){return x.code===prefer});
-  $p('cpClient').value=clientKey(ps);fillProjects(prefer,false);$p('cpProject').value=projectKey(ps);fillSites(prefer,false);$p('cpSite').value=prefer;await loadSelectedSite();
- }else{
-  const clients=uniq(CP.sites.map(clientKey));
-  if(clients.length===1){$p('cpClient').value=clients[0];fillProjects('',false)}
+ CP.mode='client';CP.period='';CP.ctx=null;CP.sites=[];CP.guards=[];CP.site=null;
+ $p('cpModeClient').classList.add('active');$p('cpModeInternal').classList.remove('active');
+ $p('cpModeNote').textContent='نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.';
+ $p('cpCycle').innerHTML='<b>دورات الطباعة:</b> جاري تحميل الأرشيف...';
+ $p('cpPeriod').innerHTML='<option value="">جاري تحميل الدورات...</option>';
+ try{
+   const p=await api('printPeriods',{},12000);
+   CP.periods=p.periods||[];
+   if(!CP.periods.length){
+     $p('cpPeriod').innerHTML='<option value="">لا توجد دورات محفوظة</option>';
+     $p('cpStage').innerHTML='<div class="cp-empty"><b>لا توجد دورات تحضير محفوظة لهذه المنطقة.</b></div>';
+     return;
+   }
+   $p('cpPeriod').innerHTML=CP.periods.map(function(x){return '<option value="'+escp(x.period)+'">'+escp(periodOptionText(x))+'</option>'}).join('');
+   let mainPeriod='';
+   try{mainPeriod=document.getElementById('period')&&document.getElementById('period').value||''}catch(e){}
+   const chosen=CP.periods.some(function(x){return x.period===mainPeriod})?mainPeriod:CP.periods[0].period;
+   $p('cpPeriod').value=chosen;
+   let prefer='';
+   try{prefer=S.site||(S.employee&&S.employee.site_code)||''}catch(e){}
+   await loadPrintPeriod(chosen,prefer);
+ }catch(e){
+   $p('cpCycle').textContent='تعذر تحميل أرشيف الطباعة';
+   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تحميل دورات التحضير السابقة</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
  }
 }
+
 window.openClientPrint=openClientPrint;
 window.closeClientPrint=closeClientPrint;
 })();
