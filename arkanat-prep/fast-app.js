@@ -29,15 +29,24 @@ function ry(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Riyadh',ye
 function monthLabel(p){const z=String(p).split('-').map(Number);return new Intl.DateTimeFormat('ar-SA-u-ca-gregory',{month:'long',year:'numeric'}).format(new Date(z[0],z[1]-1,1))}
 function initPeriodOptions(selected){
  const el=$('period');if(!el)return;
- const [y,m]=selected.split('-').map(Number),vals=[];
- for(let k=-12;k<=1;k++){const d=new Date(y,m-1+k,1),v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');vals.push(v)}
- const next=new Date(y,m,1),nextVal=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0');
- el.innerHTML=vals.reverse().map(v=>{
-   const tag=v===selected?' — الحالية':v===nextVal?' — القادمة / للتجهيز':'';
-   return '<option value="'+v+'">دورة '+monthLabel(v)+tag+'</option>';
- }).join('');
+ const [y,m]=selected.split('-').map(Number);
+ const current='<option value="'+selected+'">دورة '+monthLabel(selected)+' — الحالية</option>';
+ let future='<optgroup label="التخطيط المستقبلي — 12 شهراً">';
+ for(let k=1;k<=12;k++){
+   const d=new Date(y,m-1+k,1),v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+   future+='<option value="'+v+'">دورة '+monthLabel(v)+(k===1?' — القادمة':' — تخطيط مسبق')+'</option>';
+ }
+ future+='</optgroup>';
+ let past='<optgroup label="الدورات السابقة">';
+ for(let k=1;k<=12;k++){
+   const d=new Date(y,m-1-k,1),v=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+   past+='<option value="'+v+'">دورة '+monthLabel(v)+'</option>';
+ }
+ past+='</optgroup>';
+ el.innerHTML=current+future+past;
  el.value=selected;
 }
+
 function period(){return $('period').value||ry().slice(0,7)}
 function work(){return $('workDate').value||ry()}
 function dates(a,b){const o=[];let d=new Date(a+'T12:00:00'),z=new Date(b+'T12:00:00');while(d<=z){o.push(d.toISOString().slice(0,10));d.setDate(d.getDate()+1)}return o}
@@ -73,30 +82,41 @@ function syncContextUi(){
  const monthly=S.tab==='month';
  const df=$('dayField');if(df)df.classList.toggle('hidden',monthly||future);
  const mt=$('metrics');if(mt)mt.classList.toggle('hidden',monthly||future);
+ const monthTab=document.querySelector('.tab[data-tab="month"]');
+ if(monthTab)monthTab.textContent=future?'التخطيط':'الشهر';
  document.querySelectorAll('.tab').forEach(t=>{
    const blocked=future&&t.dataset.tab!=='month';
    t.disabled=blocked;
-   t.title=blocked?'الدورة القادمة متاحة للتجهيز المسبق فقط؛ يبدأ التحضير اليومي عند بدء الدورة.':'';
+   t.title=blocked?'هذه دورة مستقبلية؛ استخدمي مساحة التخطيط لتجهيز التكليفات فقط. يبدأ التحضير اليومي عند بدء الدورة.':'';
  });
- const pb=$('printBtn');if(pb)pb.textContent='طباعة التحضير الشهري';
+ const pb=$('printBtn');
+ if(pb){
+   pb.textContent='طباعة التحضير الشهري';
+   pb.disabled=future;
+   pb.title=future?'الطباعة التشغيلية تبدأ بعد دخول الدورة ضمن الفترة الفعلية.':'';
+ }
  const sb=$('submitBtn');if(sb){sb.disabled=future;sb.title=future?'لا يمكن إقفال دورة مستقبلية قبل بدءها.':''}
 }
+
 function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab));syncContextUi()}
 function loading(msg='جاري تحميل بيانات المنطقة...'){tabUI();$('metrics').innerHTML='';$('sourceBanner').classList.add('hidden');$('mainView').innerHTML='<div class="card empty" style="min-height:180px"><div><span class="loading"></span><div style="margin-top:10px;font-weight:900">'+esc(msg)+'</div><div class="sub" style="margin-top:6px">يتم تحميل البيانات المطلوبة فقط.</div></div></div>'}
 function sourceBanner(){
  const m=S.ctx?.metrics||{},b=$('sourceBanner'),future=S.ctx?.cycle_state==='future';
  b.classList.remove('hidden');
- b.innerHTML='<div><b>'+(future?'الدورة القادمة جاهزة للتجهيز المسبق':'بيانات المنطقة جاهزة')+'</b><div><span>'+Number(m.employees||0)+' تكليفاً نشطاً · '+esc(S.ctx?.roster_note||'')+'</span></div></div><div class="pill '+(future?'warn':'ok')+'">'+(future?'تجهيز مسبق':'تحميل خفيف')+'</div>';
+ b.innerHTML='<div><b>'+(future?'خطة التكليف المستقبلية جاهزة':'بيانات المنطقة جاهزة')+'</b><div><span>'+Number(m.employees||0)+' تكليفاً نشطاً · '+esc(S.ctx?.roster_note||'')+'</span></div></div><div class="pill '+(future?'warn':'ok')+'">'+(future?'تخطيط حتى 12 شهر':'تحميل خفيف')+'</div>';
 }
+
 function metrics(){
  const m=S.day?.metrics||{};
- const action=Number(m.action_now??m.pending??0),review=Number(m.needs_review??0),complete=Number(m.complete??Math.max(0,Number(m.employees||0)-action-review));
+ const action=Number(m.action_now||0),review=Number(m.needs_review||0),waiting=Number(m.awaiting_prep||0),complete=Number(m.complete||0),total=Number(m.employees||0);
  $('metrics').innerHTML=
-  '<div class="card metric '+(action?'bad':'ok')+'"><b>'+action+'</b><span>يحتاج إجراء الآن</span></div>'+
-  '<div class="card metric '+(review?'warn':'ok')+'"><b>'+review+'</b><span>يحتاج مراجعة</span></div>'+
+  '<div class="card metric '+(action?'bad':'ok')+'"><b>'+action+'</b><span>استثناء يحتاج إجراء</span></div>'+
+  '<div class="card metric '+(review?'warn':'ok')+'"><b>'+review+'</b><span>بانتظار المراجعة</span></div>'+
+  '<div class="card metric"><b>'+waiting+'</b><span>بانتظار التحضير اليوم</span></div>'+
   '<div class="card metric ok"><b>'+complete+'</b><span>مكتمل / طبيعي</span></div>'+
-  '<div class="card metric"><b>'+Number(m.employees||0)+'</b><span>إجمالي اليوم</span></div>';
+  '<div class="card metric"><b>'+total+'</b><span>إجمالي اليوم</span></div>';
 }
+
 function applyCtx(){
  if(!S.ctx)return false;
  const a=S.ctx.cycle_start,b=S.ctx.cycle_end,w=$('workDate');w.min=a;w.max=b;
@@ -121,7 +141,7 @@ async function bootstrap(){
   const d=await fast('bootstrap',{period:period(),date:work()},10000);if(q!==S.seq)return;
   S.ctx=d.context;S.day=d.day;$('workDate').value=d.date;S.region=S.ctx?.region_code||S.region;if(S.region)localStorage.setItem('arkPrepRegion',S.region);
   if(S.ctx?.cycle_state==='future')S.tab='month';
-  applyCtx();writeCache();$('saveState').textContent=(S.ctx?.cycle_state==='future'?'الدورة القادمة · تجهيز مسبق':'جاهز · '+new Date().toLocaleTimeString('ar-SA'));$('saveState').onclick=null;render()
+  applyCtx();writeCache();$('saveState').textContent=(S.ctx?.cycle_state==='future'?'خطة مستقبلية · '+monthLabel(period()):'جاهز · '+new Date().toLocaleTimeString('ar-SA'));$('saveState').onclick=null;render()
  }catch(e){
   if(q!==S.seq)return;
   if(cached){$('saveState').textContent='آخر نسخة محفوظة · تعذر التحديث — اضغطي لإعادة المحاولة';$('saveState').onclick=bootstrap;toast(e.message,true);return}
@@ -131,31 +151,41 @@ async function bootstrap(){
  }
 }
 async function refreshDay(draw=true){try{S.day=await fast('day',{period:period(),date:work()},9000);writeCache();metrics();if(draw&&(S.tab==='today'||S.tab==='sites'))render()}catch(e){toast(e.message,true)}}
-function render(){tabUI();if(!S.ctx||!S.day)return loading();sourceBanner();metrics();if(S.tab==='today')today();else if(S.tab==='sites')sites();else if(S.tab==='month')month();else gaps()}
+function render(){
+ tabUI();if(!S.ctx||!S.day)return loading();
+ sourceBanner();metrics();
+ if(S.ctx?.cycle_state==='future')return month();
+ if(S.tab==='today')today();else if(S.tab==='sites')sites();else if(S.tab==='month')month();else gaps()
+}
 
 function siteCard(s){
- const a=Number(s.action_now??s.pending??0),r=Number(s.needs_review??0),e=Number(s.expected||0),c=Number(s.confirmed||0),pct=e?Math.round(c*100/e):100;
- const cls=a?'attention critical':r?'attention':'complete';
- const badge=a?a+' يحتاج إجراء':r?r+' يحتاج مراجعة':'مكتمل';
+ const a=Number(s.action_now||0),r=Number(s.needs_review||0),w=Number(s.awaiting_prep||0),e=Number(s.expected||0),c=Number(s.confirmed||0),pct=e?Math.round(c*100/e):100;
+ const cls=a?'attention critical':r?'attention':w?'waiting':'complete';
+ const badge=a?a+' يحتاج إجراء':r?r+' يحتاج مراجعة':w?w+' بانتظار التحضير':'مكتمل';
+ const bcls=a?'bad':r?'warn':w?'pending':'ok';
  return '<article class="card siteCard '+cls+'" data-site="'+esc(s.site_code||'__MISSING__')+'">'+
   '<div class="siteTop"><div><div class="siteName">'+esc(s.site_name||'بدون موقع')+'</div><div class="siteMeta">'+esc(s.client_name||'')+(s.project_name?' · '+esc(s.project_name):'')+'</div></div>'+
-  '<div class="guardStatus '+(a?'bad':r?'warn':'ok')+'">'+badge+'</div></div>'+
+  '<div class="guardStatus '+bcls+'">'+badge+'</div></div>'+
   '<div class="siteCounts"><span class="pill">'+e+' حارس</span><span class="pill ok">'+c+' محضر</span>'+
-  (a?'<span class="pill bad">'+a+' إجراء</span>':'')+(r?'<span class="pill warn">'+r+' مراجعة</span>':'')+'</div>'+
-  '<div class="progress '+(!a&&!r?'done':'')+'"><span style="width:'+pct+'%"></span></div>'+
+  (a?'<span class="pill bad">'+a+' استثناء</span>':'')+(r?'<span class="pill warn">'+r+' مراجعة</span>':'')+(w?'<span class="pill">'+w+' لم يُحضّر</span>':'')+'</div>'+
+  '<div class="progress '+(!a&&!r&&!w?'done':'')+'"><span style="width:'+pct+'%"></span></div>'+
   '<div class="siteActions"><button class="btn secondary openSite" data-site="'+esc(s.site_code||'__MISSING__')+'">فتح الموقع</button></div></article>';
 }
+
 function wireSites(){document.querySelectorAll('.siteCard,.openSite').forEach(el=>el.onclick=e=>{e.stopPropagation();openSite(el.dataset.site||el.closest('.siteCard')?.dataset.site)})}
 function today(){
  const all=S.day?.sites||[];
- const action=all.filter(x=>Number(x.action_now??x.pending??0)>0);
- const review=all.filter(x=>Number(x.action_now??x.pending??0)===0&&Number(x.needs_review??0)>0);
- const done=all.filter(x=>Number(x.action_now??x.pending??0)===0&&Number(x.needs_review??0)===0&&Number(x.expected||0)>0);
+ const action=all.filter(x=>Number(x.action_now||0)>0);
+ const review=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)>0);
+ const waiting=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)===0&&Number(x.awaiting_prep||0)>0);
+ const done=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)===0&&Number(x.awaiting_prep||0)===0&&Number(x.expected||0)>0);
  $('mainView').innerHTML=
-  '<div class="sectionHead"><div><h2>يحتاج إجراء الآن</h2><div class="sub">هذه هي الحالات التي تتطلب تدخل موظف العمليات حالياً.</div></div><div class="pill '+(action.length?'bad':'ok')+'">'+action.length+' موقع</div></div>'+
-  '<div class="siteGrid">'+(action.length?action.map(siteCard).join(''):'<div class="card empty"><div><b>لا توجد حالات تحتاج إجراء الآن</b><div class="sub">انتقلي إلى حالات المراجعة عند الحاجة.</div></div></div>')+'</div>'+
-  '<div class="sectionHead"><div><h2>يحتاج مراجعة</h2><div class="sub">حالات مسجلة تحتاج تدقيقاً أو متابعة داخلية، لكنها ليست حالة طارئة.</div></div><div class="pill '+(review.length?'warn':'ok')+'">'+review.length+' موقع</div></div>'+
-  '<div class="siteGrid">'+(review.length?review.map(siteCard).join(''):'<div class="card empty"><b>لا توجد حالات تحتاج مراجعة</b></div>')+'</div>'+
+  '<div class="sectionHead"><div><h2>الاستثناءات الآن</h2><div class="sub">يعرض النظام الانحرافات الفعلية فقط، وليس كل من لم يبدأ تحضيره بعد.</div></div><div class="pill '+(action.length?'bad':'ok')+'">'+action.length+' موقع</div></div>'+
+  '<div class="siteGrid">'+(action.length?action.map(siteCard).join(''):'<div class="card empty"><div><b>لا توجد استثناءات تحتاج إجراء الآن</b><div class="sub">هذا هو الهدف من Management by Exception.</div></div></div>')+'</div>'+
+  '<div class="sectionHead"><div><h2>بانتظار المراجعة</h2><div class="sub">حالات تم تسجيلها وتحتاج تدقيقاً أو اعتماداً داخلياً.</div></div><div class="pill '+(review.length?'warn':'ok')+'">'+review.length+' موقع</div></div>'+
+  '<div class="siteGrid">'+(review.length?review.map(siteCard).join(''):'<div class="card empty"><b>لا توجد حالات بانتظار المراجعة</b></div>')+'</div>'+
+  '<div class="sectionHead"><div><h2>قائمة عمل التحضير اليومي</h2><div class="sub">هذه ليست استثناءات؛ هي المواقع التي لم يكتمل إدخال تحضيرها اليوم بعد.</div></div><div class="pill">'+waiting.length+' موقع</div></div>'+
+  '<div class="siteGrid">'+(waiting.length?waiting.map(siteCard).join(''):'<div class="card empty"><b>تم استكمال التحضير لجميع المواقع</b></div>')+'</div>'+
   '<div class="sectionHead"><div><h2>المكتمل / الطبيعي</h2><div class="sub">الحالات الطبيعية مطوية حتى لا تشتت المستخدم.</div></div><button id="toggleDone" class="btn ghost">عرض '+done.length+'</button></div>'+
   '<div id="doneSites" class="siteGrid hidden"></div>';
  wireSites();
@@ -166,6 +196,7 @@ function today(){
    $('toggleDone').textContent=b.classList.contains('hidden')?'عرض '+done.length:'إخفاء';
  };
 }
+
 function sites(){const all=S.day?.sites||[];$('mainView').innerHTML='<div class="sectionHead"><div><h2>المواقع</h2><div class="sub">بحث سريع في اليوم المحدد.</div></div></div><div class="card viewCard"><input id="siteSearch" class="search" placeholder="بحث بالعميل أو المشروع أو الموقع"></div><div id="allSites" class="siteGrid" style="margin-top:10px"></div>';const draw=()=>{const q=$('siteSearch').value.trim().toLowerCase(),a=all.filter(s=>!q||[s.site_name,s.project_name,s.client_name].some(v=>String(v||'').toLowerCase().includes(q)));$('allSites').innerHTML=a.map(siteCard).join('')||'<div class="card empty">لا توجد نتائج</div>';wireSites()};$('siteSearch').oninput=draw;draw()}
 async function openSite(k){if(k==='__MISSING__'){S.tab='gaps';return gaps()}S.site=k;$('mainView').innerHTML='<div class="card empty" style="min-height:160px"><div><span class="loading"></span><div style="margin-top:8px">جاري تحميل الموقع فقط...</div></div></div>';try{S.siteData=await fast('site',{period:period(),date:work(),site_code:k},10000);if(S.site===k)siteDetail()}catch(e){toast(e.message,true);render()}}
 function classifyLocalException(e){
@@ -224,33 +255,39 @@ function wireCaseActions(){
 function siteDetail(){
  const g=S.siteData;if(!g)return render();
  const rows=g.employees||[];
- const action=rows.filter(x=>x.exception_level==='action'||(!x.exception_level&&!x.status));
+ const action=rows.filter(x=>x.exception_level==='action');
  const review=rows.filter(x=>x.exception_level==='review');
- const done=rows.filter(x=>!action.includes(x)&&!review.includes(x));
+ const pending=rows.filter(x=>x.exception_level==='pending'||(!x.exception_level&&!x.status));
+ const done=rows.filter(x=>!action.includes(x)&&!review.includes(x)&&!pending.includes(x));
+ const top=action.length?{c:'bad',t:action.length+' استثناء'}:review.length?{c:'warn',t:review.length+' مراجعة'}:pending.length?{c:'pending',t:pending.length+' بانتظار التحضير'}:{c:'ok',t:'مكتمل'};
  $('mainView').innerHTML=
   '<div class="sectionHead"><button id="backSites" class="btn ghost">← رجوع</button><div style="flex:1"><h2>'+esc(g.site_name||'')+'</h2><div class="sub">'+esc(g.client_name||'')+(g.project_name?' · '+esc(g.project_name):'')+' · '+work()+'</div></div>'+
-  '<div class="guardStatus '+(action.length?'bad':review.length?'warn':'ok')+'">'+(action.length?action.length+' إجراء':review.length?review.length+' مراجعة':'مكتمل')+'</div></div>'+
-  '<div class="sectionHead"><div><h3>الحالات التي تحتاج إجراء أو مراجعة</h3><div class="sub">مرتبة تلقائياً حسب الأولوية.</div></div></div>'+
+  '<div class="guardStatus '+top.c+'">'+top.t+'</div></div>'+
+  '<div class="sectionHead"><div><h3>الاستثناءات والمراجعات</h3><div class="sub">تظهر هنا الانحرافات الفعلية فقط.</div></div></div>'+
   '<div class="card viewCard"><div class="guardRows">'+
-    (action.length||review.length?[...action,...review].map(guardRow).join(''):'<div class="empty"><b>لا توجد استثناءات في هذا الموقع اليوم</b></div>')+
+    (action.length||review.length?[...action,...review].map(guardRow).join(''):'<div class="empty"><b>لا توجد استثناءات في هذا الموقع حالياً</b></div>')+
   '</div></div>'+
+  '<div class="sectionHead"><div><h3>بانتظار التحضير</h3><div class="sub">قائمة العمل اليومية وليست استثناءً حتى يصبح التاريخ سابقاً دون تسجيل.</div></div><div class="pill">'+pending.length+'</div></div>'+
+  '<div class="card viewCard"><div class="guardRows">'+(pending.length?pending.map(guardRow).join(''):'<div class="empty"><b>لا توجد حالات بانتظار التحضير</b></div>')+'</div></div>'+
   '<div class="sectionHead"><div><h3>الحالات المكتملة</h3><div class="sub">لا تظهر إلا عند الطلب.</div></div><button id="toggleGuardDone" class="btn ghost">عرض '+done.length+'</button></div>'+
   '<div id="guardDone" class="card viewCard hidden"><div class="guardRows">'+done.map(guardRow).join('')+'</div></div>'+
-  '<div class="stickyAction"><div class="sub"><b>'+action.filter(x=>!x.status).length+'</b> بدون تحضير حتى الآن.</div><button id="bulkPresent" class="btn primary" '+(action.some(x=>!x.status)?'':'disabled')+'>تأكيد المحددين حاضر</button></div>';
+  '<div class="stickyAction"><div class="sub"><b>'+pending.length+'</b> بانتظار التحضير في هذا الموقع.</div><button id="bulkPresent" class="btn primary" '+(pending.length?'':'disabled')+'>تأكيد المحددين حاضر</button></div>';
  $('backSites').onclick=()=>{S.site=null;S.siteData=null;render()};
  $('toggleGuardDone').onclick=()=>{const b=$('guardDone');b.classList.toggle('hidden');$('toggleGuardDone').textContent=b.classList.contains('hidden')?'عرض '+done.length:'إخفاء'};
  wireGuards();wireCaseActions();
  $('bulkPresent').onclick=bulkPresent;
 }
+
 function guardRow(e){
- const p=!e.status,level=e.exception_level||(p?'action':EX.has(e.status)?'review':'complete');
- const c=level==='action'?'pending':level==='review'?'exception':'';
- const reason=e.exception_reason?'<div class="guardMeta"><b>'+(level==='action'?'يحتاج إجراء: ':level==='review'?'يحتاج مراجعة: ':'')+'</b>'+esc(e.exception_reason)+'</div>':'';
+ const p=!e.status,level=e.exception_level||(p?'pending':EX.has(e.status)?'review':'complete');
+ const c=level==='action'?'exception':level==='review'?'exception':level==='pending'?'pending':'';
+ const reason=e.exception_reason?'<div class="guardMeta"><b>'+(level==='action'?'يحتاج إجراء: ':level==='review'?'يحتاج مراجعة: ':level==='pending'?'الحالة: ':'')+'</b>'+esc(e.exception_reason)+'</div>':'';
+ const scls=level==='action'?'bad':level==='review'?'warn':level==='pending'?'pending':'ok';
  return '<div class="guardRow '+c+'">'+
   '<div class="guardMain"><div style="display:flex;gap:8px;align-items:flex-start">'+
    (p?'<input class="check guardCheck" type="checkbox" value="'+e.assignment_id+'">':'')+
    '<div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(e.employee_ref||'بدون رقم وظيفي')+' · '+esc(e.shift_code||'وردية غير محددة')+'</div>'+reason+caseMetaMarkup(e)+'</div></div>'+
-   '<button class="guardStatus '+(level==='action'?'bad':level==='review'?'warn':'ok')+' editDay" data-a="'+e.assignment_id+'">'+(p?'لم يُحضّر':esc(STATUS[e.status]||e.status))+'</button></div>'+
+   '<button class="guardStatus '+scls+' editDay" data-a="'+e.assignment_id+'">'+(p?(level==='action'?'تحضير متأخر':'بانتظار التحضير'):esc(STATUS[e.status]||e.status))+'</button></div>'+
   (p?'<div class="quickActions"><button class="quickBtn present qStatus" data-a="'+e.assignment_id+'" data-s="P">حاضر</button><button class="quickBtn off qStatus" data-a="'+e.assignment_id+'" data-s="OFF">راحة</button><button class="quickBtn absent qStatus" data-a="'+e.assignment_id+'" data-s="A">غياب</button><button class="quickBtn qMore" data-a="'+e.assignment_id+'">المزيد…</button></div>':'')+
   caseActionsMarkup(e)+
   '</div>';
@@ -277,10 +314,38 @@ async function bulkPresent(){
  }catch(e){toast(e.message,true)}
 }
 
-async function month(){$('mainView').innerHTML='<div class="monthLayout"><section class="card roster"><input id="rosterSearch" class="search" placeholder="بحث بالاسم أو الرقم أو الموقع"><div id="rosterList" class="roster-list"><div class="empty" style="min-height:120px"><span class="loading"></span></div></div></section><section id="attendancePanel" class="card attendance"><div class="empty"><b>اختاري موظفاً</b></div></section></div>';let tm;$('rosterSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>loadRoster($('rosterSearch').value.trim()),250)};await loadRoster('')}
+async function month(){
+ const future=S.ctx?.cycle_state==='future';
+ const intro=future
+  ?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h2>التخطيط المسبق للدورة</h2><div class="sub">اختاري أي دورة خلال 12 شهراً قادمة وجهزي التكليفات والمواقع والورديات. لا يتم إنشاء حضور مستقبلي.</div></div><div class="pill warn">'+esc(monthLabel(period()))+'</div></div></div>'
+  :'';
+ $('mainView').innerHTML=intro+'<div class="monthLayout"><section class="card roster"><input id="rosterSearch" class="search" placeholder="بحث بالاسم أو الرقم أو الموقع"><div id="rosterList" class="roster-list"><div class="empty" style="min-height:120px"><span class="loading"></span></div></div></section><section id="attendancePanel" class="card attendance"><div class="empty"><b>'+(future?'اختاري موظفاً لمراجعة تكليفه المستقبلي':'اختاري موظفاً')+'</b></div></section></div>';
+ let tm;$('rosterSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>loadRoster($('rosterSearch').value.trim()),250)};await loadRoster('')
+}
+
 async function loadRoster(q){try{const d=await fast('roster',{period:period(),q},10000);S.roster=d.rows||[];drawRoster()}catch(e){toast(e.message,true)}}
 function drawRoster(){const l=$('rosterList');if(!l)return;l.innerHTML='';if(!S.roster.length){l.innerHTML='<div class="empty">لا توجد نتائج</div>';return}S.roster.forEach(a=>{const d=document.createElement('div');d.className='person'+(S.employee?.id===a.id?' active':'');d.innerHTML='<div class="name">'+esc(a.full_name)+'</div><div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+'</div>';d.onclick=()=>loadEmployee(a.id);l.appendChild(d)})}
-async function loadEmployee(id){$('attendancePanel').innerHTML='<div class="empty"><span class="loading"></span></div>';try{const d=await fast('employee',{assignment_id:id},10000);S.employee=d.assignment;drawRoster();attendance()}catch(e){toast(e.message,true)}}
+async function loadEmployee(id){
+ $('attendancePanel').innerHTML='<div class="empty"><span class="loading"></span></div>';
+ try{
+  const d=await fast('employee',{assignment_id:id},10000);S.employee=d.assignment;drawRoster();
+  if(S.ctx?.cycle_state==='future')futureAssignment();else attendance()
+ }catch(e){toast(e.message,true)}
+}
+function futureAssignment(){
+ const a=S.employee,p=$('attendancePanel');if(!a||!p)return;
+ p.innerHTML='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.employee_ref||'بدون رقم وظيفي')+'</div></div><button id="editAssignment" class="btn primary">تعديل خطة التكليف</button></div>'+
+ '<div class="grid2" style="margin-top:14px">'+
+ '<div class="field"><label>المشروع</label><div class="card" style="padding:10px">'+esc(a.project_name||'غير محدد')+'</div></div>'+
+ '<div class="field"><label>الموقع</label><div class="card" style="padding:10px">'+esc(a.site_name||'غير محدد')+'</div></div>'+
+ '<div class="field"><label>الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>نوع التكليف</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
+ '<div class="field"><label>بداية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
+ '<div class="field"><label>نهاية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.end_date||S.ctx.cycle_end).slice(0,10))+'</div></div>'+
+ '</div><div class="notice" style="margin-top:14px">هذه خطة مستقبلية فقط. عند بدء الدورة سيعمل التحضير اليومي على التكليفات المعتمدة في هذه الخطة.</div>';
+ $('editAssignment').onclick=()=>assignmentModal(a);
+}
+
 function dayClass(s){return s==='OFF'||s==='O'?'off':['A','W','R','S'].includes(s)?'abs':s==='CASH'?'cash':s?'filled':''}
 function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return;const ds=dates(S.ctx.cycle_start,S.ctx.cycle_end),m=Object.fromEntries((a.days||[]).map(x=>[String(x.date).slice(0,10),x]));let h='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.project_name||'')+' · '+esc(a.site_name||'')+'</div></div><button id="editAssignment" class="btn ghost">تعديل</button></div><div class="quick"><div class="field"><label>من</label><input id="qFrom" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_start+'"></div><div class="field"><label>إلى</label><input id="qTo" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_end+'"></div><div class="field"><label>الحالة</label><select id="qStatus">';['P','OFF','A','T','AL','SK','O'].forEach(c=>h+='<option value="'+c+'">'+STATUS[c]+'</option>');h+='</select></div><button id="qFill" class="btn secondary">تعبئة</button></div><div class="calendar" id="cal"></div>';p.innerHTML=h;ds.forEach(d=>{const e=m[d],b=document.createElement('button');b.className='day '+dayClass(e?.status);b.innerHTML='<div class="n">'+d.slice(8,10)+'/'+d.slice(5,7)+'</div><div class="st">'+(e?esc(STATUS[e.status]||e.status):'—')+'</div>';b.onclick=()=>dayModal({assignment_id:a.id,employee_ref:a.employee_ref,full_name:a.full_name,shift_code:a.shift_code,...e},d,()=>loadEmployee(a.id));$('cal').appendChild(b)});$('editAssignment').onclick=()=>assignmentModal(a);$('qFill').onclick=async()=>{const f=$('qFrom').value,t=$('qTo').value;if(!f||!t||f>t)return toast('تحققي من النطاق',true);const ds=dates(f,t),st=$('qStatus').value;if(!await confirmUI('تعبئة النطاق','سيتم تطبيق '+STATUS[st]+' على '+ds.length+' يوماً.','تطبيق'))return;try{await fast('bulkFill',{assignment_id:a.id,dates:ds,status:st,shift_code:a.shift_code||null},12000);await loadEmployee(a.id);if(ds.includes(work()))refreshDay(false);toast('تمت التعبئة')}catch(e){toast(e.message,true)}}}
 async function gaps(){
@@ -290,7 +355,7 @@ async function gaps(){
 }
 function drawGaps(){
  const x=S.issues||{},c=x.counts||{};
- const action=x.action_rows||[],review=x.review_rows||[],closed=x.closed_rows||[],data=x.data_rows||[];
+ const action=x.action_rows||[],review=x.review_rows||[],closed=x.closed_rows||[],data=x.data_rows||[],pending=x.pending_rows||[];
  const row=r=>{
    const siteBtn=r.site_code?'<button class="caseBtn openExceptionSite" data-site="'+esc(r.site_code)+'">فتح الموقع</button>':'';
    return '<div class="gapItem"><b>'+esc(r.full_name||r.employee_key||'')+'</b>'+
@@ -300,9 +365,10 @@ function drawGaps(){
  };
  const sec=(title,sub,count,rows,cls)=>'<div class="card gapCard '+(cls||'')+'"><div class="sectionHead"><div><h3>'+esc(title)+'</h3><div class="sub">'+esc(sub)+'</div></div><div class="pill '+(cls||'')+'">'+Number(count||0)+'</div></div><div class="gapItems">'+(rows.length?rows.slice(0,50).map(row).join(''):'<div class="gapItem">لا توجد حالات</div>')+(rows.length>50?'<div class="gapItem">+ '+(rows.length-50)+' حالات أخرى</div>':'')+'</div></div>';
  $('mainView').innerHTML=
-  '<div class="sectionHead"><div><h2>الاستثناءات</h2><div class="sub">Management by Exception — مفتوح → قيد المعالجة → بانتظار المراجعة → مغلق.</div></div></div>'+
+  '<div class="sectionHead"><div><h2>الاستثناءات</h2><div class="sub">Management by Exception — لا يعتبر عدم بدء تحضير اليوم استثناءً. الاستثناء هو انحراف فعلي أو تحضير يوم سابق ما زال ناقصاً.</div></div></div>'+
+  (pending.length?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList">'+
-    sec('يحتاج إجراء الآن','غياب، انسحاب، استقالة، إيقاف، تحضير ناقص أو تغطية غير مكتملة.',c.action_now,action,'bad')+
+    sec('يحتاج إجراء الآن','غياب، انسحاب، استقالة، إيقاف، تحضير يوم سابق ناقص أو تغطية غير مكتملة.',c.action_now,action,'bad')+
     sec('بانتظار المراجعة','إجازات واستئذانات وتغطيات وأحداث تم تسجيلها وتحتاج اعتماد المسار المختص.',c.needs_review,review,'warn')+
     sec('استثناءات البيانات','ربط موظف/موقع ناقص أو تداخلات تحتاج معالجة في البيانات.',c.data_issues,data,'')+
     sec('مغلق','حالات تمت معالجتها واعتمادها، وتبقى ظاهرة للأثر التدقيقي عند الطلب.',c.closed_cases,closed,'ok')+
