@@ -2,7 +2,7 @@
 (function(){
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const STATUS_PRINT={P:'P',OFF:'OFF',A:'A',T:'T',AL:'AL',SK:'SK',S:'S',W:'W',R:'R',O:'O',SUB:'C',CASH:'C',OTHER:'-'};
-const CP={sites:[],guards:[],site:null,filename:''};
+const CP={sites:[],guards:[],site:null,filename:'',mode:'client'};
 const $p=function(id){return document.getElementById(id)};
 const escp=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})};
 const safeName=function(s){return String(s||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim()};
@@ -17,20 +17,33 @@ function ensureShell(){
  root.id='clientPrintShell';root.className='client-print-shell';root.setAttribute('aria-hidden','true');
  root.innerHTML='<div class="cp-toolbar"><div class="cp-toolbar-in">'+
  '<div id="cpCycle" class="cp-cycle"></div>'+
+ '<div class="cp-field" style="grid-column:1/-1"><label>نوع التايم شيت</label><div class="cp-mode"><button id="cpModeClient" class="active">تايم شيت العميل</button><button id="cpModeInternal">التايم شيت الداخلي</button></div><div id="cpModeNote" class="cp-mode-note">نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.</div></div>'+
  '<div class="cp-field"><label>العميل</label><select id="cpClient"></select></div>'+
  '<div class="cp-field"><label>المشروع</label><select id="cpProject"></select></div>'+
  '<div class="cp-field"><label>الموقع</label><select id="cpSite"></select></div>'+
  '<div class="cp-actions"><button id="cpClose" class="cp-btn cp-btn-ghost">إغلاق</button><button id="cpPrint" class="cp-btn cp-btn-primary" disabled>طباعة / حفظ PDF</button></div>'+
  '<div id="cpProgress" class="cp-progress"></div></div></div>'+
  '<div id="cpNotice" class="cp-notice" style="display:none"></div>'+
- '<div id="cpStage" class="cp-stage"><div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">سيتم تجهيز كشف التحضير الشهري للموقع المحدد فقط.</div></div></div></div>';
+ '<div id="cpStage" class="cp-stage"><div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">ثم اختاري نسخة العميل أو النسخة الداخلية حسب الاستخدام.</div></div></div></div>';
  document.body.appendChild(root);
  $p('cpClose').onclick=closeClientPrint;
  $p('cpClient').onchange=function(){fillProjects()};
  $p('cpProject').onchange=function(){fillSites()};
  $p('cpSite').onchange=loadSelectedSite;
  $p('cpPrint').onclick=printReport;
+ $p('cpModeClient').onclick=function(){setPrintMode('client')};
+ $p('cpModeInternal').onclick=function(){setPrintMode('internal')};
 }
+function setPrintMode(mode){
+ CP.mode=mode==='internal'?'internal':'client';
+ $p('cpModeClient').classList.toggle('active',CP.mode==='client');
+ $p('cpModeInternal').classList.toggle('active',CP.mode==='internal');
+ $p('cpModeNote').textContent=CP.mode==='client'
+  ?'نسخة مبسطة لإثبات الحضور والتشغيل واعتماد العميل، ولا تعرض التفاصيل المالية أو ملاحظات العمل الداخلية.'
+  :'نسخة داخلية مشتركة بين العمليات والموارد البشرية والمالية؛ تتضمن الوردية والساعات والاستثناءات والتغطيات وبيانات الكاش والملاحظات التشغيلية.';
+ if($p('cpSite').value)loadSelectedSite(); else emptyStage();
+}
+
 
 async function api(action,payload,timeout){
  payload=payload||{};timeout=timeout||15000;
@@ -117,13 +130,22 @@ async function loadSelectedSite(){
  CP.site=s;CP.guards=[];$p('cpPrint').disabled=true;
  $p('cpNotice').style.display='block';$p('cpNotice').textContent='جاري تجهيز بيانات الكشف...';
  $p('cpProgress').textContent='جاري التحميل';
- $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز التحضير الشهري</b></div><div style="margin-top:6px">يتم تحميل سجلات هذا الموقع فقط في طلب واحد.</div></div></div>';
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">يتم تحميل سجلات هذا الموقع فقط.</div></div></div>';
  try{
   const ctx=cycleContext();
-  const roster=await api('roster',{period:ctx.period,q:'@site:'+code},15000);
-  const rows=roster.rows||[];
-  if(!rows.length)throw new Error('لا توجد تكليفات محفوظة لهذا الموقع في دورة التحضير المحددة.');
-  CP.guards=rows;
+  if(CP.mode==='internal'){
+   const d=await api('printSiteMonth',{period:ctx.period,site_code:code},15000);
+   CP.guards=d.guards||[];
+   if(d.site)CP.site=Object.assign({},s,{
+    code:d.site.site_code||code,site_name:d.site.site_name||s.site_name,
+    project_code:d.site.project_code||s.project_code,project_name:d.site.project_name||s.project_name,
+    client_name:d.site.client_name||s.client_name,city:d.site.city||s.city
+   });
+  }else{
+   const roster=await api('roster',{period:ctx.period,q:'@site:'+code},15000);
+   CP.guards=roster.rows||[];
+  }
+  if(!CP.guards.length)throw new Error('لا توجد تكليفات محفوظة لهذا الموقع في دورة التحضير المحددة.');
   $p('cpProgress').textContent=CP.guards.length+' حارس';
   renderReport();
  }catch(e){
@@ -164,8 +186,10 @@ function guardRow(a,idx,ds){
   cells+='<td class="'+(on?dayClass(st):'off')+'">'+escp(code)+'</td>';
   if(e&&['P','SUB','CASH'].includes(st))worked++;hours+=workHours(a,e);
  });
- return '<tr><td>'+(idx+1)+'</td><td class="cp-name">'+escp(a.full_name||'')+'</td><td>'+escp(a.employee_ref||'—')+'</td><td>'+escp(a.job_title||'حارس أمن')+'</td>'+cells+'<td><b>'+worked+'</b></td><td><b>'+(hours||'')+'</b></td></tr>';
+ const fourth=CP.mode==='internal'?(a.shift_code||'—'):(a.job_title||'حارس أمن');
+ return '<tr><td>'+(idx+1)+'</td><td class="cp-name">'+escp(a.full_name||'')+'</td><td>'+escp(a.employee_ref||'—')+'</td><td>'+escp(fourth)+'</td>'+cells+'<td><b>'+worked+'</b></td><td><b>'+(hours||'')+'</b></td></tr>';
 }
+
 function cols(ds){
  let x='<col style="width:5mm"><col style="width:32mm"><col style="width:18mm"><col style="width:15mm">';
  ds.forEach(function(){x+='<col style="width:5mm">'});
@@ -174,36 +198,88 @@ function cols(ds){
 }
 function head(ds){
  const x=ds.map(function(v){const z=v.split('-');return '<th><div class="cp-day-head"><b>'+Number(z[2])+'</b><small>'+Number(z[1])+'</small></div></th>'}).join('');
- return '<thead><tr><th>م</th><th>اسم الحارس</th><th>الرقم الوظيفي</th><th>المسمى</th>'+x+'<th>أيام العمل</th><th>الساعات</th></tr></thead>';
+ const fourth=CP.mode==='internal'?'الوردية':'المسمى';
+ return '<thead><tr><th>م</th><th>اسم الحارس</th><th>الرقم الوظيفي</th><th>'+fourth+'</th>'+x+'<th>أيام العمل</th><th>الساعات</th></tr></thead>';
 }
+
 function pageHeader(page,total,ds){
  const c=cycleContext(),s=CP.site,label=s.project_name||s.site_name||s.client_name;
+ const title=CP.mode==='internal'?'التايم شيت الداخلي - '+label:'كشف حضور حراس الأمن - '+label;
+ const extra=CP.mode==='internal'
+  ?'<span>PRJ: '+escp(s.project_code||'—')+'</span><span>SIT: '+escp(s.code||s.site_code||'—')+'</span>'
+  :'';
  return '<div class="cp-head"><div class="cp-brand"><div class="cp-brand-mark"></div><div class="cp-brand-ar">أركانات للحراسات الأمنية</div><div class="cp-brand-en">ARKANAT for Security Guards</div></div>'+
- '<div class="cp-center"><div class="cp-title">كشف حضور حراس الأمن - '+escp(label)+'</div><div class="cp-meta"><span>'+escp(c.region)+(s.city?' - '+escp(s.city):'')+'</span><span>العميل: '+escp(clientKey(s))+'</span><span>المشروع: '+escp(projectKey(s))+'</span><span>دورة '+escp(monthName(c.period))+'</span><span>'+fmtDate(ds[0])+' إلى '+fmtDate(ds[ds.length-1])+'</span></div></div>'+
+ '<div class="cp-center"><div class="cp-title">'+escp(title)+'</div><div class="cp-meta"><span>'+escp(c.region)+(s.city?' - '+escp(s.city):'')+'</span><span>العميل: '+escp(clientKey(s))+'</span><span>المشروع: '+escp(projectKey(s))+'</span>'+extra+'<span>دورة '+escp(monthName(c.period))+'</span><span>'+fmtDate(ds[0])+' إلى '+fmtDate(ds[ds.length-1])+'</span></div></div>'+
  '<div class="cp-page-num"><b>'+page+'/'+total+'</b>صفحة</div></div>';
 }
+
 function finalBlock(m){
  const s=CP.site;
- return '<div class="cp-final"><div class="cp-kpis"><div class="cp-kpi"><b>الحضور</b><strong>'+m.present+'</strong></div><div class="cp-kpi"><b>الغياب</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>الانسحاب</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>التغطيات</b><strong>'+m.coverage+'</strong></div></div>'+
+ const approvals=CP.mode==='internal'
+  ?'<div class="cp-approvals"><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة العمليات الموحدة</b>الاسم / التوقيع</div><div class="cp-approval"><b>الموارد البشرية</b>الاسم / التوقيع</div><div class="cp-approval"><b>الإدارة المالية</b>الاسم / التوقيع</div><div class="cp-approval"><b>المراجعة</b>الاسم / التوقيع</div></div>'
+  :'<div class="cp-approvals"><div class="cp-approval"><b>مسؤول العميل / الموقع</b>الاسم / التوقيع</div><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>ممثل أركانات / العمليات</b>الاسم / التوقيع</div></div>';
+ const banner=CP.mode==='internal'
+  ?'<div class="cp-internal-banner">مستند داخلي للمصالحة بين العمليات والموارد البشرية والمالية — لا يرسل للعميل.</div>'
+  :'<div class="cp-client-block">كشف تشغيلي لإثبات الحضور والتنفيذ واعتماد العميل، ولا يتضمن بيانات الرواتب أو مبالغ التغطية أو الملاحظات الداخلية.</div>';
+ return '<div class="cp-final">'+banner+'<div class="cp-kpis"><div class="cp-kpi"><b>الحضور</b><strong>'+m.present+'</strong></div><div class="cp-kpi"><b>الغياب</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>الانسحاب</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>التغطيات</b><strong>'+m.coverage+'</strong></div></div>'+
  '<div class="cp-legend"><span><b>P</b> حاضر</span><span><b>A</b> غائب</span><span><b>OFF</b> راحة</span><span><b>T</b> استئذان</span><span><b>AL</b> إجازة سنوية</span><span><b>SK</b> مرضية</span><span><b>W</b> انسحاب</span><span><b>R</b> استقالة</span><span><b>S</b> توقف</span><span><b>C</b> تغطية</span><span><b>إجمالي الساعات</b> '+m.hours+'</span></div>'+
- '<div class="cp-approvals"><div class="cp-approval"><b>مسؤول العميل / الموقع</b>الاسم / التوقيع</div><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>مدير إدارة التشغيل</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة العمليات الموحدة</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة الموارد البشرية</b>الاسم / التوقيع</div></div>'+
+ approvals+
  '<div class="cp-foot"><span>شركة أركانات للحراسات الأمنية</span><span>'+escp(s.project_name||s.site_name||'')+'</span><span>'+escp(cycleContext().period)+'</span></div>'+
  (m.missing?'<div class="cp-draft">مسودة غير مكتملة - '+m.missing+' خانة تحضير يومية غير مسجلة</div>':'')+'</div>';
 }
+function internalEvents(){
+ const rows=[];
+ CP.guards.forEach(function(a){
+  (a.days||[]).forEach(function(d){
+   const st=d.status||'';
+   const notable=!['P','OFF'].includes(st)||Number(d.overtime_hours||0)>0||d.note||d.replacement_name||d.replacement_employee_ref||d.cash_amount;
+   if(!notable)return;
+   rows.push({
+    date:cleanDate(d.date),name:a.full_name||'',employee_ref:a.employee_ref||'',
+    status:STATUS_PRINT[st]||st,shift:d.shift_code||a.shift_code||'',
+    worked_hours:d.worked_hours==null?'':d.worked_hours,
+    overtime_hours:d.overtime_hours==null?'':d.overtime_hours,
+    replacement:d.replacement_name||d.replacement_employee_ref||'',
+    cash:d.cash_amount==null?'':d.cash_amount,
+    note:d.note||''
+   });
+  });
+ });
+ return rows.sort(function(a,b){return a.date.localeCompare(b.date)||a.name.localeCompare(b.name,'ar')});
+}
+function internalLedgerPage(rows,page,total,ds){
+ return '<section class="cp-page">'+pageHeader(page,total,ds)+'<div class="cp-internal-banner">سجل الاستثناءات والتغطيات الداخلي — يستخدم للمراجعة والمصالحة بين العمليات والموارد البشرية والمالية.</div>'+
+ '<div class="cp-ledger-wrap"><div class="cp-ledger-title">تفاصيل الاستثناءات والتغطيات</div><table class="cp-ledger"><thead><tr><th>التاريخ</th><th>الحارس</th><th>EMP_ID</th><th>الحالة</th><th>الوردية</th><th>ساعات</th><th>إضافي</th><th>البديل / المنفذ</th><th>مبلغ الكاش</th><th>ملاحظة</th></tr></thead><tbody>'+
+ rows.map(function(r){return '<tr><td class="num">'+escp(r.date)+'</td><td>'+escp(r.name)+'</td><td class="num">'+escp(r.employee_ref)+'</td><td class="num">'+escp(r.status)+'</td><td class="num">'+escp(r.shift)+'</td><td class="num">'+escp(r.worked_hours)+'</td><td class="num">'+escp(r.overtime_hours)+'</td><td>'+escp(r.replacement)+'</td><td class="num">'+escp(r.cash)+'</td><td>'+escp(r.note)+'</td></tr>'}).join('')+
+ '</tbody></table></div></section>';
+}
+
 function renderReport(){
  const c=cycleContext(),ds=dateList(c.start,c.end),m=metrics(ds),perPage=26,chunks=[];
  for(let i=0;i<CP.guards.length;i+=perPage)chunks.push(CP.guards.slice(i,i+perPage));
  if(!chunks.length)chunks.push([]);
- $p('cpStage').innerHTML=chunks.map(function(chunk,pi){
-  return '<section class="cp-page">'+pageHeader(pi+1,chunks.length,ds)+'<div class="cp-table-wrap"><table class="cp-table">'+cols(ds)+head(ds)+'<tbody>'+chunk.map(function(a,j){return guardRow(a,pi*perPage+j,ds)}).join('')+'</tbody></table></div>'+
-  '<div class="cp-strip"><span class="site">'+escp(CP.site.site_name||CP.site.project_name||'')+'</span><span class="cp-small">عدد الحراس: '+CP.guards.length+' · الفترة التشغيلية: '+fmtDate(ds[0])+' - '+fmtDate(ds[ds.length-1])+'</span><span class="ref">'+(pi+1)+'/'+chunks.length+'</span></div>'+
+ const events=CP.mode==='internal'?internalEvents():[],ledgerChunks=[];
+ for(let i=0;i<events.length;i+=22)ledgerChunks.push(events.slice(i,i+22));
+ const total=chunks.length+ledgerChunks.length;
+ let html=chunks.map(function(chunk,pi){
+  return '<section class="cp-page">'+pageHeader(pi+1,total,ds)+'<div class="cp-table-wrap"><table class="cp-table">'+cols(ds)+head(ds)+'<tbody>'+chunk.map(function(a,j){return guardRow(a,pi*perPage+j,ds)}).join('')+'</tbody></table></div>'+
+  '<div class="cp-strip"><span class="site">'+escp(CP.site.site_name||CP.site.project_name||'')+'</span><span class="cp-small">عدد الحراس: '+CP.guards.length+' · الفترة التشغيلية: '+fmtDate(ds[0])+' - '+fmtDate(ds[ds.length-1])+'</span><span class="ref">'+(pi+1)+'/'+total+'</span></div>'+
   (pi===chunks.length-1?finalBlock(m):'')+'</section>';
  }).join('');
- $p('cpNotice').style.display=m.missing?'block':'none';
- $p('cpNotice').textContent=m.missing?'الكشف غير مكتمل: توجد '+m.missing+' خانات تحضير يومية غير مسجلة (موظف × يوم)، موزعة على '+m.missing_guards+' حارس و'+m.missing_dates+' تواريخ. يجب استكمالها قبل إرسال الكشف للعميل.':'';
- $p('cpPrint').disabled=false;
- CP.filename='أركانات - كشف حضور - '+safeName(CP.site.project_name||CP.site.site_name||CP.site.client_name)+' - '+safeName(c.region||'')+' - '+safeName(monthName(c.period));
+ if(CP.mode==='internal'){
+  html+=ledgerChunks.map(function(rows,i){return internalLedgerPage(rows,chunks.length+i+1,total,ds)}).join('');
+ }
+ $p('cpStage').innerHTML=html;
+ if(m.missing){
+  $p('cpNotice').style.display='block';
+  $p('cpNotice').textContent=CP.mode==='client'
+   ?'لا يمكن اعتماد نسخة العميل بعد: توجد '+m.missing+' خانات تحضير يومية غير مسجلة (موظف × يوم)، موزعة على '+m.missing_guards+' حارس و'+m.missing_dates+' تواريخ.'
+   :'مسودة داخلية: توجد '+m.missing+' خانات تحضير يومية غير مسجلة. يمكن طباعتها للمراجعة الداخلية، ولا تعتمد كنسخة عميل.';
+ }else{$p('cpNotice').style.display='none';$p('cpNotice').textContent=''}
+ $p('cpPrint').disabled=CP.mode==='client'&&m.missing>0;
+ CP.filename='أركانات - '+(CP.mode==='internal'?'تايم شيت داخلي':'كشف حضور العميل')+' - '+safeName(CP.site.project_name||CP.site.site_name||CP.site.client_name)+' - '+safeName(c.region||'')+' - '+safeName(monthName(c.period));
 }
+
 function printReport(){
  if(!CP.site||!CP.guards.length)return;
  const old=document.title;document.title=CP.filename||'أركانات - كشف حضور';
