@@ -161,7 +161,7 @@ function shiftHours(code){const m=String(code||'').match(/(8|12)$/);return m?Num
 function workHours(a,d){if(!d)return 0;if(d.worked_hours!==null&&d.worked_hours!==undefined&&d.worked_hours!=='')return Number(d.worked_hours)||0;if(['P','SUB','CASH'].includes(d.status))return shiftHours(d.shift_code||a.shift_code)||0;return 0}
 function dayClass(st){if(!st)return'missing';if(['A','W','R','S'].includes(st))return'abs';if(['OFF','O','AL','SK'].includes(st))return'off';if(['SUB','CASH'].includes(st))return'cover';return''}
 function metrics(ds){
- const z={present:0,abs:0,withdraw:0,off:0,coverage:0,missing:0,hours:0,missing_dates:0,missing_guards:0};
+ const z={present:0,abs:0,withdraw:0,off:0,coverage:0,missing:0,hours:0,missing_dates:0,missing_guards:0,permission:0,annual:0,sick:0,official:0,cash_total:0,overtime_total:0,hr_cases:0,finance_cases:0,operations_cases:0,open_cases:0,review_cases:0,closed_cases:0};
  const md=new Set(),mg=new Set();
  CP.guards.forEach(function(a){
   ds.forEach(function(date){
@@ -171,9 +171,21 @@ function metrics(ds){
    if(e.status==='P')z.present++;
    if(e.status==='A')z.abs++;
    if(e.status==='W')z.withdraw++;
+   if(e.status==='T')z.permission++;
+   if(e.status==='AL')z.annual++;
+   if(e.status==='SK')z.sick++;
+   if(e.status==='O')z.official++;
    if(['OFF','O','AL','SK'].includes(e.status))z.off++;
    if(['SUB','CASH'].includes(e.status))z.coverage++;
    z.hours+=workHours(a,e);
+   z.cash_total+=Number(e.cash_amount||0);
+   z.overtime_total+=Number(e.overtime_hours||0);
+   if(e.review_lane==='HR')z.hr_cases++;
+   if(e.review_lane==='FINANCE')z.finance_cases++;
+   if(e.review_lane==='OPERATIONS')z.operations_cases++;
+   if(e.workflow_status==='OPEN'||e.workflow_status==='IN_PROGRESS')z.open_cases++;
+   if(e.workflow_status==='PENDING_REVIEW')z.review_cases++;
+   if(e.workflow_status==='CLOSED')z.closed_cases++;
   });
  });
  z.missing_dates=md.size;z.missing_guards=mg.size;
@@ -219,9 +231,14 @@ function finalBlock(m){
   ?'<div class="cp-approvals"><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة العمليات الموحدة</b>الاسم / التوقيع</div><div class="cp-approval"><b>الموارد البشرية</b>الاسم / التوقيع</div><div class="cp-approval"><b>الإدارة المالية</b>الاسم / التوقيع</div><div class="cp-approval"><b>المراجعة</b>الاسم / التوقيع</div></div>'
   :'<div class="cp-approvals"><div class="cp-approval"><b>مسؤول العميل / الموقع</b>الاسم / التوقيع</div><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>ممثل أركانات / العمليات</b>الاسم / التوقيع</div></div>';
  const banner=CP.mode==='internal'
-  ?'<div class="cp-internal-banner">مستند داخلي للمصالحة بين العمليات والموارد البشرية والمالية — لا يرسل للعميل.</div>'
+  ?'<div class="cp-internal-banner">مستند داخلي للمصالحة بين العمليات والموارد البشرية والمالية — يعرض محركات الأثر المالي والتشغيلي ولا يرسل للعميل.</div>'
   :'<div class="cp-client-block">كشف تشغيلي لإثبات الحضور والتنفيذ واعتماد العميل، ولا يتضمن بيانات الرواتب أو مبالغ التغطية أو الملاحظات الداخلية.</div>';
+ const internalImpact=CP.mode==='internal'
+  ?'<div class="cp-kpis" style="margin-top:1.2mm"><div class="cp-kpi"><b>غياب للحسم</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>انسحاب للحسم</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>تغطية كاش</b><strong>'+m.cash_total.toFixed(2)+'</strong></div><div class="cp-kpi"><b>إضافي مسجل</b><strong>'+m.overtime_total.toFixed(1)+'</strong></div></div>'+
+   '<div class="cp-legend"><span>مراجعة HR: <b>'+m.hr_cases+'</b></span><span>مراجعة المالية: <b>'+m.finance_cases+'</b></span><span>مراجعة العمليات: <b>'+m.operations_cases+'</b></span><span>مفتوح/قيد المعالجة: <b>'+m.open_cases+'</b></span><span>بانتظار المراجعة: <b>'+m.review_cases+'</b></span><span>مغلق: <b>'+m.closed_cases+'</b></span></div>'
+  :'';
  return '<div class="cp-final">'+banner+'<div class="cp-kpis"><div class="cp-kpi"><b>الحضور</b><strong>'+m.present+'</strong></div><div class="cp-kpi"><b>الغياب</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>الانسحاب</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>التغطيات</b><strong>'+m.coverage+'</strong></div></div>'+
+ internalImpact+
  '<div class="cp-legend"><span><b>P</b> حاضر</span><span><b>A</b> غائب</span><span><b>OFF</b> راحة</span><span><b>T</b> استئذان</span><span><b>AL</b> إجازة سنوية</span><span><b>SK</b> مرضية</span><span><b>W</b> انسحاب</span><span><b>R</b> استقالة</span><span><b>S</b> توقف</span><span><b>C</b> تغطية</span><span><b>إجمالي الساعات</b> '+m.hours+'</span></div>'+
  approvals+
  '<div class="cp-foot"><span>شركة أركانات للحراسات الأمنية</span><span>'+escp(s.project_name||s.site_name||'')+'</span><span>'+escp(cycleContext().period)+'</span></div>'+
