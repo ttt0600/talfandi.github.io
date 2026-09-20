@@ -101,7 +101,7 @@ async function loadPrintPeriod(period,preferSite){
  $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:8px"><b>جاري تحميل أرشيف التحضير</b></div></div></div>';
  try{
    const d=await api('printCatalog',{period:period},12000);
-   CP.ctx={region_name:d.region_name||'',cycle_start:d.cycle_start,cycle_end:d.cycle_end};
+   CP.ctx={region_name:d.region_name||'',cycle_start:d.cycle_start,cycle_end:d.cycle_end,source:d.source||'live'};
    CP.sites=(d.sites||[]).map(function(s){return {
      code:s.site_code,site_code:s.site_code,site_name:s.site_name,project_code:s.project_code,
      project_name:s.project_name,client_name:s.client_name,city:s.city,guard_count:s.guard_count
@@ -175,10 +175,10 @@ async function loadSelectedSite(){
  $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">يتم تحميل سجلات هذا الموقع فقط.</div></div></div>';
  try{
   const ctx=cycleContext();
-  if(CP.mode==='internal'){
+  if(CP.mode==='internal'||CP.ctx?.source==='archive'){
    const d=await api('printSiteMonth',{period:ctx.period,site_code:code},15000);
    CP.guards=d.guards||[];
-   CP.coverageEvents=d.coverage_events||[];
+   CP.coverageEvents=CP.mode==='internal'?(d.coverage_events||[]):[];
    if(d.site)CP.site=Object.assign({},s,{
     code:d.site.site_code||code,site_name:d.site.site_name||s.site_name,
     project_code:d.site.project_code||s.project_code,project_name:d.site.project_name||s.project_name,
