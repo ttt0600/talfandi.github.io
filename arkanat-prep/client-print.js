@@ -227,12 +227,14 @@ function finalBlock(m){
  '<div class="cp-foot"><span>شركة أركانات للحراسات الأمنية</span><span>'+escp(s.project_name||s.site_name||'')+'</span><span>'+escp(cycleContext().period)+'</span></div>'+
  (m.missing?'<div class="cp-draft">مسودة غير مكتملة - '+m.missing+' خانة تحضير يومية غير مسجلة</div>':'')+'</div>';
 }
+function internalCaseState(s){return {OPEN:'مفتوح',IN_PROGRESS:'قيد المعالجة',PENDING_REVIEW:'بانتظار المراجعة',CLOSED:'مغلق'}[s]||''}
+function internalLane(s){return {OPERATIONS:'العمليات',HR:'الموارد البشرية',FINANCE:'المالية'}[s]||s||''}
 function internalEvents(){
  const rows=[];
  CP.guards.forEach(function(a){
   (a.days||[]).forEach(function(d){
    const st=d.status||'';
-   const notable=!['P','OFF'].includes(st)||Number(d.overtime_hours||0)>0||d.note||d.replacement_name||d.replacement_employee_ref||d.cash_amount;
+   const notable=!['P','OFF'].includes(st)||Number(d.overtime_hours||0)>0||d.note||d.replacement_name||d.replacement_employee_ref||d.cash_amount||d.case_id;
    if(!notable)return;
    rows.push({
     date:cleanDate(d.date),name:a.full_name||'',employee_ref:a.employee_ref||'',
@@ -241,6 +243,11 @@ function internalEvents(){
     overtime_hours:d.overtime_hours==null?'':d.overtime_hours,
     replacement:d.replacement_name||d.replacement_employee_ref||'',
     cash:d.cash_amount==null?'':d.cash_amount,
+    exception_label:d.exception_label||'',
+    workflow_status:internalCaseState(d.workflow_status),
+    review_lane:internalLane(d.review_lane),
+    action_note:d.action_note||'',
+    review_note:d.review_note||'',
     note:d.note||''
    });
   });
@@ -248,11 +255,17 @@ function internalEvents(){
  return rows.sort(function(a,b){return a.date.localeCompare(b.date)||a.name.localeCompare(b.name,'ar')});
 }
 function internalLedgerPage(rows,page,total,ds){
- return '<section class="cp-page">'+pageHeader(page,total,ds)+'<div class="cp-internal-banner">سجل الاستثناءات والتغطيات الداخلي — يستخدم للمراجعة والمصالحة بين العمليات والموارد البشرية والمالية.</div>'+
- '<div class="cp-ledger-wrap"><div class="cp-ledger-title">تفاصيل الاستثناءات والتغطيات</div><table class="cp-ledger"><thead><tr><th>التاريخ</th><th>الحارس</th><th>EMP_ID</th><th>الحالة</th><th>الوردية</th><th>ساعات</th><th>إضافي</th><th>البديل / المنفذ</th><th>مبلغ الكاش</th><th>ملاحظة</th></tr></thead><tbody>'+
- rows.map(function(r){return '<tr><td class="num">'+escp(r.date)+'</td><td>'+escp(r.name)+'</td><td class="num">'+escp(r.employee_ref)+'</td><td class="num">'+escp(r.status)+'</td><td class="num">'+escp(r.shift)+'</td><td class="num">'+escp(r.worked_hours)+'</td><td class="num">'+escp(r.overtime_hours)+'</td><td>'+escp(r.replacement)+'</td><td class="num">'+escp(r.cash)+'</td><td>'+escp(r.note)+'</td></tr>'}).join('')+
+ return '<section class="cp-page">'+pageHeader(page,total,ds)+'<div class="cp-internal-banner">سجل الاستثناءات والتغطيات الداخلي — يستخدم للمراجعة والمصالحة بين العمليات والموارد البشرية والمالية، ولا يرسل للعميل.</div>'+
+ '<div class="cp-ledger-wrap"><div class="cp-ledger-title">تفاصيل الاستثناءات والتغطيات ومسار المعالجة</div><table class="cp-ledger"><thead><tr>'+
+ '<th>التاريخ</th><th>الحارس</th><th>EMP_ID</th><th>الحالة</th><th>الاستثناء</th><th>مسار المعالجة</th><th>جهة المراجعة</th><th>إضافي</th><th>البديل / المنفذ</th><th>الكاش</th><th>ملاحظات</th>'+
+ '</tr></thead><tbody>'+
+ rows.map(function(r){
+   const notes=[r.note,r.action_note,r.review_note].filter(Boolean).join(' | ');
+   return '<tr><td class="num">'+escp(r.date)+'</td><td>'+escp(r.name)+'</td><td class="num">'+escp(r.employee_ref)+'</td><td class="num">'+escp(r.status)+'</td><td>'+escp(r.exception_label)+'</td><td class="num">'+escp(r.workflow_status)+'</td><td class="num">'+escp(r.review_lane)+'</td><td class="num">'+escp(r.overtime_hours)+'</td><td>'+escp(r.replacement)+'</td><td class="num">'+escp(r.cash)+'</td><td>'+escp(notes)+'</td></tr>'
+ }).join('')+
  '</tbody></table></div></section>';
 }
+
 
 function renderReport(){
  const c=cycleContext(),ds=dateList(c.start,c.end),m=metrics(ds),perPage=26,chunks=[];
