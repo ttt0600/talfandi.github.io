@@ -375,6 +375,43 @@ async function prepareImport(file){
  renderImportPreview()
 }
 function profileLabel(p){return {coverage_list:'كشف تغطيات/صرف أفراد',cash_ledger:'دفتر أستاذ مدين/دائن',expense_ledger:'دفتر وقود/مصروفات',request_snapshot:'طلبات عهدة',unknown:'غير معروف'}[p]||p}
+function domId(x){return String(x||'').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g,'_')}
+function guessHeaderRow(rows){var best=0,score=-1;for(var i=0;i<Math.min(rows.length,20);i++){var sc=(rows[i]||[]).filter(function(v){return v!==null&&v!==''&&v!==undefined}).length;if(sc>score){score=sc;best=i}}return best}
+window.setManualHeader=function(sheet,rowNo){var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;var i=Math.max(0,Number(rowNo)-1);sh.headerIndex=i;sh.headers=sh.rows[i]||[];sh.map={};renderImportPreview()}
+window.setManualProfile=function(sheet,profile){var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;sh.manualProfile=profile;renderImportPreview()}
+function manualFields(profile){
+ if(profile==='coverage_list')return [['legacy','رقم الحركة'],['date','التاريخ'],['amount','المبلغ'],['supervisor','المشرف'],['absent','الحارس الغائب/الأساسي'],['cover','الحارس المغطي/البديل'],['reason','الحالة/السبب'],['site','الموقع/الفرع']];
+ if(profile==='cash_ledger')return [['legacy','رقم الحركة'],['date','التاريخ'],['debit','مدين/وارد'],['credit','دائن/منصرف'],['balance','الرصيد'],['supervisor','المشرف'],['description','البيان'],['absent','الحارس الأساسي/البيان'],['cover','الحارس البديل'],['reason','الحالة/الملاحظات'],['site','الموقع']];
+ if(profile==='expense_ledger')return [['date','التاريخ'],['out','منصرف من العهدة'],['in','وارد للعهدة'],['balance','الرصيد'],['description','البيان'],['document','رقم الفاتورة'],['vehicle','المركبة'],['site','الموقع/الملاحظات'],['supervisor','المشرف']];
+ return [['legacy','رقم الطلب'],['date','التاريخ'],['amount','المبلغ/القيمة'],['supervisor','المشرف'],['description','البيان/الغرض'],['site','الموقع'],['iban','IBAN'],['beneficiary','اسم الحساب'],['reason','ملاحظات']]
+}
+function mappingSelect(sh,field,label){
+ var sid=domId(sh.sheet),idn='map_'+sid+'_'+field,opts='<option value="">— غير مستخدم —</option>';
+ (sh.headers||[]).forEach(function(h,i){opts+='<option value="'+i+'">'+esc((h==null||h==='')?('عمود '+(i+1)):h)+'</option>'});
+ return '<div class="field"><label>'+esc(label)+'</label><select id="'+idn+'">'+opts+'</select></div>'
+}
+function renderUnknownMapper(sh){
+ var sid=domId(sh.sheet);
+ if(sh.headerIndex<0){var g=guessHeaderRow(sh.rows);return '<div class="card" style="margin-top:10px"><strong>تعيين يدوي — '+esc(sh.sheet)+'</strong><div class="notice warn" style="margin-top:8px">لم يتم التعرف على صف العناوين.</div><div class="formgrid"><div class="field"><label>رقم صف العناوين</label><input id="hdr_'+sid+'" type="number" min="1" max="20" value="'+(g+1)+'"></div></div><div class="actions"><button class="btn" onclick="setManualHeader(\''+esc(sh.sheet).replace(/'/g,"\\'")+'\',document.getElementById(\'hdr_'+sid+'\').value)">استخدام هذا الصف</button></div></div>'}
+ var p=sh.manualProfile||'coverage_list',fields=manualFields(p);
+ var html='<div class="card" style="margin-top:10px"><strong>تعيين يدوي — '+esc(sh.sheet)+'</strong><div class="formgrid" style="margin-top:10px"><div class="field"><label>نوع الملف</label><select onchange="setManualProfile(\''+esc(sh.sheet).replace(/'/g,"\\'")+'\',this.value)"><option value="coverage_list" '+(p==='coverage_list'?'selected':'')+'>كشف تغطيات/صرف أفراد</option><option value="cash_ledger" '+(p==='cash_ledger'?'selected':'')+'>دفتر مدين/دائن</option><option value="expense_ledger" '+(p==='expense_ledger'?'selected':'')+'>دفتر وارد/منصرف</option><option value="request_snapshot" '+(p==='request_snapshot'?'selected':'')+'>طلبات عهدة</option></select></div>';
+ fields.forEach(function(x){html+=mappingSelect(sh,x[0],x[1])});html+='</div><div class="actions" style="margin-top:10px"><button class="btn primary" onclick="applyManualMapping(\''+esc(sh.sheet).replace(/'/g,"\\'")+'\')">اعتماد تعيين الأعمدة</button></div></div>';return html
+}
+function readManualMap(sh,profile){var sid=domId(sh.sheet),m={};manualFields(profile).forEach(function(x){var el=document.getElementById('map_'+sid+'_'+x[0]);if(el&&el.value!=='')m[x[0]]=Number(el.value)});return m}
+function parseRowsWithManual(sh,profile,map){
+ var ctx=inferPeriod(pendingImport.file.name,sh.rows),holder=extractHolder(sh.rows,sh.headerIndex,sh.sheet),region=sheetRegion(sh.sheet,sh.rows),items=[];
+ for(var r=sh.headerIndex+1;r<sh.rows.length;r++){var row=sh.rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined}))continue;
+  if(profile==='request_snapshot'){var a=num(get(row,map.amount));if(!a)continue;var d=dateGuess(get(row,map.date)||ctx.year+'-'+String(ctx.month||1).padStart(2,'0')+'-01',ctx);items.push({kind:'request',id:id('REQ'),legacyNo:get(row,map.legacy),date:d.date,dateRaw:d.raw,dateStatus:d.status,region:region,supervisor:get(row,map.supervisor),amount:a,purpose:get(row,map.description)||'طلب عهدة',site:get(row,map.site),iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:get(row,map.reason),status:'جديد',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});continue}
+  if(profile==='coverage_list'){var a2=num(get(row,map.amount));if(!a2)continue;var d2=dateGuess(get(row,map.date),ctx),ab=get(row,map.absent),co=get(row,map.cover),re=get(row,map.reason),su=get(row,map.supervisor),si=get(row,map.site),tp=classifyOut('',ab,co,re);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d2.date,dateRaw:d2.raw,dateStatus:d2.status,amount:a2,type:tp,region:region,supervisor:su,site:si,absent:ab,cover:co,reason:re,description:tp==='تغطية'?'تغطية':cleanArabic(ab||re||'مصروف مستورد'),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});continue}
+  if(profile==='cash_ledger'){var de=num(get(row,map.debit)),cr=num(get(row,map.credit));if(!de&&!cr)continue;var d3=dateGuess(get(row,map.date),ctx),ab3=get(row,map.absent),co3=get(row,map.cover),re3=get(row,map.reason),si3=get(row,map.site),desc3=cleanArabic(get(row,map.description)||ab3||re3);if(de>0)items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d3.date,dateRaw:d3.raw,dateStatus:d3.status,amount:de,type:openingOrFunding(desc3),region:region,supervisor:get(row,map.supervisor)||holder,site:si3,description:desc3,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});if(cr>0){var tp3=classifyOut(desc3,ab3,co3,re3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d3.date,dateRaw:d3.raw,dateStatus:d3.status,amount:cr,type:tp3,region:region,supervisor:get(row,map.supervisor)||holder,site:si3,absent:tp3==='تغطية'?ab3:'',cover:tp3==='تغطية'?co3:'',reason:re3,description:desc3,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1})}continue}
+  if(profile==='expense_ledger'){var ou=num(get(row,map.out)),inn=num(get(row,map.in));if(!ou&&!inn)continue;var d4=dateGuess(get(row,map.date),ctx),desc4=cleanArabic(get(row,map.description)),si4=get(row,map.site)||sh.sheet,su4=get(row,map.supervisor)||holder;if(inn>0)items.push({kind:'txn',id:id('IMP'),date:d4.date,dateRaw:d4.raw,dateStatus:d4.status,amount:inn,type:openingOrFunding(desc4),region:region,supervisor:su4,site:si4,description:desc4,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});if(ou>0){var tp4=classifyOut(desc4,'','',get(row,map.reason));items.push({kind:'txn',id:id('IMP'),date:d4.date,dateRaw:d4.raw,dateStatus:d4.status,amount:ou,type:tp4,region:region,supervisor:su4,site:si4,description:desc4,documentRef:get(row,map.document),vehicle:get(row,map.vehicle),reason:get(row,map.reason),reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1})}}
+ }
+ items.forEach(function(t){if(t.kind==='txn'&&exceptionFor(t).length)t.status='يحتاج مراجعة'});return {items:items,holder:holder,region:region,period:ctx,scopeKey:scopeKey(profile,region,holder,ctx,sh.sheet)}
+}
+window.applyManualMapping=function(sheet){
+ var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;var p=sh.manualProfile||'coverage_list',m=readManualMap(sh,p),parsed=parseRowsWithManual(sh,p,m);if(!parsed.items.length){toast('لم ينتج عن التعيين أي سجل. راجع الأعمدة المختارة.');return}sh.profile=p;sh.map=m;sh.items=parsed.items;sh.holder=parsed.holder;sh.region=parsed.region;sh.period=parsed.period;sh.scopeKey=parsed.scopeKey;sh.ignored=Math.max(0,sh.rows.length-sh.headerIndex-1-parsed.items.length);renderImportPreview();toast('تم تعيين الأعمدة وأصبح الشيت جاهزاً')
+}
+
 function renderImportPreview(){
  if(!pendingImport)return;var prior=state.imports.some(function(x){return x.fingerprint===pendingImport.fingerprint}),html='';
  if(prior)html+='<div class="notice bad"><strong>هذا الملف سبق استيراده على هذا الجهاز.</strong> يمكن مراجعته في سجل الاستيراد. لن يمنع النظام الاستيراد إذا اخترت ذلك عمداً.</div>';
@@ -383,7 +420,7 @@ function renderImportPreview(){
  var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(s,x){return s+x.items.length},0);
  html+='<div class="actions" style="margin-top:12px"><button class="btn primary" '+(known?'':'disabled')+' onclick="commitPreparedImport()">اعتماد استيراد '+known.toLocaleString('ar-SA')+' سجل</button></div>';
  var unknown=pendingImport.sheets.filter(function(x){return x.profile==='unknown'});
- if(unknown.length){html+='<div class="notice warn" style="margin-top:12px">يوجد '+unknown.length+' شيت غير معروف. لم يتم إدخاله تلقائياً حتى لا تفسر البيانات بشكل خاطئ. ملفات المستقبل غير المطابقة ستتوقف هنا للمراجعة بدلاً من إفساد الدفتر.</div>'}
+ if(unknown.length){html+='<div class="notice warn" style="margin-top:12px">يوجد '+unknown.length+' شيت غير معروف. يمكنك تعيين أعمدته يدوياً مرة واحدة بدلاً من تعديل ملف Excel.</div>';unknown.forEach(function(sh){html+=renderUnknownMapper(sh)})}
  document.getElementById('importResult').innerHTML=html
 }
 window.commitPreparedImport=function(){
