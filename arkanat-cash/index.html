@@ -28,9 +28,11 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 @media(max-width:1050px){.layout{grid-template-columns:1fr}.side{position:static;display:flex;overflow:auto;gap:4px}.navbtn{width:auto;white-space:nowrap}.kpis{grid-template-columns:repeat(2,1fr)}.formgrid,.grid3{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.layout{padding:10px}.head{align-items:flex-start}.pill{display:none}.kpis,.grid2,.grid3,.formgrid{grid-template-columns:1fr}.titlebar{align-items:flex-start;flex-direction:column}.kpi .val{font-size:21px}}
 </style>
+<script src="./config.js"></script>
+<script src="./cloud.js"></script>
 </head>
 <body>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">البيانات تحفظ على هذا الجهاز فقط</div></div></div></header>
+<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">التخزين: <span id="storageMode">محلي</span></div></div></div></header>
 <div class="layout">
 <aside class="side" id="nav">
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
@@ -155,7 +157,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 
 <section id="io" class="view">
 <div class="titlebar"><div><h2>الاستيراد والتصدير</h2><div class="subtitle">محرك استيراد متعدد الأنماط لملفات العهد النقدية القديمة والحالية والمستقبلية</div></div></div>
-<div class="notice warn"><strong>الخصوصية:</strong> تتم قراءة ملفات Excel داخل المتصفح فقط. لا ترفع بيانات العهد أو الموظفين إلى GitHub. قبل إدخال أي ملف إلى الدفتر تظهر معاينة ونوع الملف وعدد الحركات والتحذيرات.</div>
+<div class="notice warn"><strong>الخصوصية:</strong> تتم قراءة ملفات Excel داخل المتصفح. لا ترفع بيانات العهد أو الموظفين إلى GitHub. النسخة الحالية تعمل محلياً، وتم تجهيز طبقة اتصال مستقلة لقاعدة مشتركة تُفعّل فقط بعد إنشاء المشروع المخصص واعتماد الوصول.</div>
 <div class="grid2">
 <div class="card"><h3>استيراد ملف عهدة</h3>
 <div class="drop" id="drop"><strong>اختر ملف Excel أو اسحبه هنا</strong><br>
@@ -188,6 +190,7 @@ function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
 function audit(action,entityType,entityId,details){state.auditLog.push({id:id('AUD'),at:new Date().toISOString(),operator:(state.meta&&state.meta.operator)||'غير محدد',action:action,entityType:entityType||'',entityId:entityId||'',details:details||''})}
 window.setOperator=function(){var current=(state.meta&&state.meta.operator)||'',v=prompt('اكتب اسم موظف المالية المستخدم لهذه النسخة:',current);if(v===null)return;state.meta.operator=String(v).trim();audit('تحديث مستخدم الجلسة','System','',state.meta.operator||'غير محدد');save()}
 function renderOperator(){var el=document.getElementById('operatorName');if(el)el.textContent=(state.meta&&state.meta.operator)||'غير محدد'}
+function renderStorageMode(){var el=document.getElementById('storageMode');if(!el)return;var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};el.textContent=cfg.mode==='supabase'?'مشترك':'محلي'}
 function id(prefix){return prefix+'-'+new Date().toISOString().replace(/\D/g,'').slice(0,14)+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
 function num(v){var n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:0}
 function money(v){return num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2})+' ر.س'}
@@ -290,7 +293,7 @@ function renderAudit(){
  var el=document.getElementById('auditTable');if(!el)return;var a=(state.auditLog||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد أحداث تدقيق بعد.</div>';return}
  el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>الكيان</th><th>المرجع</th><th>التفاصيل</th></tr></thead><tbody>'+a.map(function(x){return '<tr><td>'+esc((x.at||'').replace('T',' ').slice(0,19))+'</td><td>'+esc(x.operator||'-')+'</td><td>'+esc(x.action||'')+'</td><td>'+esc(x.entityType||'')+'</td><td>'+esc(x.entityId||'')+'</td><td>'+esc(x.details||'')+'</td></tr>'}).join('')+'</tbody></table></div>'
 }
-function renderAll(){renderOperator();renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderAudit();renderImportRegistry()}
+function renderAll(){renderOperator();renderStorageMode();renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderAudit();renderImportRegistry()}
 
 document.getElementById('requestForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('REQ');d.amount=num(d.amount);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال يدوي من المالية';state.requests.push(d);audit('إنشاء طلب عهدة','Request',d.id,d.supervisor+' | '+money(d.amount)+' | '+(d.sourceChannel||''));e.target.reset();save();toast('تم حفظ طلب العهدة في صندوق المالية')});
 document.getElementById('fundingForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),r=state.requests.find(function(x){return x.id===d.requestId});if(!r)return;var amount=num(d.amount),already=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-already);if(amount<=0){toast('أدخل مبلغ تمويل صحيح');return}if(amount>remaining+0.001&&!confirm('المبلغ أكبر من المتبقي في الطلب. هل تريد تسجيله كما هو؟'))return;var tx={id:id('TRX'),requestId:r.id,date:d.date,dateRaw:d.date,amount:amount,type:'تغذية عهدة',region:r.region||'',custodyHolder:r.supervisor||'',supervisor:r.supervisor||'',site:r.site||'',description:'تمويل طلب '+r.id,fundingMethod:d.method||'',fundingRef:d.reference||'',beneficiary:d.beneficiary||r.beneficiary||'',status:'معتمد',source:'تنفيذ طلب عهدة',sourceChannel:r.sourceChannel||'',sourceReference:r.sourceReference||'',sourceMessage:r.sourceMessage||'',notes:d.notes||'',createdAt:new Date().toISOString()};state.transactions.push(tx);var total=requestFundedAmount(r);r.status=total+0.001>=num(r.amount)?'ممول':'ممول جزئياً';r.fundedAt=r.status==='ممول'?new Date().toISOString():r.fundedAt;r.lastActionAt=new Date().toISOString();audit('تنفيذ تمويل طلب','Transaction',tx.id,r.id+' | '+r.supervisor+' | '+money(amount)+' | '+(d.method||''));save();closeFundingForm();toast(r.status==='ممول'?'تم تمويل الطلب بالكامل':'تم تسجيل تمويل جزئي')});
