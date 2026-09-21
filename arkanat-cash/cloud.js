@@ -154,7 +154,7 @@
   api.checkAccess = async function(){
     if(!api.client || !api.session) return null;
     const email=(api.session.user&&api.session.user.email)||"";
-    const {data,error}=await api.client.from("cash_portal_access").select("email,role,display_name,enabled").eq("email",email).maybeSingle();
+    const {data,error}=await api.client.from("cash_portal_access").select("email,role,display_name,enabled,user_id,must_change_password,managed_by_cash_portal").eq("email",email).maybeSingle();
     if(error) throw error;
     api.access=data||null;
     return api.access;
@@ -189,6 +189,27 @@
     for(const rows of chunk(imports,100)){ if(!rows.length) continue; const {error}=await api.client.from("cash_imports").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(audit,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_audit_log").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length};
+  };
+
+  api.adminUsers = async function(action,payload={}){
+    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    const res=await fetch(cfg.supabaseUrl+"/functions/v1/cash-user-admin",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+api.session.access_token,
+        "apikey":cfg.supabasePublishableKey
+      },
+      body:JSON.stringify({action,...payload})
+    });
+    let body={};try{body=await res.json()}catch(_){}
+    if(!res.ok){
+      const err=new Error(body.message||body.error||"تعذر تنفيذ إدارة المستخدمين");
+      err.code=body.error||"admin_action_failed";
+      err.status=res.status;
+      throw err;
+    }
+    return body;
   };
 
   api.isRemoteEmpty = async function(){
