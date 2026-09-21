@@ -46,7 +46,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
     <div id="authMessage" class="authmsg"></div>
   </div>
 </div>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav">
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
@@ -57,6 +57,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <button class="navbtn" data-view="settlement"><span>Σ</span>التصفية</button>
 <button class="navbtn" data-view="exceptions"><span>!</span>الاستثناءات</button>
 <button class="navbtn" data-view="audit"><span>⌁</span>سجل التدقيق</button>
+<button class="navbtn" id="adminNav" data-view="users" style="display:none"><span>♛</span>إدارة المستخدمين</button>
 <button class="navbtn" data-view="io"><span>⇄</span>استيراد وتصدير</button>
 </aside>
 <main>
@@ -164,6 +165,32 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <div id="exceptionList"></div>
 </section>
 
+<section id="users" class="view">
+<div class="titlebar"><div><h2>إدارة مستخدمي البوابة</h2><div class="subtitle">متاحة حصراً لحساب Super Admin. إنشاء المستخدم وكلمة المرور الأولية يتمان من هذه الصفحة.</div></div><div class="actions"><button class="btn" onclick="loadPortalUsers()">تحديث القائمة</button></div></div>
+<div class="notice"><strong>ضابط الأمان:</strong> لا تحفظ كلمات المرور داخل قاعدة بيانات البوابة أو سجل التدقيق. إذا كان البريد مستخدماً مسبقاً في مشروع Supabase، تتم إضافة صلاحية البوابة له بدون تغيير كلمة مروره؛ وذلك لمنع التأثير على أي خدمة أخرى تستخدم الحساب نفسه.</div>
+<div class="grid2">
+<div class="card"><h3>إنشاء مستخدم جديد</h3>
+<form id="newPortalUserForm" class="formgrid">
+<div class="field"><label>اسم المستخدم</label><input name="display_name" required></div>
+<div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" dir="ltr" autocomplete="off" required></div>
+<div class="field"><label>الدور</label><select name="role"><option value="finance">موظف مالية</option><option value="finance_manager">مدير مالية</option><option value="viewer">قارئ فقط</option></select></div>
+<div class="field"><label>كلمة المرور الأولية</label><input name="password" id="newUserPassword" type="password" dir="ltr" autocomplete="new-password" minlength="12" required></div>
+<div class="field wide"><div class="actions"><button class="btn" type="button" onclick="generateUserPassword('newUserPassword')">إنشاء كلمة مرور قوية</button><button class="btn" type="button" onclick="togglePassword('newUserPassword',this)">إظهار/إخفاء</button></div><div class="subtitle">12 خانة على الأقل وتحتوي حرفاً كبيراً وصغيراً ورقماً ورمزاً. أنت من يحدد كلمة المرور للمستخدم.</div></div>
+<div class="wide actions"><button class="btn primary" type="submit">إنشاء المستخدم</button></div>
+</form>
+<div id="newUserResult" style="margin-top:10px"></div>
+</div>
+<div class="card" id="resetPasswordCard" style="display:none"><h3>تعيين كلمة مرور جديدة</h3>
+<form id="resetPortalPasswordForm" class="formgrid">
+<div class="field wide"><label>المستخدم</label><input id="resetUserEmail" name="email" readonly dir="ltr"></div>
+<div class="field"><label>كلمة المرور الجديدة</label><input id="resetUserPassword" name="password" type="password" dir="ltr" autocomplete="new-password" minlength="12" required></div>
+<div class="field"><label>تأكيد كلمة المرور</label><input id="resetUserPasswordConfirm" type="password" dir="ltr" autocomplete="new-password" minlength="12" required></div>
+<div class="wide actions"><button class="btn" type="button" onclick="generateUserPassword('resetUserPassword','resetUserPasswordConfirm')">إنشاء كلمة مرور قوية</button><button class="btn primary" type="submit">حفظ كلمة المرور الجديدة</button><button class="btn" type="button" onclick="closePasswordReset()">إلغاء</button></div>
+</form></div>
+</div>
+<div class="card"><h3>المستخدمون والصلاحيات</h3><div id="portalUsersTable"><div class="empty">يتم تحميل المستخدمين بعد الدخول بحساب Super Admin.</div></div></div>
+</section>
+
 <section id="audit" class="view">
 <div class="titlebar"><div><h2>سجل التدقيق</h2><div class="subtitle">أثر زمني للإدخال والاعتماد والتمويل والاستيراد مع اسم مستخدم الجهاز</div></div></div>
 <div class="card"><div id="auditTable"></div></div>
@@ -191,14 +218,14 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة تجريبية مستقلة v1.0 — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
+<div class="footer">نسخة مشتركة مستقلة منطقياً v1.1 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'1.0.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.0.0';
-var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false;
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'1.1.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.1.0';
+var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
 function persistLocal(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
@@ -220,6 +247,13 @@ function audit(action,entityType,entityId,details){state.auditLog.push({id:id('A
 window.setOperator=function(){var current=(state.meta&&state.meta.operator)||'',v=prompt('اكتب اسم موظف المالية المستخدم لهذه النسخة:',current);if(v===null)return;state.meta.operator=String(v).trim();audit('تحديث مستخدم الجلسة','System','',state.meta.operator||'غير محدد');save()}
 function renderOperator(){var el=document.getElementById('operatorName');if(el)el.textContent=(state.meta&&state.meta.operator)||'غير محدد'}
 function renderStorageMode(){var el=document.getElementById('storageMode');if(!el)return;var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};if(cfg.mode!=='supabase'){el.textContent='محلي';return}el.textContent=cloudReady&&window.ArkanatCashCloud&&ArkanatCashCloud.session?'مشترك':'غير متصل'}
+function roleLabel(r){return ({super_admin:'Super Admin',finance_manager:'مدير مالية',finance:'موظف مالية',viewer:'قارئ فقط'})[r]||r||'—'}
+function isSuperAdmin(){return !!(portalAccess&&portalAccess.role==='super_admin'&&portalAccess.enabled)}
+function canWritePortal(){return !!(portalAccess&&portalAccess.enabled&&['super_admin','finance_manager','finance'].indexOf(portalAccess.role)>=0)}
+function renderRoleUi(){
+ var role=document.getElementById('userRole'),nav=document.getElementById('adminNav');if(role)role.textContent=roleLabel(portalAccess&&portalAccess.role);if(nav)nav.style.display=isSuperAdmin()?'flex':'none';
+ document.querySelectorAll('#requestForm button[type="submit"],#txnForm button[type="submit"],#fundingForm button[type="submit"]').forEach(function(b){b.disabled=!!portalAccess&&!canWritePortal()});
+}
 function id(prefix){return prefix+'-'+new Date().toISOString().replace(/\D/g,'').slice(0,14)+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
 function num(v){var n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:0}
 function money(v){return num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2})+' ر.س'}
@@ -324,7 +358,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.0.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.1.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -339,12 +373,12 @@ window.refreshCloud=async function(){
 }
 window.signOutCloud=async function(){
  try{await ArkanatCashCloud.signOut()}catch(e){}
- cloudReady=false;document.getElementById('signOutBtn').style.display='none';renderStorageMode();setSyncState('—');showAuthGate(true,'تم تسجيل الخروج')
+ cloudReady=false;portalAccess=null;adminUsersCache=[];document.getElementById('signOutBtn').style.display='none';renderRoleUi();renderStorageMode();setSyncState('—');showAuthGate(true,'تم تسجيل الخروج')
 }
 async function cloudSessionReady(){
  var access=await ArkanatCashCloud.checkAccess();
  if(!access){cloudReady=false;showAuthGate(true,'هذا الحساب غير مضاف إلى صلاحيات بوابة العهد النقدية.');return}
- cloudReady=true;document.getElementById('signOutBtn').style.display='inline-block';state.meta.operator=access.display_name||state.meta.operator||'';
+ cloudReady=true;portalAccess=access;document.getElementById('signOutBtn').style.display='inline-block';state.meta.operator=access.display_name||state.meta.operator||'';renderRoleUi();
  var localHas=(state.requests||[]).length+(state.transactions||[]).length+(state.imports||[]).length>0;
  var remoteEmpty=await ArkanatCashCloud.isRemoteEmpty();
  if(remoteEmpty&&localHas){
@@ -356,7 +390,7 @@ async function cloudSessionReady(){
  }else{
    var remote=await ArkanatCashCloud.loadState();applyRemoteState(remote,access)
  }
- showAuthGate(false);renderAll();setSyncState('متزامن','ok')
+ showAuthGate(false);renderAll();setSyncState('متزامن','ok');if(isSuperAdmin())loadPortalUsers()
 }
 async function bootstrapCloud(){
  var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};
@@ -368,11 +402,24 @@ async function bootstrapCloud(){
    else{cloudReady=false;showAuthGate(true,'أدخل بيانات الحساب المصرح له.')}
  }catch(e){console.error(e);cloudReady=false;showAuthGate(true,'تعذر الاتصال بقاعدة البيانات المشتركة.')}
 }
+function renderPortalUsers(){
+ var el=document.getElementById('portalUsersTable');if(!el)return;if(!isSuperAdmin()){el.innerHTML='<div class="empty">هذه الصفحة متاحة لـ Super Admin فقط.</div>';return}
+ if(!adminUsersCache.length){el.innerHTML='<div class="empty">لا يوجد مستخدمون مسجلون.</div>';return}
+ el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>الاسم</th><th>البريد</th><th>الدور</th><th>الحالة</th><th>نوع الحساب</th><th>الإجراءات</th></tr></thead><tbody>'+adminUsersCache.map(function(u){var superA=u.role==='super_admin',managed=!!u.managed_by_cash_portal,actions=superA?'<span class="badge ok">الصلاحيات المطلقة</span>':'<button class="btn" onclick="changePortalRole(\''+esc(u.email)+'\',\''+esc(u.role)+'\')">تغيير الدور</button> <button class="btn" onclick="togglePortalUser(\''+esc(u.email)+'\','+(!u.enabled)+')">'+(u.enabled?'تعطيل':'تفعيل')+'</button> '+(managed?'<button class="btn" onclick="openPasswordReset(\''+esc(u.email)+'\')">تعيين كلمة المرور</button>':'<span class="badge info">كلمة المرور مشتركة خارج البوابة</span>');return '<tr><td>'+esc(u.display_name||'-')+'</td><td dir="ltr">'+esc(u.email)+'</td><td><span class="badge '+(superA?'ok':'info')+'">'+esc(roleLabel(u.role))+'</span></td><td><span class="badge '+(u.enabled?'ok':'bad')+'">'+(u.enabled?'مفعل':'معطل')+'</span></td><td>'+esc(managed?'منشأ من بوابة العهد':'حساب قائم في المشروع')+'</td><td><div class="actions">'+actions+'</div></td></tr>'}).join('')+'</tbody></table></div>'
+}
+window.loadPortalUsers=async function(){if(!isSuperAdmin())return;var el=document.getElementById('portalUsersTable');if(el)el.innerHTML='<div class="empty">جاري تحميل المستخدمين…</div>';try{var r=await ArkanatCashCloud.adminUsers('list');adminUsersCache=r.users||[];renderPortalUsers()}catch(e){console.error(e);if(el)el.innerHTML='<div class="notice bad">'+esc(e.message)+'</div>'}}
+function strongPassword(){var upper='ABCDEFGHJKLMNPQRSTUVWXYZ',lower='abcdefghijkmnopqrstuvwxyz',digits='23456789',symbols='!@#$%&*+-_?',all=upper+lower+digits+symbols,a=[upper,lower,digits,symbols].map(function(c){return c[crypto.getRandomValues(new Uint32Array(1))[0]%c.length]});for(var i=0;i<12;i++){var n=crypto.getRandomValues(new Uint32Array(1))[0];a.push(all[n%all.length])}for(var j=a.length-1;j>0;j--){var k=crypto.getRandomValues(new Uint32Array(1))[0]%(j+1),tmp=a[j];a[j]=a[k];a[k]=tmp}return a.join('')}
+window.generateUserPassword=function(id,confirmId){var v=strongPassword(),el=document.getElementById(id);if(el){el.value=v;el.type='text'}if(confirmId){var c=document.getElementById(confirmId);if(c){c.value=v;c.type='text'}}}
+window.togglePassword=function(id,btn){var el=document.getElementById(id);if(!el)return;el.type=el.type==='password'?'text':'password'}
+window.openPasswordReset=function(email){document.getElementById('resetUserEmail').value=email;document.getElementById('resetUserPassword').value='';document.getElementById('resetUserPasswordConfirm').value='';document.getElementById('resetPasswordCard').style.display='block';document.getElementById('resetPasswordCard').scrollIntoView({behavior:'smooth',block:'center'})}
+window.closePasswordReset=function(){document.getElementById('resetPasswordCard').style.display='none';document.getElementById('resetPortalPasswordForm').reset()}
+window.togglePortalUser=async function(email,enabled){if(!isSuperAdmin())return;if(!confirm((enabled?'تفعيل ':'تعطيل ')+email+'؟'))return;try{await ArkanatCashCloud.adminUsers('set_enabled',{email:email,enabled:enabled});toast(enabled?'تم تفعيل المستخدم':'تم تعطيل المستخدم');await loadPortalUsers();await loadRemoteState()}catch(e){toast(e.message)}}
+window.changePortalRole=async function(email,current){if(!isSuperAdmin())return;var v=prompt('الدور الجديد: finance_manager أو finance أو viewer',current);if(v===null)return;v=String(v).trim();if(['finance_manager','finance','viewer'].indexOf(v)<0){toast('الدور غير صحيح');return}try{await ArkanatCashCloud.adminUsers('set_role',{email:email,role:v});toast('تم تحديث الدور');await loadPortalUsers()}catch(e){toast(e.message)}}
 function renderAudit(){
  var el=document.getElementById('auditTable');if(!el)return;var a=(state.auditLog||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد أحداث تدقيق بعد.</div>';return}
  el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>الكيان</th><th>المرجع</th><th>التفاصيل</th></tr></thead><tbody>'+a.map(function(x){return '<tr><td>'+esc((x.at||'').replace('T',' ').slice(0,19))+'</td><td>'+esc(x.operator||'-')+'</td><td>'+esc(x.action||'')+'</td><td>'+esc(x.entityType||'')+'</td><td>'+esc(x.entityId||'')+'</td><td>'+esc(x.details||'')+'</td></tr>'}).join('')+'</tbody></table></div>'
 }
-function renderAll(){renderOperator();renderStorageMode();renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderAudit();renderImportRegistry()}
+function renderAll(){renderOperator();renderStorageMode();renderRoleUi();renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderImportRegistry()}
 
 document.getElementById('requestForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('REQ');d.amount=num(d.amount);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال يدوي من المالية';state.requests.push(d);audit('إنشاء طلب عهدة','Request',d.id,d.supervisor+' | '+money(d.amount)+' | '+(d.sourceChannel||''));e.target.reset();save();toast('تم حفظ طلب العهدة في صندوق المالية')});
 document.getElementById('fundingForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),r=state.requests.find(function(x){return x.id===d.requestId});if(!r)return;var amount=num(d.amount),already=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-already);if(amount<=0){toast('أدخل مبلغ تمويل صحيح');return}if(amount>remaining+0.001&&!confirm('المبلغ أكبر من المتبقي في الطلب. هل تريد تسجيله كما هو؟'))return;var tx={id:id('TRX'),requestId:r.id,date:d.date,dateRaw:d.date,amount:amount,type:'تغذية عهدة',region:r.region||'',custodyHolder:r.supervisor||'',supervisor:r.supervisor||'',site:r.site||'',description:'تمويل طلب '+r.id,fundingMethod:d.method||'',fundingRef:d.reference||'',beneficiary:d.beneficiary||r.beneficiary||'',status:'معتمد',source:'تنفيذ طلب عهدة',sourceChannel:r.sourceChannel||'',sourceReference:r.sourceReference||'',sourceMessage:r.sourceMessage||'',notes:d.notes||'',createdAt:new Date().toISOString()};state.transactions.push(tx);var total=requestFundedAmount(r);r.status=total+0.001>=num(r.amount)?'ممول':'ممول جزئياً';r.fundedAt=r.status==='ممول'?new Date().toISOString():r.fundedAt;r.lastActionAt=new Date().toISOString();audit('تنفيذ تمويل طلب','Transaction',tx.id,r.id+' | '+r.supervisor+' | '+money(amount)+' | '+(d.method||''));save();closeFundingForm();toast(r.status==='ممول'?'تم تمويل الطلب بالكامل':'تم تسجيل تمويل جزئي')});
@@ -627,6 +674,16 @@ function renderImportRegistry(){
  var el=document.getElementById('importRegistry');if(!el)return;var a=(state.imports||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد ملفات مستوردة بعد.</div>';return}
  el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المصدر</th><th>التاريخ</th><th>الطريقة</th><th>الحركات</th><th>الطلبات</th><th>مطابقة المصدر</th><th>الشيتات</th></tr></thead><tbody>'+a.map(function(x){var ss=x.sheets||[],ok=ss.filter(function(s){return s.control&&s.control.status==='مطابق'}).length,bad=ss.filter(function(s){return s.control&&s.control.status==='فرق يحتاج مراجعة'}).length,na=ss.length-ok-bad,label=bad?('فروقات '+bad):ok?('مطابق '+ok+(na?' / غير متاح '+na:'')):'غير متاح';return '<tr><td>'+esc(x.fileName)+'</td><td>'+esc((x.importedAt||'').slice(0,19).replace('T',' '))+'</td><td>'+esc(x.mode==='snapshot'?'لقطة كاملة':'دلتا')+'</td><td>'+Number(x.addedTransactions||0).toLocaleString('ar-SA')+'</td><td>'+Number(x.addedRequests||0).toLocaleString('ar-SA')+'</td><td><span class="badge '+(bad?'bad':ok?'ok':'info')+'">'+esc(label)+'</span></td><td>'+esc(ss.map(function(s){return s.sheet+' — '+profileLabel(s.profile)}).join(' | '))+'</td></tr>'}).join('')+'</tbody></table></div>'
 }
+document.getElementById('newPortalUserForm').addEventListener('submit',async function(e){
+ e.preventDefault();if(!isSuperAdmin())return;var d=Object.fromEntries(new FormData(e.target).entries()),res=document.getElementById('newUserResult');res.innerHTML='<div class="notice">جاري إنشاء المستخدم…</div>';
+ try{await ArkanatCashCloud.adminUsers('create',d);res.innerHTML='<div class="notice ok">تم إنشاء المستخدم وتفعيل دخوله إلى بوابة العهد.</div>';e.target.reset();await loadPortalUsers();await loadRemoteState()}
+ catch(err){console.error(err);if(err.code==='email_exists'&&confirm('هذا البريد موجود مسبقاً في مشروع Supabase. هل تريد منحه صلاحية بوابة العهد بدون تغيير كلمة مروره؟')){try{await ArkanatCashCloud.adminUsers('grant_existing',{email:d.email,display_name:d.display_name,role:d.role});res.innerHTML='<div class="notice ok">تمت إضافة صلاحية البوابة للحساب القائم بدون تغيير كلمة المرور.</div>';e.target.reset();await loadPortalUsers()}catch(e2){res.innerHTML='<div class="notice bad">'+esc(e2.message)+'</div>'}}else res.innerHTML='<div class="notice bad">'+esc(err.message)+'</div>'}
+});
+document.getElementById('resetPortalPasswordForm').addEventListener('submit',async function(e){
+ e.preventDefault();if(!isSuperAdmin())return;var d=Object.fromEntries(new FormData(e.target).entries()),c=document.getElementById('resetUserPasswordConfirm').value;if(d.password!==c){toast('كلمتا المرور غير متطابقتين');return}
+ try{await ArkanatCashCloud.adminUsers('set_password',{email:d.email,password:d.password});toast('تم تعيين كلمة المرور الجديدة');closePasswordReset();await loadPortalUsers();await loadRemoteState()}catch(err){toast(err.message)}
+});
+
 document.getElementById('cloudLoginForm').addEventListener('submit',async function(e){
  e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),m=document.getElementById('authMessage');m.textContent='جاري تسجيل الدخول…';
  try{await ArkanatCashCloud.signInWithPassword(String(d.email||'').trim(),String(d.password||''));m.textContent='';await cloudSessionReady()}
@@ -659,7 +716,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'1.0.0',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'1.1.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
