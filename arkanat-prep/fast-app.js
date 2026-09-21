@@ -14,7 +14,7 @@ function friendlyError(msg){
  if(/DATE_OUTSIDE_CYCLE/i.test(s))return 'التاريخ المحدد خارج دورة التحضير. تم ضبطه تلقائياً داخل الفترة.';
  return s.length>160?'حدث خطأ أثناء تنفيذ العملية. أعيدي المحاولة.':s;
 }
-function cacheKey(){return 'arkPrepCache:v7:'+(S.region||'unknown')+':'+period()+':'+work()}
+function cacheKey(){return 'arkPrepCache:v8:'+(S.region||'unknown')+':'+period()+':'+work()}
 function readCache(){
  try{const x=JSON.parse(sessionStorage.getItem(cacheKey())||'null');if(!x||!x.t||Date.now()-x.t>10*60*1000)return null;return x}catch{return null}
 }
