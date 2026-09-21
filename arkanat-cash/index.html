@@ -149,13 +149,13 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة تجريبية مستقلة — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
+<div class="footer">نسخة تجريبية مستقلة v0.7 — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.3.0'}};if(!state.imports)state.imports=[];
+var state=load()||{requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.7.0'}};if(!state.imports)state.imports=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
@@ -527,7 +527,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.3.0'}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.7.0'}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();
 })();
 </script>
