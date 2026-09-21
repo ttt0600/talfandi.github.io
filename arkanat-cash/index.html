@@ -30,7 +30,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </style>
 </head>
 <body>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="pill">البيانات تحفظ على هذا الجهاز فقط</div></div></header>
+<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">البيانات تحفظ على هذا الجهاز فقط</div></div></div></header>
 <div class="layout">
 <aside class="side" id="nav">
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
@@ -40,6 +40,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <button class="navbtn" data-view="review"><span>✓</span>مراجعة المالية</button>
 <button class="navbtn" data-view="settlement"><span>Σ</span>التصفية</button>
 <button class="navbtn" data-view="exceptions"><span>!</span>الاستثناءات</button>
+<button class="navbtn" data-view="audit"><span>⌁</span>سجل التدقيق</button>
 <button class="navbtn" data-view="io"><span>⇄</span>استيراد وتصدير</button>
 </aside>
 <main>
@@ -147,6 +148,11 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <div id="exceptionList"></div>
 </section>
 
+<section id="audit" class="view">
+<div class="titlebar"><div><h2>سجل التدقيق</h2><div class="subtitle">أثر زمني للإدخال والاعتماد والتمويل والاستيراد مع اسم مستخدم الجهاز</div></div></div>
+<div class="card"><div id="auditTable"></div></div>
+</section>
+
 <section id="io" class="view">
 <div class="titlebar"><div><h2>الاستيراد والتصدير</h2><div class="subtitle">محرك استيراد متعدد الأنماط لملفات العهد النقدية القديمة والحالية والمستقبلية</div></div></div>
 <div class="notice warn"><strong>الخصوصية:</strong> تتم قراءة ملفات Excel داخل المتصفح فقط. لا ترفع بيانات العهد أو الموظفين إلى GitHub. قبل إدخال أي ملف إلى الدفتر تظهر معاينة ونوع الملف وعدد الحركات والتحذيرات.</div>
@@ -169,16 +175,19 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة تجريبية مستقلة v0.8 — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
+<div class="footer">نسخة تجريبية مستقلة v0.9 — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.8.0'}};if(!state.imports)state.imports=[];
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
+function audit(action,entityType,entityId,details){state.auditLog.push({id:id('AUD'),at:new Date().toISOString(),operator:(state.meta&&state.meta.operator)||'غير محدد',action:action,entityType:entityType||'',entityId:entityId||'',details:details||''})}
+window.setOperator=function(){var current=(state.meta&&state.meta.operator)||'',v=prompt('اكتب اسم موظف المالية المستخدم لهذه النسخة:',current);if(v===null)return;state.meta.operator=String(v).trim();audit('تحديث مستخدم الجلسة','System','',state.meta.operator||'غير محدد');save()}
+function renderOperator(){var el=document.getElementById('operatorName');if(el)el.textContent=(state.meta&&state.meta.operator)||'غير محدد'}
 function id(prefix){return prefix+'-'+new Date().toISOString().replace(/\D/g,'').slice(0,14)+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
 function num(v){var n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:0}
 function money(v){return num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2})+' ر.س'}
@@ -248,12 +257,12 @@ function renderReview(){
  document.getElementById('reviewRequests').innerHTML=rq.length?'<div class="inbox">'+rq.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded),acts='';if(r.status==='جديد'||r.status==='يحتاج استكمال')acts='<button class="btn primary" onclick="approveRequest(\''+r.id+'\')">اعتماد الطلب</button><button class="btn" onclick="needRequest(\''+r.id+'\')">طلب استكمال</button><button class="btn danger" onclick="rejectRequest(\''+r.id+'\')">رفض</button>';if(r.status==='معتمد'||r.status==='ممول جزئياً')acts='<button class="btn primary" onclick="openFundingForm(\''+r.id+'\')">تسجيل تمويل</button><button class="btn" onclick="needRequest(\''+r.id+'\')">إعادة للاستكمال</button>';return '<div class="item"><div><strong>'+esc(r.supervisor)+' — '+money(r.amount)+'</strong><small>'+esc(r.date||'-')+' · '+esc(r.purpose||'-')+(r.sourceChannel?' · '+esc(r.sourceChannel):'')+'</small><small>الحالة: '+esc(r.status)+' · ممول '+money(funded)+' · متبقي '+money(rem)+'</small>'+(r.sourceMessage?'<small>النص الأصلي: '+esc(r.sourceMessage).slice(0,160)+'</small>':'')+'</div><div class="actions">'+acts+'</div></div>'}).join('')+'</div>':'<div class="empty">لا توجد طلبات تحتاج إجراء.</div>';
  document.getElementById('reviewTxns').innerHTML=tx.length?'<div class="inbox">'+tx.map(function(t){return '<div class="item"><div><strong>'+esc(t.type)+' — '+money(t.amount)+'</strong><small>'+esc(t.custodyHolder||t.supervisor||'-')+' · '+esc(t.site||'-')+' · '+esc(t.description||t.reason||'')+'</small>'+(t.sourceMessage?'<small>النص الأصلي: '+esc(t.sourceMessage).slice(0,160)+'</small>':'')+'</div><button class="btn primary" onclick="approveTxn(\''+t.id+'\')">اعتماد</button></div>'}).join('')+'</div>':'<div class="empty">لا توجد حركات معلقة.</div>'
 }
-window.approveRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(!r)return;r.status='معتمد';r.approvedAt=new Date().toISOString();save();toast('تم اعتماد الطلب. لم يتم إنشاء حركة نقدية حتى تسجيل التنفيذ.')}
-window.needRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(r){r.status='يحتاج استكمال';r.lastActionAt=new Date().toISOString();save();toast('تم تحويل الطلب إلى الاستكمال')}}
-window.rejectRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(r){r.status='مرفوض';r.lastActionAt=new Date().toISOString();save();toast('تم رفض الطلب')}}
+window.approveRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(!r)return;r.status='معتمد';r.approvedAt=new Date().toISOString();audit('اعتماد طلب عهدة','Request',r.id,r.supervisor+' | '+money(r.amount));save();toast('تم اعتماد الطلب. لم يتم إنشاء حركة نقدية حتى تسجيل التنفيذ.')}
+window.needRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(r){r.status='يحتاج استكمال';r.lastActionAt=new Date().toISOString();audit('طلب استكمال','Request',r.id,r.supervisor+' | '+money(r.amount));save();toast('تم تحويل الطلب إلى الاستكمال')}}
+window.rejectRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(r){r.status='مرفوض';r.lastActionAt=new Date().toISOString();audit('رفض طلب عهدة','Request',r.id,r.supervisor+' | '+money(r.amount));save();toast('تم رفض الطلب')}}
 window.openFundingForm=function(i){var r=state.requests.find(function(x){return x.id===i});if(!r)return;var funded=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-funded);document.getElementById('fundRequestId').value=r.id;document.getElementById('fundSupervisor').value=r.supervisor||'';document.getElementById('fundRequestAmount').value=num(r.amount).toFixed(2);document.getElementById('fundRemaining').value=remaining.toFixed(2);document.getElementById('fundAmount').value=remaining?remaining.toFixed(2):'';document.getElementById('fundBeneficiary').value=r.beneficiary||'';document.getElementById('fundDate').value=new Date().toISOString().slice(0,10);document.getElementById('fundingCard').style.display='block';document.getElementById('fundingCard').scrollIntoView({behavior:'smooth',block:'center'})}
 window.closeFundingForm=function(){document.getElementById('fundingCard').style.display='none';document.getElementById('fundingForm').reset()}
-window.approveTxn=function(i){var t=state.transactions.find(function(x){return x.id===i});if(t){t.status='معتمد';t.approvedAt=new Date().toISOString();save();toast('تم اعتماد الحركة')}}
+window.approveTxn=function(i){var t=state.transactions.find(function(x){return x.id===i});if(t){t.status='معتمد';t.approvedAt=new Date().toISOString();audit('اعتماد حركة','Transaction',t.id,t.type+' | '+money(t.amount));save();toast('تم اعتماد الحركة')}}
 function isRecoveryCandidate(t){return textHas([t.reason,t.description].join(' '),['تخصم من راتبه','تخصم من راتب','تخصم منه','خصم من راتب','نقص من راتب'])}
 function siteSummaryHtml(a){
  var m={};a.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&isExpense(t)}).forEach(function(t){var k=cleanArabic(t.site)||'غير محدد';if(!m[k])m[k]={site:t.site||'غير محدد',coverage:0,other:0,recovery:0,count:0,missingDocs:0};var x=m[k];x.count++;if(t.type==='تغطية')x.coverage+=num(t.amount);else x.other+=num(t.amount);if(isRecoveryCandidate(t))x.recovery+=num(t.amount);if(t.type!=='تغطية'&&!t.documentRef)x.missingDocs++});
@@ -262,10 +271,10 @@ function siteSummaryHtml(a){
 }
 function renderSettlement(){
 var h=(document.getElementById('settleHolder').value||'').trim(),f=document.getElementById('settleFrom').value,to=document.getElementById('settleTo').value;
-var a=state.transactions.filter(function(t){return (!h||String(t.supervisor||'').indexOf(h)>=0)&&(!f||String(t.date||'')>=f)&&(!to||String(t.date||'')<=to)});
-var inc=a.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0);
+var a=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&(!h||(String(t.custodyHolder||'').indexOf(h)>=0||String(t.supervisor||'').indexOf(h)>=0))&&(!f||String(t.date||'')>=f)&&(!to||String(t.date||'')<=to)});
+var inc=a.filter(function(t){return t.type==='رصيد افتتاحي'||t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+(t.type==='رصيد افتتاحي'?num(t.amount)*(t.openingSign===-1?-1:1):num(t.amount))},0);
 var exp=a.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0);
-var out=a.filter(function(t){return t.type==='تحويل داخلي'||t.type==='إعادة للشركة'}).reduce(function(s,t){return s+num(t.amount)},0);
+var out=a.filter(function(t){return t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة'}).reduce(function(s,t){return s+num(t.amount)},0);
 var bal=a.reduce(function(s,t){return s+txnEffect(t)},0);
 document.getElementById('settlementResult').innerHTML='<div class="kpis"><div class="kpi"><div class="lab">الموارد</div><div class="val">'+money(inc)+'</div></div><div class="kpi"><div class="lab">المصروفات</div><div class="val">'+money(exp)+'</div></div><div class="kpi"><div class="lab">تحويل/إعادة</div><div class="val">'+money(out)+'</div></div><div class="kpi"><div class="lab">الرصيد</div><div class="val">'+money(bal)+'</div></div><div class="kpi"><div class="lab">عدد الحركات</div><div class="val">'+a.length.toLocaleString('ar-SA')+'</div></div></div>'+rowTable(a.slice().reverse())+'<div class="card" style="margin-top:14px"><h3>ملخص المصروفات حسب الموقع</h3><div class="subtitle" style="margin-bottom:10px">يستخدم في جرد نهاية الشهر ومراجعة التغطيات ومرشحات الاسترداد. لا ينشئ خصماً على الرواتب تلقائياً.</div>'+siteSummaryHtml(a)+'</div>'
 }
@@ -277,11 +286,15 @@ function renderExceptions(){
 var list=[];state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded')return;exceptionFor(t).forEach(function(e){list.push({type:e[0],severity:e[1],txn:t})})});coverageAmountPatterns().forEach(function(x){list.push({type:'قيمة تغطية مختلفة عن النمط',severity:'معلومة تشغيلية',txn:x.txn,msg:x.msg})});duplicates().forEach(function(p){list.push({type:'تكرار محتمل',severity:'عالية',txn:p[1],msg:'تشابه مع الحركة '+(p[0].legacyNo||p[0].id)})});
 document.getElementById('exceptionList').innerHTML=list.length?'<div class="card"><div class="tablewrap"><table class="tbl"><thead><tr><th>النوع</th><th>الأهمية</th><th>الحركة</th><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>'+list.map(function(x){return '<tr><td>'+esc(x.type)+'</td><td><span class="badge '+(x.severity==='عالية'?'bad':x.severity==='متوسطة'?'warn':'info')+'">'+esc(x.severity)+'</span></td><td>'+esc(x.txn.legacyNo||x.txn.id)+'</td><td>'+money(x.txn.amount)+'</td><td>'+esc(x.msg||x.txn.description||x.txn.reason||'')+'</td></tr>'}).join('')+'</tbody></table></div></div>':'<div class="card empty">لا توجد استثناءات مكتشفة.</div>'
 }
-function renderAll(){renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderImportRegistry()}
+function renderAudit(){
+ var el=document.getElementById('auditTable');if(!el)return;var a=(state.auditLog||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد أحداث تدقيق بعد.</div>';return}
+ el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>الكيان</th><th>المرجع</th><th>التفاصيل</th></tr></thead><tbody>'+a.map(function(x){return '<tr><td>'+esc((x.at||'').replace('T',' ').slice(0,19))+'</td><td>'+esc(x.operator||'-')+'</td><td>'+esc(x.action||'')+'</td><td>'+esc(x.entityType||'')+'</td><td>'+esc(x.entityId||'')+'</td><td>'+esc(x.details||'')+'</td></tr>'}).join('')+'</tbody></table></div>'
+}
+function renderAll(){renderOperator();renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderAudit();renderImportRegistry()}
 
-document.getElementById('requestForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('REQ');d.amount=num(d.amount);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال يدوي من المالية';state.requests.push(d);e.target.reset();save();toast('تم حفظ طلب العهدة في صندوق المالية')});
-document.getElementById('fundingForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),r=state.requests.find(function(x){return x.id===d.requestId});if(!r)return;var amount=num(d.amount),already=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-already);if(amount<=0){toast('أدخل مبلغ تمويل صحيح');return}if(amount>remaining+0.001&&!confirm('المبلغ أكبر من المتبقي في الطلب. هل تريد تسجيله كما هو؟'))return;var tx={id:id('TRX'),requestId:r.id,date:d.date,dateRaw:d.date,amount:amount,type:'تغذية عهدة',region:r.region||'',custodyHolder:r.supervisor||'',supervisor:r.supervisor||'',site:r.site||'',description:'تمويل طلب '+r.id,fundingMethod:d.method||'',fundingRef:d.reference||'',beneficiary:d.beneficiary||r.beneficiary||'',status:'معتمد',source:'تنفيذ طلب عهدة',sourceChannel:r.sourceChannel||'',sourceReference:r.sourceReference||'',sourceMessage:r.sourceMessage||'',notes:d.notes||'',createdAt:new Date().toISOString()};state.transactions.push(tx);var total=requestFundedAmount(r);r.status=total+0.001>=num(r.amount)?'ممول':'ممول جزئياً';r.fundedAt=r.status==='ممول'?new Date().toISOString():r.fundedAt;r.lastActionAt=new Date().toISOString();save();closeFundingForm();toast(r.status==='ممول'?'تم تمويل الطلب بالكامل':'تم تسجيل تمويل جزئي')});
-document.getElementById('txnForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('TRX');d.amount=num(d.amount);d.dateRaw=d.date;d.status='مسجل';d.source='إدخال يدوي';d.custodyHolder=d.supervisor||'';var ex=exceptionFor(d);if(ex.length)d.status='يحتاج مراجعة';state.transactions.push(d);if(d.type==='تحويل داخلي'&&d.transferTo){state.transactions.push({id:id('TRX'),date:d.date,dateRaw:d.date,amount:d.amount,type:'تحويل وارد',region:d.region,custodyHolder:d.transferTo,supervisor:d.transferTo,site:d.site,description:'تحويل وارد من '+(d.supervisor||'غير محدد'),status:d.status,source:'تحويل داخلي',linkedId:d.id})}e.target.reset();entryRules();save();toast('تم تسجيل الحركة')});
+document.getElementById('requestForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('REQ');d.amount=num(d.amount);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال يدوي من المالية';state.requests.push(d);audit('إنشاء طلب عهدة','Request',d.id,d.supervisor+' | '+money(d.amount)+' | '+(d.sourceChannel||''));e.target.reset();save();toast('تم حفظ طلب العهدة في صندوق المالية')});
+document.getElementById('fundingForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),r=state.requests.find(function(x){return x.id===d.requestId});if(!r)return;var amount=num(d.amount),already=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-already);if(amount<=0){toast('أدخل مبلغ تمويل صحيح');return}if(amount>remaining+0.001&&!confirm('المبلغ أكبر من المتبقي في الطلب. هل تريد تسجيله كما هو؟'))return;var tx={id:id('TRX'),requestId:r.id,date:d.date,dateRaw:d.date,amount:amount,type:'تغذية عهدة',region:r.region||'',custodyHolder:r.supervisor||'',supervisor:r.supervisor||'',site:r.site||'',description:'تمويل طلب '+r.id,fundingMethod:d.method||'',fundingRef:d.reference||'',beneficiary:d.beneficiary||r.beneficiary||'',status:'معتمد',source:'تنفيذ طلب عهدة',sourceChannel:r.sourceChannel||'',sourceReference:r.sourceReference||'',sourceMessage:r.sourceMessage||'',notes:d.notes||'',createdAt:new Date().toISOString()};state.transactions.push(tx);var total=requestFundedAmount(r);r.status=total+0.001>=num(r.amount)?'ممول':'ممول جزئياً';r.fundedAt=r.status==='ممول'?new Date().toISOString():r.fundedAt;r.lastActionAt=new Date().toISOString();audit('تنفيذ تمويل طلب','Transaction',tx.id,r.id+' | '+r.supervisor+' | '+money(amount)+' | '+(d.method||''));save();closeFundingForm();toast(r.status==='ممول'?'تم تمويل الطلب بالكامل':'تم تسجيل تمويل جزئي')});
+document.getElementById('txnForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('TRX');d.amount=num(d.amount);d.dateRaw=d.date;d.status='مسجل';d.source='إدخال يدوي';d.custodyHolder=d.supervisor||'';var ex=exceptionFor(d);if(ex.length)d.status='يحتاج مراجعة';state.transactions.push(d);if(d.type==='تحويل داخلي'&&d.transferTo){state.transactions.push({id:id('TRX'),date:d.date,dateRaw:d.date,amount:d.amount,type:'تحويل وارد',region:d.region,custodyHolder:d.transferTo,supervisor:d.transferTo,site:d.site,description:'تحويل وارد من '+(d.supervisor||'غير محدد'),status:d.status,source:'تحويل داخلي',linkedId:d.id})}audit('تسجيل حركة نقدية','Transaction',d.id,d.type+' | '+money(d.amount)+' | '+(d.custodyHolder||''));e.target.reset();entryRules();save();toast('تم تسجيل الحركة')});
 window.entryRules=function(){var t=document.getElementById('txnType').value;document.querySelectorAll('.coverage').forEach(function(x){x.style.display=t==='تغطية'?'block':'none'});document.querySelectorAll('.transfer').forEach(function(x){x.style.display=t==='تحويل داخلي'?'block':'none'});document.querySelectorAll('.noncov').forEach(function(x){x.style.display=(t!=='تغطية'&&t!=='تغذية عهدة'&&t!=='تحويل داخلي')?'block':'none'})};
 
 
@@ -525,8 +538,8 @@ window.commitPreparedImport=function(){
    state.transactions.push(it);existingKeys[k]=1;added++
   })
  });
- state.imports.push({id:id('SRC'),fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[],control:x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile)}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
- pendingImport=null;save();document.getElementById('importResult').innerHTML='<div class="notice"><strong>تم الاستيراد.</strong> حركات: '+added.toLocaleString('ar-SA')+'، طلبات: '+reqAdded.toLocaleString('ar-SA')+'، لقطات سابقة حُيدت: '+superseded.toLocaleString('ar-SA')+'، مكررات تم تجاوزها: '+dupes.toLocaleString('ar-SA')+'.</div>';toast('تم اعتماد الاستيراد')
+ var importId=id('SRC');state.imports.push({id:importId,fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[],control:x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile)}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
+ audit('استيراد ملف عهدة','Import',importId,pendingImport.file.name+' | '+(mode==='snapshot'?'Snapshot':'Delta')+' | حركات '+added+' | طلبات '+reqAdded);pendingImport=null;save();document.getElementById('importResult').innerHTML='<div class="notice"><strong>تم الاستيراد.</strong> حركات: '+added.toLocaleString('ar-SA')+'، طلبات: '+reqAdded.toLocaleString('ar-SA')+'، لقطات سابقة حُيدت: '+superseded.toLocaleString('ar-SA')+'، مكررات تم تجاوزها: '+dupes.toLocaleString('ar-SA')+'.</div>';toast('تم اعتماد الاستيراد')
 }
 function renderImportRegistry(){
  var el=document.getElementById('importRegistry');if(!el)return;var a=(state.imports||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد ملفات مستوردة بعد.</div>';return}
@@ -550,12 +563,14 @@ XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(im),'سجل الاست�
 XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(recon),'مطابقة المصادر');
 XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(siteRows),'ملخص المواقع الشهري');
 XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(recoveries),'مرشحات الاسترداد');
+var auditRows=(state.auditLog||[]).map(function(x){return {'الوقت':x.at,'المستخدم':x.operator,'الإجراء':x.action,'الكيان':x.entityType,'المرجع':x.entityId,'التفاصيل':x.details}});
+XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(auditRows),'سجل التدقيق');
 XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(all),'أثر الحركات الكامل');
 XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'.xlsx')
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.8.0'}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0'}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();
 })();
 </script>
