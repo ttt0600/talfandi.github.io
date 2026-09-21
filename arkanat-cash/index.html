@@ -181,7 +181,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='0.9.0';
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
@@ -570,7 +570,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0'}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();
 })();
 </script>
