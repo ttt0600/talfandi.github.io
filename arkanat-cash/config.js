@@ -1,7 +1,7 @@
-// إعدادات البوابة المشتركة.
-// لا يتم تفعيل الوضع السحابي حتى تعبئة هذه القيم بعد إنشاء مشروع مستقل.
+// إعدادات بوابة العهد النقدية المشتركة.
+// يستخدم المشروع القائم ضمن اشتراك Arkanat Org الحالي، بدون إنشاء مشروع Supabase إضافي.
 window.ARKANAT_CASH_CONFIG = {
-  mode: "local",
-  supabaseUrl: "",
-  supabasePublishableKey: ""
+  mode: "supabase",
+  supabaseUrl: "https://ujzvulovzvmxqubnkwlg.supabase.co",
+  supabasePublishableKey: "sb_publishable_Ne4tExS35y0YJV1lkIy1hw_uaIh36-Y"
 };
