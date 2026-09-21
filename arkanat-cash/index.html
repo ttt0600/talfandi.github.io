@@ -25,6 +25,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 .drop{border:2px dashed #b8c7d0;border-radius:14px;padding:24px;text-align:center;background:#fafcfd}.drop.drag{border-color:var(--gold);background:#fffaf2}
 .footer{max-width:1400px;margin:0 auto 22px;padding:0 18px;color:var(--muted);font-size:11px}
 .toast{position:fixed;left:18px;bottom:18px;background:#162734;color:#fff;padding:11px 14px;border-radius:10px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s;z-index:50}.toast.show{opacity:1;transform:none}
+.authgate{position:fixed;inset:0;z-index:100;background:rgba(15,36,56,.92);display:none;align-items:center;justify-content:center;padding:18px}.authgate.show{display:flex}.authbox{width:min(460px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 70px rgba(0,0,0,.25)}.authbox h2{margin:0 0 8px;color:var(--navy)}.authbox p{color:var(--muted);font-size:13px;line-height:1.7}.authmsg{margin-top:10px;font-size:12px;color:var(--bad)}.cloudok{color:#bfe9d4}.cloudwarn{color:#ffe0a6}
 @media(max-width:1050px){.layout{grid-template-columns:1fr}.side{position:static;display:flex;overflow:auto;gap:4px}.navbtn{width:auto;white-space:nowrap}.kpis{grid-template-columns:repeat(2,1fr)}.formgrid,.grid3{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.layout{padding:10px}.head{align-items:flex-start}.pill{display:none}.kpis,.grid2,.grid3,.formgrid{grid-template-columns:1fr}.titlebar{align-items:flex-start;flex-direction:column}.kpi .val{font-size:21px}}
 </style>
@@ -32,7 +33,20 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <script src="./cloud.js"></script>
 </head>
 <body>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">التخزين: <span id="storageMode">محلي</span></div></div></div></header>
+<div id="authGate" class="authgate">
+  <div class="authbox">
+    <div class="mark" style="background:var(--navy);margin-bottom:12px">أ</div>
+    <h2>الدخول إلى بوابة العهد النقدية</h2>
+    <p>البيانات أصبحت مشتركة بين المستخدمين المصرح لهم. استخدم حسابك المعتمد في بيئة أركانات الحالية.</p>
+    <form id="cloudLoginForm" class="formgrid" style="grid-template-columns:1fr">
+      <div class="field"><label>البريد الإلكتروني</label><input name="email" type="email" autocomplete="username" required dir="ltr"></div>
+      <div class="field"><label>كلمة المرور</label><input name="password" type="password" autocomplete="current-password" required dir="ltr"></div>
+      <button class="btn primary" type="submit">دخول</button>
+    </form>
+    <div id="authMessage" class="authmsg"></div>
+  </div>
+</div>
+<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تجريبية مستقلة</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav">
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
@@ -177,20 +191,35 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة تجريبية مستقلة v0.9 — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
+<div class="footer">نسخة تجريبية مستقلة v1.0 — لا ترتبط حالياً بـ Guard Control أو أي نظام آخر. جميع البيانات التشغيلية تبقى في المتصفح ما لم يقم المستخدم بتصديرها.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='0.9.0';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'1.0.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.0.0';
+var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false;
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
-function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
+function persistLocal(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
+function setSyncState(msg,kind){var el=document.getElementById('syncState');if(!el)return;el.textContent=msg||'—';el.className=kind==='ok'?'cloudok':kind==='warn'?'cloudwarn':''}
+function scheduleCloudSync(){
+  if(cloudHydrating||!cloudReady||!window.ArkanatCashCloud||!ArkanatCashCloud.session)return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer=setTimeout(syncAllNow,450);
+}
+async function syncAllNow(){
+  if(cloudSyncRunning||!cloudReady||!ArkanatCashCloud.session)return;
+  cloudSyncRunning=true;setSyncState('مزامنة…','warn');
+  try{await ArkanatCashCloud.syncState(state);setSyncState('متزامن','ok')}
+  catch(e){console.error(e);setSyncState('تعذر','warn');toast('تعذر مزامنة البيانات المشتركة')}
+  finally{cloudSyncRunning=false}
+}
+function save(){persistLocal();scheduleCloudSync()}
 function audit(action,entityType,entityId,details){state.auditLog.push({id:id('AUD'),at:new Date().toISOString(),operator:(state.meta&&state.meta.operator)||'غير محدد',action:action,entityType:entityType||'',entityId:entityId||'',details:details||''})}
 window.setOperator=function(){var current=(state.meta&&state.meta.operator)||'',v=prompt('اكتب اسم موظف المالية المستخدم لهذه النسخة:',current);if(v===null)return;state.meta.operator=String(v).trim();audit('تحديث مستخدم الجلسة','System','',state.meta.operator||'غير محدد');save()}
 function renderOperator(){var el=document.getElementById('operatorName');if(el)el.textContent=(state.meta&&state.meta.operator)||'غير محدد'}
-function renderStorageMode(){var el=document.getElementById('storageMode');if(!el)return;var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};el.textContent=cfg.mode==='supabase'?'مشترك':'محلي'}
+function renderStorageMode(){var el=document.getElementById('storageMode');if(!el)return;var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};if(cfg.mode!=='supabase'){el.textContent='محلي';return}el.textContent=cloudReady&&window.ArkanatCashCloud&&ArkanatCashCloud.session?'مشترك':'غير متصل'}
 function id(prefix){return prefix+'-'+new Date().toISOString().replace(/\D/g,'').slice(0,14)+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
 function num(v){var n=Number(String(v==null?'':v).replace(/,/g,''));return isFinite(n)?n:0}
 function money(v){return num(v).toLocaleString('ar-SA',{minimumFractionDigits:2,maximumFractionDigits:2})+' ر.س'}
@@ -288,6 +317,56 @@ function coverageAmountPatterns(){
 function renderExceptions(){
 var list=[];state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded')return;exceptionFor(t).forEach(function(e){list.push({type:e[0],severity:e[1],txn:t})})});coverageAmountPatterns().forEach(function(x){list.push({type:'قيمة تغطية مختلفة عن النمط',severity:'معلومة تشغيلية',txn:x.txn,msg:x.msg})});duplicates().forEach(function(p){list.push({type:'تكرار محتمل',severity:'عالية',txn:p[1],msg:'تشابه مع الحركة '+(p[0].legacyNo||p[0].id)})});
 document.getElementById('exceptionList').innerHTML=list.length?'<div class="card"><div class="tablewrap"><table class="tbl"><thead><tr><th>النوع</th><th>الأهمية</th><th>الحركة</th><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>'+list.map(function(x){return '<tr><td>'+esc(x.type)+'</td><td><span class="badge '+(x.severity==='عالية'?'bad':x.severity==='متوسطة'?'warn':'info')+'">'+esc(x.severity)+'</span></td><td>'+esc(x.txn.legacyNo||x.txn.id)+'</td><td>'+money(x.txn.amount)+'</td><td>'+esc(x.msg||x.txn.description||x.txn.reason||'')+'</td></tr>'}).join('')+'</tbody></table></div></div>':'<div class="card empty">لا توجد استثناءات مكتشفة.</div>'
+}
+function showAuthGate(show,msg){
+ var g=document.getElementById('authGate'),m=document.getElementById('authMessage');if(g)g.classList.toggle('show',!!show);if(m)m.textContent=msg||''
+}
+function applyRemoteState(remote,access){
+ cloudHydrating=true;
+ var oldMeta=state.meta||{};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.0.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ persistLocal();cloudHydrating=false;
+}
+async function loadRemoteState(){
+ if(!cloudReady||!ArkanatCashCloud.session)return;
+ setSyncState('تحميل…','warn');
+ try{var remote=await ArkanatCashCloud.loadState();applyRemoteState(remote,ArkanatCashCloud.access);setSyncState('متزامن','ok')}
+ catch(e){console.error(e);setSyncState('تعذر','warn');toast('تعذر تحميل البيانات المشتركة')}
+}
+window.refreshCloud=async function(){
+ if(!cloudReady||!ArkanatCashCloud.session){showAuthGate(true,'سجل الدخول أولاً');return}
+ await syncAllNow();await loadRemoteState();toast('تم تحديث البيانات من القاعدة المشتركة')
+}
+window.signOutCloud=async function(){
+ try{await ArkanatCashCloud.signOut()}catch(e){}
+ cloudReady=false;document.getElementById('signOutBtn').style.display='none';renderStorageMode();setSyncState('—');showAuthGate(true,'تم تسجيل الخروج')
+}
+async function cloudSessionReady(){
+ var access=await ArkanatCashCloud.checkAccess();
+ if(!access){cloudReady=false;showAuthGate(true,'هذا الحساب غير مضاف إلى صلاحيات بوابة العهد النقدية.');return}
+ cloudReady=true;document.getElementById('signOutBtn').style.display='inline-block';state.meta.operator=access.display_name||state.meta.operator||'';
+ var localHas=(state.requests||[]).length+(state.transactions||[]).length+(state.imports||[]).length>0;
+ var remoteEmpty=await ArkanatCashCloud.isRemoteEmpty();
+ if(remoteEmpty&&localHas){
+   if(confirm('قاعدة العهد المشتركة فارغة ويوجد على هذا الجهاز بيانات محلية. هل تريد ترحيل بيانات هذا الجهاز إلى القاعدة المشتركة الآن؟')){
+     setSyncState('ترحيل…','warn');await ArkanatCashCloud.syncState(state);setSyncState('متزامن','ok');toast('تم ترحيل بيانات هذا الجهاز إلى القاعدة المشتركة')
+   }else{
+     var remote0=await ArkanatCashCloud.loadState();applyRemoteState(remote0,access)
+   }
+ }else{
+   var remote=await ArkanatCashCloud.loadState();applyRemoteState(remote,access)
+ }
+ showAuthGate(false);renderAll();setSyncState('متزامن','ok')
+}
+async function bootstrapCloud(){
+ var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};
+ if(cfg.mode!=='supabase'){cloudReady=false;showAuthGate(false);renderAll();return}
+ showAuthGate(true,'جاري الاتصال بقاعدة البيانات المشتركة…');
+ try{
+   var r=await ArkanatCashCloud.init();
+   if(r.session)await cloudSessionReady();
+   else{cloudReady=false;showAuthGate(true,'أدخل بيانات الحساب المصرح له.')}
+ }catch(e){console.error(e);cloudReady=false;showAuthGate(true,'تعذر الاتصال بقاعدة البيانات المشتركة.')}
 }
 function renderAudit(){
  var el=document.getElementById('auditTable');if(!el)return;var a=(state.auditLog||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد أحداث تدقيق بعد.</div>';return}
@@ -548,6 +627,13 @@ function renderImportRegistry(){
  var el=document.getElementById('importRegistry');if(!el)return;var a=(state.imports||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد ملفات مستوردة بعد.</div>';return}
  el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المصدر</th><th>التاريخ</th><th>الطريقة</th><th>الحركات</th><th>الطلبات</th><th>مطابقة المصدر</th><th>الشيتات</th></tr></thead><tbody>'+a.map(function(x){var ss=x.sheets||[],ok=ss.filter(function(s){return s.control&&s.control.status==='مطابق'}).length,bad=ss.filter(function(s){return s.control&&s.control.status==='فرق يحتاج مراجعة'}).length,na=ss.length-ok-bad,label=bad?('فروقات '+bad):ok?('مطابق '+ok+(na?' / غير متاح '+na:'')):'غير متاح';return '<tr><td>'+esc(x.fileName)+'</td><td>'+esc((x.importedAt||'').slice(0,19).replace('T',' '))+'</td><td>'+esc(x.mode==='snapshot'?'لقطة كاملة':'دلتا')+'</td><td>'+Number(x.addedTransactions||0).toLocaleString('ar-SA')+'</td><td>'+Number(x.addedRequests||0).toLocaleString('ar-SA')+'</td><td><span class="badge '+(bad?'bad':ok?'ok':'info')+'">'+esc(label)+'</span></td><td>'+esc(ss.map(function(s){return s.sheet+' — '+profileLabel(s.profile)}).join(' | '))+'</td></tr>'}).join('')+'</tbody></table></div>'
 }
+document.getElementById('cloudLoginForm').addEventListener('submit',async function(e){
+ e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),m=document.getElementById('authMessage');m.textContent='جاري تسجيل الدخول…';
+ try{await ArkanatCashCloud.signInWithPassword(String(d.email||'').trim(),String(d.password||''));m.textContent='';await cloudSessionReady()}
+ catch(err){console.error(err);m.textContent='تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور أو صلاحية الحساب.'}
+});
+window.addEventListener('cash-cloud-auth',function(e){if(!e.detail.session){cloudReady=false;showAuthGate(true,'انتهت جلسة الدخول. سجل الدخول مرة أخرى.')}});
+
 document.getElementById('fileInput').addEventListener('change',function(e){if(e.target.files[0])prepareImport(e.target.files[0]).catch(function(err){document.getElementById('importResult').innerHTML='<div class="notice bad">'+esc(err.message)+'</div>'})});
 var drop=document.getElementById('drop');['dragenter','dragover'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();drop.classList.add('drag')})});['dragleave','drop'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();drop.classList.remove('drag')})});drop.addEventListener('drop',function(e){var f=e.dataTransfer.files[0];if(f)prepareImport(f).catch(function(err){toast(err.message)})});
 window.exportXlsx=function(){if(!window.XLSX){toast('مكتبة Excel لم تكتمل بعد');return}
@@ -573,8 +659,8 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'0.9.0',operator:''}};save();toast('تم مسح البيانات')}}
-renderAll();entryRules();
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],meta:{createdAt:new Date().toISOString(),version:'1.0.0',operator:''}};save();toast('تم مسح البيانات')}}
+renderAll();entryRules();bootstrapCloud();
 })();
 </script>
 </body>
