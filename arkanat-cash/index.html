@@ -204,7 +204,7 @@ return '<div class="tablewrap"><table class="tbl"><thead><tr><th>الرقم</th>
 function renderRecent(){document.getElementById('recent').innerHTML=rowTable(state.transactions.slice().reverse().slice(0,7))}
 function renderReviewMini(){var n=state.requests.filter(function(r){return r.status==='جديد'||r.status==='يحتاج استكمال'}).length+state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'}).length;document.getElementById('reviewMini').innerHTML=n?'<div class="notice warn">يوجد <strong>'+n+'</strong> عنصر يحتاج مراجعة مالية.</div><button class="btn" onclick="go(\'review\')">فتح صندوق المراجعة</button>':'<div class="notice">لا توجد عناصر معلقة حالياً.</div>'}
 function renderBalances(){
-var m={};state.transactions.forEach(function(t){var h=t.supervisor||'غير محدد';m[h]=(m[h]||0)+txnEffect(t)});
+var m={};state.transactions.forEach(function(t){var h=t.custodyHolder||t.supervisor||'غير محدد';m[h]=(m[h]||0)+txnEffect(t)});
 var a=Object.keys(m).sort(function(x,y){return m[y]-m[x]});
 if(!a.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد بيانات.</div>';return}
 document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المشرف/حامل العهدة</th><th>الرصيد الدفتري</th></tr></thead><tbody>'+a.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="money">'+money(m[k])+'</td></tr>'}).join('')+'</tbody></table></div>'
@@ -219,11 +219,11 @@ var a=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'})
 document.getElementById('requestList').innerHTML=a.length?'<div class="inbox">'+a.map(function(r){return '<div class="item"><div><strong>'+esc(r.supervisor)+' — '+money(r.amount)+'</strong><small>'+esc(r.date)+' · '+esc(r.region)+' · '+esc(r.purpose)+'</small></div><span class="badge '+(r.status==='جديد'?'warn':r.status==='ممول'?'ok':'')+'">'+esc(r.status)+'</span></div>'}).join('')+'</div>':'<div class="empty">لا توجد طلبات.</div>'
 }
 function renderReview(){
-var rq=state.requests.filter(function(r){return r.status==='جديد'||r.status==='يحتاج استكمال'}),tx=state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'});
+var rq=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&(r.status==='جديد'||r.status==='يحتاج استكمال')}),tx=state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'&&t.snapshotStatus!=='superseded'});
 document.getElementById('reviewRequests').innerHTML=rq.length?'<div class="inbox">'+rq.map(function(r){return '<div class="item"><div><strong>'+esc(r.supervisor)+' — '+money(r.amount)+'</strong><small>'+esc(r.date)+' · '+esc(r.purpose)+'</small></div><div class="actions"><button class="btn primary" onclick="approveRequest(\''+r.id+'\')">اعتماد وتمويل</button><button class="btn" onclick="needRequest(\''+r.id+'\')">طلب استكمال</button></div></div>'}).join('')+'</div>':'<div class="empty">لا توجد طلبات جديدة.</div>';
 document.getElementById('reviewTxns').innerHTML=tx.length?'<div class="inbox">'+tx.map(function(t){return '<div class="item"><div><strong>'+esc(t.type)+' — '+money(t.amount)+'</strong><small>'+esc(t.supervisor||'-')+' · '+esc(t.site||'-')+' · '+esc(t.description||t.reason||'')+'</small></div><button class="btn primary" onclick="approveTxn(\''+t.id+'\')">اعتماد</button></div>'}).join('')+'</div>':'<div class="empty">لا توجد حركات معلقة.</div>'
 }
-window.approveRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(!r)return;r.status='ممول';state.transactions.push({id:id('TRX'),date:new Date().toISOString().slice(0,10),dateRaw:new Date().toISOString().slice(0,10),amount:r.amount,type:'تغذية عهدة',region:r.region,supervisor:r.supervisor,site:r.site,description:'تمويل طلب '+r.id,status:'معتمد',source:'بوابة العهد'});save();toast('تم اعتماد الطلب وإنشاء حركة تغذية')}
+window.approveRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(!r)return;r.status='ممول';state.transactions.push({id:id('TRX'),date:new Date().toISOString().slice(0,10),dateRaw:new Date().toISOString().slice(0,10),amount:r.amount,type:'تغذية عهدة',region:r.region,custodyHolder:r.supervisor,supervisor:r.supervisor,site:r.site,description:'تمويل طلب '+r.id,status:'معتمد',source:'بوابة العهد'});save();toast('تم اعتماد الطلب وإنشاء حركة تغذية')}
 window.needRequest=function(i){var r=state.requests.find(function(x){return x.id===i});if(r){r.status='يحتاج استكمال';save()}}
 window.approveTxn=function(i){var t=state.transactions.find(function(x){return x.id===i});if(t){t.status='معتمد';save();toast('تم اعتماد الحركة')}}
 function renderSettlement(){
@@ -242,7 +242,7 @@ document.getElementById('exceptionList').innerHTML=list.length?'<div class="card
 function renderAll(){renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderReview();renderSettlement();renderExceptions();renderImportRegistry()}
 
 document.getElementById('requestForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('REQ');d.amount=num(d.amount);d.status='جديد';d.createdAt=new Date().toISOString();state.requests.push(d);e.target.reset();save();toast('تم حفظ طلب العهدة')});
-document.getElementById('txnForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('TRX');d.amount=num(d.amount);d.dateRaw=d.date;d.status='مسجل';d.source='إدخال يدوي';var ex=exceptionFor(d);if(ex.length)d.status='يحتاج مراجعة';state.transactions.push(d);if(d.type==='تحويل داخلي'&&d.transferTo){state.transactions.push({id:id('TRX'),date:d.date,dateRaw:d.date,amount:d.amount,type:'تحويل وارد',region:d.region,supervisor:d.transferTo,site:d.site,description:'تحويل وارد من '+(d.supervisor||'غير محدد'),status:d.status,source:'تحويل داخلي',linkedId:d.id})}e.target.reset();entryRules();save();toast('تم تسجيل الحركة')});
+document.getElementById('txnForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('TRX');d.amount=num(d.amount);d.dateRaw=d.date;d.status='مسجل';d.source='إدخال يدوي';d.custodyHolder=d.supervisor||'';var ex=exceptionFor(d);if(ex.length)d.status='يحتاج مراجعة';state.transactions.push(d);if(d.type==='تحويل داخلي'&&d.transferTo){state.transactions.push({id:id('TRX'),date:d.date,dateRaw:d.date,amount:d.amount,type:'تحويل وارد',region:d.region,custodyHolder:d.transferTo,supervisor:d.transferTo,site:d.site,description:'تحويل وارد من '+(d.supervisor||'غير محدد'),status:d.status,source:'تحويل داخلي',linkedId:d.id})}e.target.reset();entryRules();save();toast('تم تسجيل الحركة')});
 window.entryRules=function(){var t=document.getElementById('txnType').value;document.querySelectorAll('.coverage').forEach(function(x){x.style.display=t==='تغطية'?'block':'none'});document.querySelectorAll('.transfer').forEach(function(x){x.style.display=t==='تحويل داخلي'?'block':'none'});document.querySelectorAll('.noncov').forEach(function(x){x.style.display=(t!=='تغطية'&&t!=='تغذية عهدة'&&t!=='تحويل داخلي')?'block':'none'})};
 
 
@@ -312,8 +312,24 @@ function detectProfile(rows,hi,headers,map){
 function extractHolder(rows,hi,sheetName){
  var pre=rows.slice(0,Math.max(hi,0)+1).map(function(r){return (r||[]).join(' ')}).join(' ');
  var m=pre.match(/اسم\s*المشرف\s*[:：\-]*\s*([^,\n]+)/i);if(m&&cleanArabic(m[1]))return cleanArabic(m[1]).replace(/العمله.*$/,'').trim();
+ m=pre.match(/لحساب\s+([^,\n]{2,80}?)(?:\s+مدير|\s+مشرف|\s+العمله|$)/i);if(m&&cleanArabic(m[1]))return cleanArabic(m[1]).trim();
  m=pre.match(/\(([^()]{2,60})\)/);if(m)return cleanArabic(m[1]);
- return cleanArabic(sheetName||'')
+ var sn=cleanArabic(sheetName||'');if(/^(sheet\d*|ورقه\d*|الورقه\d*)$/i.test(sn))return '';
+ return sn
+}
+function extractFileDate(rows,hi,ctx){
+ for(var i=0;i<Math.min(Math.max(hi,0)+1,12);i++){var row=rows[i]||[];for(var j=0;j<row.length;j++){var v=row[j];if(v===null||v===''||v===undefined)continue;var d=dateGuess(v,ctx);if(d.date&&d.status!=='needs_review')return d}}
+ return {date:'',raw:'',status:'needs_review'}
+}
+function isFooterRow(row){
+ var z=cleanArabic((row||[]).map(function(v){return v==null?'':v}).join(' '));
+ return textHas(z,['الرصيد النهائي','الرصيد الحالي للعهد','الرصيد المحول من الشركه','الرصيد المحول من الشركة','الاجمالي','الإجمالي','المبلغ المصروف','المتبقي']) && !textHas(z,['رصيد اول المده','رصيد أول المدة','رصيد افتتاحي','رصيد بدايه'])
+}
+function sourceSummary(rows){
+ var out=[];rows.forEach(function(row,idx){var z=cleanArabic((row||[]).map(function(v){return v==null?'':v}).join(' '));if(!z)return;
+  var keys=['الرصيد النهائي','الرصيد الحالي للعهد','الرصيد المحول من الشركه','الرصيد المحول من الشركة','الاجمالي','الإجمالي','المبلغ المصروف','المتبقي'];
+  if(keys.some(function(k){return textHas(z,[k])})){var nums=(row||[]).map(num).filter(function(x){return x!==0});out.push({row:idx+1,label:z.slice(0,120),values:nums.slice(0,6)})}
+ });return out
 }
 function classifyOut(desc,absent,cover,reason){
  var z=cleanArabic([desc,absent,cover,reason].join(' '));
@@ -336,37 +352,39 @@ function eventKey(t){return [t.type,t.dateRaw||t.date,num(t.amount),cleanArabic(
 function parseSheet(wb,sheetName,fileName){
  var ws=wb.Sheets[sheetName],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true}),hi=findHeader(rows),ctx=inferPeriod(fileName,rows);
  if(hi<0)return {sheet:sheetName,profile:'unknown',rows:rows,headerIndex:-1,headers:[],map:{},items:[],ignored:rows.length,warnings:['لم يتم التعرف على صف العناوين']};
- var headers=rows[hi],map=colMap(headers),profile=detectProfile(rows,hi,headers,map),holder=extractHolder(rows,hi,sheetName),region=sheetRegion(sheetName,rows),items=[],ignored=0,warnings=[];
- for(var r=hi+1;r<rows.length;r++){var row=rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined})){ignored++;continue}
+ var headers=rows[hi],map=colMap(headers),profile=detectProfile(rows,hi,headers,map),holder=extractHolder(rows,hi,sheetName),region=sheetRegion(sheetName,rows),items=[],ignored=0,warnings=[],fileDate=extractFileDate(rows,hi,ctx),summary=sourceSummary(rows);
+ for(var r=hi+1;r<rows.length;r++){var row=rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined})||isFooterRow(row)){ignored++;continue}
    if(profile==='request_snapshot'){
-     var amt=num(get(row,map.amount));if(!amt){ignored++;continue}
-     items.push({kind:'request',id:id('REQ'),date:dateGuess(get(row,map.date)||ctx.year+'-'+String(ctx.month||1).padStart(2,'0')+'-01',ctx).date,region:region,supervisor:get(row,map.supervisor),amount:amt,purpose:get(row,map.description)||'طلب عهدة',site:'',iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:get(row,map.reason),status:'جديد',source:fileName,sourceSheet:sheetName,sourceRow:r+1});
+     var amt=num(get(row,map.amount)),reqSup=get(row,map.supervisor);if(!amt||!cleanArabic(reqSup)){ignored++;continue}
+     var reqDate=get(row,map.date)?dateGuess(get(row,map.date),ctx):fileDate;
+     items.push({kind:'request',id:id('REQ'),date:reqDate.date,dateRaw:reqDate.raw,dateStatus:reqDate.status,region:region,supervisor:reqSup,amount:amt,purpose:get(row,map.description)||'طلب عهدة',site:get(row,map.site)||'',iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:get(row,map.reason),status:'جديد',source:fileName,sourceSheet:sheetName,sourceRow:r+1});
      continue
    }
    if(profile==='coverage_list'){
      var amt2=num(get(row,map.amount));if(!amt2){ignored++;continue}
      var dg2=dateGuess(get(row,map.date),ctx),abs=get(row,map.absent),cov=get(row,map.cover),rs=get(row,map.reason),sup=get(row,map.supervisor),site=get(row,map.site),typ=classifyOut('',abs,cov,rs);
-     items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg2.date,dateRaw:dg2.raw,dateStatus:dg2.status,amount:amt2,type:typ,region:region,supervisor:sup,site:site,absent:abs,cover:cov,reason:rs,description:typ==='تغطية'?'تغطية':cleanArabic(abs||rs||'مصروف مستورد'),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});
+     items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg2.date,dateRaw:dg2.raw,dateStatus:dg2.status,amount:amt2,type:typ,region:region,custodyHolder:sup||holder,supervisor:sup,site:site,absent:abs,cover:cov,reason:rs,description:typ==='تغطية'?'تغطية':cleanArabic(abs||rs||'مصروف مستورد'),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});
      continue
    }
    if(profile==='cash_ledger'){
      var deb=num(get(row,map.debit)),cred=num(get(row,map.credit)),bal=get(row,map.balance),abs3=get(row,map.absent),cov3=get(row,map.cover),rs3=get(row,map.reason),site3=get(row,map.site),desc3=cleanArabic(get(row,map.description)||abs3||rs3),dg3=dateGuess(get(row,map.date),ctx);
      if(!deb&&!cred){ignored++;continue}
-     if(deb>0&&cred===0){var tpIn=openingOrFunding(desc3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:deb,type:tpIn,region:region,supervisor:holder||get(row,map.supervisor),site:site3,description:desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
-     if(cred>0){var tpOut=classifyOut(desc3,abs3,cov3,rs3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:tpOut,region:region,supervisor:holder||get(row,map.supervisor),site:site3,absent:tpOut==='تغطية'?abs3:'',cover:tpOut==='تغطية'?cov3:'',reason:rs3,description:desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
+     var rowSup=get(row,map.supervisor)||holder;
+     if(deb>0&&cred===0){var tpIn=openingOrFunding(desc3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:deb,type:tpIn,region:region,custodyHolder:holder||rowSup,supervisor:rowSup,site:site3,description:desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
+     if(cred>0){var tpOut=classifyOut(desc3,abs3,cov3,rs3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:tpOut,region:region,custodyHolder:holder||rowSup,supervisor:rowSup,site:site3,absent:tpOut==='تغطية'?abs3:'',cover:tpOut==='تغطية'?cov3:'',reason:rs3,description:desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
      continue
    }
    if(profile==='expense_ledger'){
      var out=num(get(row,map.out)),inn=num(get(row,map.in)),desc4=cleanArabic(get(row,map.description)),dg4=dateGuess(get(row,map.date),ctx),site4=get(row,map.site)||sheetName;
      if(!out&&!inn){ignored++;continue}
-     if(inn>0){items.push({kind:'txn',id:id('IMP'),date:dg4.date,dateRaw:dg4.raw,dateStatus:dg4.status,amount:inn,type:openingOrFunding(desc4),region:region,supervisor:holder,site:site4,description:desc4,reportedBalance:get(row,map.balance),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
-     if(out>0){var tp4=classifyOut(desc4,'','',get(row,map.reason));items.push({kind:'txn',id:id('IMP'),date:dg4.date,dateRaw:dg4.raw,dateStatus:dg4.status,amount:out,type:tp4,region:region,supervisor:holder,site:site4,description:desc4,documentRef:get(row,map.document),vehicle:get(row,map.vehicle),reason:get(row,map.reason),reportedBalance:get(row,map.balance),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
+     if(inn>0){items.push({kind:'txn',id:id('IMP'),date:dg4.date,dateRaw:dg4.raw,dateStatus:dg4.status,amount:inn,type:openingOrFunding(desc4),region:region,custodyHolder:holder,supervisor:holder,site:site4,description:desc4,reportedBalance:get(row,map.balance),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
+     if(out>0){var tp4=classifyOut(desc4,'','',get(row,map.reason));items.push({kind:'txn',id:id('IMP'),date:dg4.date,dateRaw:dg4.raw,dateStatus:dg4.status,amount:out,type:tp4,region:region,custodyHolder:holder,supervisor:holder,site:site4,description:desc4,documentRef:get(row,map.document),vehicle:get(row,map.vehicle),reason:get(row,map.reason),reportedBalance:get(row,map.balance),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1});}
      continue
    }
  }
  items.forEach(function(t){if(t.kind==='txn'&&exceptionFor(t).length)t.status='يحتاج مراجعة'});
  var scope=scopeKey(profile,region,holder,ctx,sheetName);
- return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,period:ctx,scopeKey:scope,items:items,ignored:ignored,warnings:warnings}
+ return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,period:ctx,fileDate:fileDate,sourceSummary:summary,scopeKey:scope,items:items,ignored:ignored,warnings:warnings}
 }
 async function fingerprint(file){try{var b=await file.arrayBuffer(),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}catch(e){return [file.name,file.size,file.lastModified].join('|')}}
 async function prepareImport(file){
@@ -400,11 +418,12 @@ function renderUnknownMapper(sh){
 function readManualMap(sh,profile){var sid=domId(sh.sheet),m={};manualFields(profile).forEach(function(x){var el=document.getElementById('map_'+sid+'_'+x[0]);if(el&&el.value!=='')m[x[0]]=Number(el.value)});return m}
 function parseRowsWithManual(sh,profile,map){
  var ctx=inferPeriod(pendingImport.file.name,sh.rows),holder=extractHolder(sh.rows,sh.headerIndex,sh.sheet),region=sheetRegion(sh.sheet,sh.rows),items=[];
- for(var r=sh.headerIndex+1;r<sh.rows.length;r++){var row=sh.rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined}))continue;
-  if(profile==='request_snapshot'){var a=num(get(row,map.amount));if(!a)continue;var d=dateGuess(get(row,map.date)||ctx.year+'-'+String(ctx.month||1).padStart(2,'0')+'-01',ctx);items.push({kind:'request',id:id('REQ'),legacyNo:get(row,map.legacy),date:d.date,dateRaw:d.raw,dateStatus:d.status,region:region,supervisor:get(row,map.supervisor),amount:a,purpose:get(row,map.description)||'طلب عهدة',site:get(row,map.site),iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:get(row,map.reason),status:'جديد',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});continue}
-  if(profile==='coverage_list'){var a2=num(get(row,map.amount));if(!a2)continue;var d2=dateGuess(get(row,map.date),ctx),ab=get(row,map.absent),co=get(row,map.cover),re=get(row,map.reason),su=get(row,map.supervisor),si=get(row,map.site),tp=classifyOut('',ab,co,re);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d2.date,dateRaw:d2.raw,dateStatus:d2.status,amount:a2,type:tp,region:region,supervisor:su,site:si,absent:ab,cover:co,reason:re,description:tp==='تغطية'?'تغطية':cleanArabic(ab||re||'مصروف مستورد'),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});continue}
-  if(profile==='cash_ledger'){var de=num(get(row,map.debit)),cr=num(get(row,map.credit));if(!de&&!cr)continue;var d3=dateGuess(get(row,map.date),ctx),ab3=get(row,map.absent),co3=get(row,map.cover),re3=get(row,map.reason),si3=get(row,map.site),desc3=cleanArabic(get(row,map.description)||ab3||re3);if(de>0)items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d3.date,dateRaw:d3.raw,dateStatus:d3.status,amount:de,type:openingOrFunding(desc3),region:region,supervisor:get(row,map.supervisor)||holder,site:si3,description:desc3,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});if(cr>0){var tp3=classifyOut(desc3,ab3,co3,re3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d3.date,dateRaw:d3.raw,dateStatus:d3.status,amount:cr,type:tp3,region:region,supervisor:get(row,map.supervisor)||holder,site:si3,absent:tp3==='تغطية'?ab3:'',cover:tp3==='تغطية'?co3:'',reason:re3,description:desc3,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1})}continue}
-  if(profile==='expense_ledger'){var ou=num(get(row,map.out)),inn=num(get(row,map.in));if(!ou&&!inn)continue;var d4=dateGuess(get(row,map.date),ctx),desc4=cleanArabic(get(row,map.description)),si4=get(row,map.site)||sh.sheet,su4=get(row,map.supervisor)||holder;if(inn>0)items.push({kind:'txn',id:id('IMP'),date:d4.date,dateRaw:d4.raw,dateStatus:d4.status,amount:inn,type:openingOrFunding(desc4),region:region,supervisor:su4,site:si4,description:desc4,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});if(ou>0){var tp4=classifyOut(desc4,'','',get(row,map.reason));items.push({kind:'txn',id:id('IMP'),date:d4.date,dateRaw:d4.raw,dateStatus:d4.status,amount:ou,type:tp4,region:region,supervisor:su4,site:si4,description:desc4,documentRef:get(row,map.document),vehicle:get(row,map.vehicle),reason:get(row,map.reason),reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1})}}
+ var fileDate=extractFileDate(sh.rows,sh.headerIndex,ctx);
+ for(var r=sh.headerIndex+1;r<sh.rows.length;r++){var row=sh.rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined})||isFooterRow(row))continue;
+  if(profile==='request_snapshot'){var a=num(get(row,map.amount)),rsup=get(row,map.supervisor);if(!a||!cleanArabic(rsup))continue;var d=get(row,map.date)?dateGuess(get(row,map.date),ctx):fileDate;items.push({kind:'request',id:id('REQ'),legacyNo:get(row,map.legacy),date:d.date,dateRaw:d.raw,dateStatus:d.status,region:region,supervisor:rsup,amount:a,purpose:get(row,map.description)||'طلب عهدة',site:get(row,map.site),iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:get(row,map.reason),status:'جديد',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});continue}
+  if(profile==='coverage_list'){var a2=num(get(row,map.amount));if(!a2)continue;var d2=dateGuess(get(row,map.date),ctx),ab=get(row,map.absent),co=get(row,map.cover),re=get(row,map.reason),su=get(row,map.supervisor),si=get(row,map.site),tp=classifyOut('',ab,co,re);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d2.date,dateRaw:d2.raw,dateStatus:d2.status,amount:a2,type:tp,region:region,custodyHolder:su||holder,supervisor:su,site:si,absent:ab,cover:co,reason:re,description:tp==='تغطية'?'تغطية':cleanArabic(ab||re||'مصروف مستورد'),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});continue}
+  if(profile==='cash_ledger'){var de=num(get(row,map.debit)),cr=num(get(row,map.credit));if(!de&&!cr)continue;var d3=dateGuess(get(row,map.date),ctx),ab3=get(row,map.absent),co3=get(row,map.cover),re3=get(row,map.reason),si3=get(row,map.site),desc3=cleanArabic(get(row,map.description)||ab3||re3);if(de>0)items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d3.date,dateRaw:d3.raw,dateStatus:d3.status,amount:de,type:openingOrFunding(desc3),region:region,custodyHolder:holder||get(row,map.supervisor),supervisor:get(row,map.supervisor)||holder,site:si3,description:desc3,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});if(cr>0){var tp3=classifyOut(desc3,ab3,co3,re3);items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:d3.date,dateRaw:d3.raw,dateStatus:d3.status,amount:cr,type:tp3,region:region,supervisor:get(row,map.supervisor)||holder,site:si3,absent:tp3==='تغطية'?ab3:'',cover:tp3==='تغطية'?co3:'',reason:re3,description:desc3,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1})}continue}
+  if(profile==='expense_ledger'){var ou=num(get(row,map.out)),inn=num(get(row,map.in));if(!ou&&!inn)continue;var d4=dateGuess(get(row,map.date),ctx),desc4=cleanArabic(get(row,map.description)),si4=get(row,map.site)||sh.sheet,su4=get(row,map.supervisor)||holder;if(inn>0)items.push({kind:'txn',id:id('IMP'),date:d4.date,dateRaw:d4.raw,dateStatus:d4.status,amount:inn,type:openingOrFunding(desc4),region:region,custodyHolder:holder||su4,supervisor:su4,site:si4,description:desc4,reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1});if(ou>0){var tp4=classifyOut(desc4,'','',get(row,map.reason));items.push({kind:'txn',id:id('IMP'),date:d4.date,dateRaw:d4.raw,dateStatus:d4.status,amount:ou,type:tp4,region:region,supervisor:su4,site:si4,description:desc4,documentRef:get(row,map.document),vehicle:get(row,map.vehicle),reason:get(row,map.reason),reportedBalance:get(row,map.balance),status:'مسجل',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:r+1})}}
  }
  items.forEach(function(t){if(t.kind==='txn'&&exceptionFor(t).length)t.status='يحتاج مراجعة'});return {items:items,holder:holder,region:region,period:ctx,scopeKey:scopeKey(profile,region,holder,ctx,sh.sheet)}
 }
@@ -417,6 +436,7 @@ function renderImportPreview(){
  if(prior)html+='<div class="notice bad"><strong>هذا الملف سبق استيراده على هذا الجهاز.</strong> يمكن مراجعته في سجل الاستيراد. لن يمنع النظام الاستيراد إذا اخترت ذلك عمداً.</div>';
  html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>المشرف/النطاق</th><th>حركات قابلة للاستيراد</th><th>صفوف متجاهلة</th><th>الحالة</th></tr></thead><tbody>';
  pendingImport.sheets.forEach(function(x){html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td>'+x.ignored.toLocaleString('ar-SA')+'</td><td>'+(x.profile==='unknown'?'<span class="badge bad">يحتاج تعيين أعمدة</span>':'<span class="badge ok">جاهز</span>')+'</td></tr>'});html+='</tbody></table></div>';
+ var summaries=[];pendingImport.sheets.forEach(function(x){(x.sourceSummary||[]).forEach(function(z){summaries.push(esc(x.sheet)+' — '+esc(z.label))})});if(summaries.length)html+='<div class="notice" style="margin-top:10px"><strong>ملخصات مصدرية تم رصدها ولن تُحتسب كحركات:</strong><br>'+summaries.slice(0,12).join('<br>')+'</div>';
  var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(s,x){return s+x.items.length},0);
  html+='<div class="actions" style="margin-top:12px"><button class="btn primary" '+(known?'':'disabled')+' onclick="commitPreparedImport()">اعتماد استيراد '+known.toLocaleString('ar-SA')+' سجل</button></div>';
  var unknown=pendingImport.sheets.filter(function(x){return x.profile==='unknown'});
@@ -428,6 +448,7 @@ window.commitPreparedImport=function(){
  var existingKeys={};state.transactions.forEach(function(t){if(t.snapshotStatus!=='superseded')existingKeys[eventKey(t)]=1});
  pendingImport.sheets.forEach(function(sh){if(sh.profile==='unknown')return;
   if(mode==='snapshot'&&sh.profile!=='request_snapshot'){state.transactions.forEach(function(t){if(t.scopeKey===sh.scopeKey&&t.snapshotStatus!=='superseded'){t.snapshotStatus='superseded';superseded++}})}
+  if(mode==='snapshot'&&sh.profile==='request_snapshot'){state.requests.forEach(function(r){if(r.scopeKey===sh.scopeKey&&r.snapshotStatus!=='superseded'){r.snapshotStatus='superseded';superseded++}})}
   sh.items.forEach(function(it){
    if(it.kind==='request'){it.scopeKey=sh.scopeKey;it.snapshotStatus='current';state.requests.push(it);reqAdded++;return}
    it.scopeKey=sh.scopeKey;it.snapshotStatus='current';var k=eventKey(it);
@@ -435,7 +456,7 @@ window.commitPreparedImport=function(){
    state.transactions.push(it);existingKeys[k]=1;added++
   })
  });
- state.imports.push({id:id('SRC'),fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
+ state.imports.push({id:id('SRC'),fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[]}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
  pendingImport=null;save();document.getElementById('importResult').innerHTML='<div class="notice"><strong>تم الاستيراد.</strong> حركات: '+added.toLocaleString('ar-SA')+'، طلبات: '+reqAdded.toLocaleString('ar-SA')+'، لقطات سابقة حُيدت: '+superseded.toLocaleString('ar-SA')+'، مكررات تم تجاوزها: '+dupes.toLocaleString('ar-SA')+'.</div>';toast('تم اعتماد الاستيراد')
 }
 function renderImportRegistry(){
@@ -444,8 +465,18 @@ function renderImportRegistry(){
 }
 document.getElementById('fileInput').addEventListener('change',function(e){if(e.target.files[0])prepareImport(e.target.files[0]).catch(function(err){document.getElementById('importResult').innerHTML='<div class="notice bad">'+esc(err.message)+'</div>'})});
 var drop=document.getElementById('drop');['dragenter','dragover'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();drop.classList.add('drag')})});['dragleave','drop'].forEach(function(n){drop.addEventListener(n,function(e){e.preventDefault();drop.classList.remove('drag')})});drop.addEventListener('drop',function(e){var f=e.dataTransfer.files[0];if(f)prepareImport(f).catch(function(err){toast(err.message)})});
-window.exportXlsx=function(){if(!window.XLSX){toast('مكتبة Excel لم تكتمل بعد');return}var wb=XLSX.utils.book_new(),tx=state.transactions.map(function(t){return {'رقم الحركة':t.id,'مرجع المصدر':t.legacyNo||'','التاريخ المعتمد':t.date||'','التاريخ كما ورد':t.dateRaw||'','نوع الحركة':t.type,'المبلغ':t.amount,'المنطقة':t.region||'','المشرف/حامل العهدة':t.supervisor||'','الموقع':t.site||'','الحارس الغائب':t.absent||'','الحارس المغطي':t.cover||'','السبب':t.reason||'','البيان':t.description||'','مرجع المستند':t.documentRef||'','الحالة':t.status||'','المصدر':t.source||''}}),rq=state.requests.map(function(r){return {'رقم الطلب':r.id,'التاريخ':r.date,'المنطقة':r.region,'المشرف':r.supervisor,'المبلغ':r.amount,'الغرض':r.purpose,'الموقع':r.site||'','صاحب الحساب':r.beneficiary||'','IBAN':r.iban||'','الحالة':r.status,'ملاحظات':r.notes||''}});
-XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(tx),'الحركات');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rq),'طلبات العهد');XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'.xlsx')}
+window.exportXlsx=function(){if(!window.XLSX){toast('مكتبة Excel لم تكتمل بعد');return}
+var wb=XLSX.utils.book_new();
+function txRow(t){return {'رقم الحركة':t.id,'مرجع المصدر':t.legacyNo||'','التاريخ المعتمد':t.date||'','التاريخ كما ورد':t.dateRaw||'','نوع الحركة':t.type,'المبلغ':t.amount,'المنطقة':t.region||'','حامل العهدة':t.custodyHolder||'','المشرف التشغيلي':t.supervisor||'','الموقع':t.site||'','الحارس الغائب':t.absent||'','الحارس المغطي':t.cover||'','السبب':t.reason||'','البيان':t.description||'','مرجع المستند':t.documentRef||'','المركبة':t.vehicle||'','الحالة':t.status||'','حالة اللقطة':t.snapshotStatus||'current','المصدر':t.source||'','الشيت':t.sourceSheet||'','صف المصدر':t.sourceRow||''}}
+var current=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'}).map(txRow),all=state.transactions.map(txRow);
+var rq=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'}).map(function(r){return {'رقم الطلب':r.id,'التاريخ':r.date,'التاريخ كما ورد':r.dateRaw||'','المنطقة':r.region,'المشرف':r.supervisor,'المبلغ':r.amount,'الغرض':r.purpose,'الموقع':r.site||'','صاحب الحساب':r.beneficiary||'','IBAN':r.iban||'','الحالة':r.status,'ملاحظات':r.notes||'','المصدر':r.source||'','الشيت':r.sourceSheet||'','صف المصدر':r.sourceRow||''}});
+var im=(state.imports||[]).map(function(x){return {'SRC_ID':x.id,'اسم الملف':x.fileName,'تاريخ الاستيراد':x.importedAt,'الطريقة':x.mode,'حركات مضافة':x.addedTransactions,'طلبات مضافة':x.addedRequests,'لقطات محيدة':x.superseded,'مكررات متجاوزة':x.duplicatesSkipped,'الشيتات':(x.sheets||[]).map(function(s){return s.sheet+' / '+profileLabel(s.profile)}).join(' | ')}})
+XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(current),'الحركات الحالية');
+XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rq),'طلبات العهد الحالية');
+XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(im),'سجل الاستيراد');
+XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(all),'أثر الحركات الكامل');
+XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'.xlsx')
+}
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
 window.clearData=function(){if(confirm('سيتم حذف جميع البيانات المحفوظة في هذا المتصفح فقط. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],meta:{createdAt:new Date().toISOString(),version:'0.3.0'}};save();toast('تم مسح البيانات')}}
