@@ -332,6 +332,28 @@ function sourceSummary(rows){
   if(keys.some(function(k){return textHas(z,[k])})){var nums=(row||[]).map(num).filter(function(x){return x!==0});out.push({row:idx+1,label:z.slice(0,120),values:nums.slice(0,6)})}
  });return out
 }
+function importedEffect(t){
+ if(!t||t.kind!=='txn')return 0;
+ if(t.type==='رصيد افتتاحي')return num(t.amount)*(t.openingSign===-1?-1:1);
+ if(t.type==='تغذية عهدة'||t.type==='تحويل وارد')return num(t.amount);
+ if(['تغطية','مصروف تشغيلي','تحويل داخلي','إعادة للشركة','دفعة تحت التسوية','دفع نقدي لفرد'].indexOf(t.type)>=0)return -num(t.amount);
+ return 0
+}
+function controlFromSource(items,summary,profile){
+ var tx=items.filter(function(x){return x.kind==='txn'}),resources=0,outflows=0,balance=0,requestTotal=0;
+ items.forEach(function(x){if(x.kind==='request'){requestTotal+=num(x.amount);return}var e=importedEffect(x);balance+=e;if(e>0)resources+=e;else if(e<0)outflows+=Math.abs(e)});
+ var reportedClosing=null,reportedFunding=null,reportedExpense=null;
+ (summary||[]).forEach(function(z){var label=cleanArabic(z.label),vals=z.values||[],last=vals.length?vals[vals.length-1]:null;
+   if(textHas(label,['الرصيد الحالي للعهد','المتبقي'])&&last!==null)reportedClosing=last;
+   else if(textHas(label,['الرصيد النهائي'])&&vals.length>=3)reportedClosing=last;
+   if(profile==='coverage_list'&&textHas(label,['المبلغ المصروف'])&&last!==null)reportedFunding=last;
+   if(profile==='coverage_list'&&textHas(label,['الاجمالي','الإجمالي'])&&last!==null)reportedExpense=last;
+ });
+ var diff=null,status='غير متاح';
+ if(profile==='coverage_list'&&reportedFunding!==null&&reportedExpense!==null&&reportedClosing!==null){diff=(reportedFunding-reportedExpense)-reportedClosing;status=Math.abs(diff)<0.01?'مطابق':'فرق يحتاج مراجعة'}
+ else if(reportedClosing!==null&&profile!=='coverage_list'&&profile!=='request_snapshot'){diff=balance-reportedClosing;status=Math.abs(diff)<0.01?'مطابق':'فرق يحتاج مراجعة'}
+ return {resources:resources,outflows:outflows,balance:balance,requestTotal:requestTotal,reportedClosing:reportedClosing,reportedFunding:reportedFunding,reportedExpense:reportedExpense,diff:diff,status:status}
+}
 function classifyOut(desc,absent,cover,reason){
  var z=cleanArabic([desc,absent,cover,reason].join(' '));
  if(textHas(z,['عهده محوله الي','عهدة محولة الى','محوله الي','محولة الى']))return 'تحويل داخلي';
@@ -386,8 +408,8 @@ function parseSheet(wb,sheetName,fileName){
    }
  }
  items.forEach(function(t){if(t.kind==='txn'&&exceptionFor(t).length)t.status='يحتاج مراجعة'});
- var scope=scopeKey(profile,region,holder,ctx,sheetName);
- return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,period:ctx,fileDate:fileDate,sourceSummary:summary,scopeKey:scope,items:items,ignored:ignored,warnings:warnings}
+ var scope=scopeKey(profile,region,holder,ctx,sheetName),control=controlFromSource(items,summary,profile);
+ return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,period:ctx,fileDate:fileDate,sourceSummary:summary,control:control,scopeKey:scope,items:items,ignored:ignored,warnings:warnings}
 }
 async function fingerprint(file){try{var b=await file.arrayBuffer(),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}catch(e){return [file.name,file.size,file.lastModified].join('|')}}
 async function prepareImport(file){
@@ -431,14 +453,14 @@ function parseRowsWithManual(sh,profile,map){
  items.forEach(function(t){if(t.kind==='txn'&&exceptionFor(t).length)t.status='يحتاج مراجعة'});return {items:items,holder:holder,region:region,period:ctx,scopeKey:scopeKey(profile,region,holder,ctx,sh.sheet)}
 }
 window.applyManualMapping=function(sheet){
- var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;var p=sh.manualProfile||'coverage_list',m=readManualMap(sh,p),parsed=parseRowsWithManual(sh,p,m);if(!parsed.items.length){toast('لم ينتج عن التعيين أي سجل. راجع الأعمدة المختارة.');return}sh.profile=p;sh.map=m;sh.items=parsed.items;sh.holder=parsed.holder;sh.region=parsed.region;sh.period=parsed.period;sh.scopeKey=parsed.scopeKey;sh.ignored=Math.max(0,sh.rows.length-sh.headerIndex-1-parsed.items.length);renderImportPreview();toast('تم تعيين الأعمدة وأصبح الشيت جاهزاً')
+ var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;var p=sh.manualProfile||'coverage_list',m=readManualMap(sh,p),parsed=parseRowsWithManual(sh,p,m);if(!parsed.items.length){toast('لم ينتج عن التعيين أي سجل. راجع الأعمدة المختارة.');return}sh.profile=p;sh.map=m;sh.items=parsed.items;sh.holder=parsed.holder;sh.region=parsed.region;sh.period=parsed.period;sh.sourceSummary=sourceSummary(sh.rows);sh.control=controlFromSource(sh.items,sh.sourceSummary,p);sh.scopeKey=parsed.scopeKey;sh.ignored=Math.max(0,sh.rows.length-sh.headerIndex-1-parsed.items.length);renderImportPreview();toast('تم تعيين الأعمدة وأصبح الشيت جاهزاً')
 }
 
 function renderImportPreview(){
  if(!pendingImport)return;var prior=state.imports.some(function(x){return x.fingerprint===pendingImport.fingerprint}),html='';
  if(prior)html+='<div class="notice bad"><strong>هذا الملف سبق استيراده على هذا الجهاز.</strong> يمكن مراجعته في سجل الاستيراد. لن يمنع النظام الاستيراد إذا اخترت ذلك عمداً.</div>';
- html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>المشرف/النطاق</th><th>حركات قابلة للاستيراد</th><th>صفوف متجاهلة</th><th>الحالة</th></tr></thead><tbody>';
- pendingImport.sheets.forEach(function(x){html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td>'+x.ignored.toLocaleString('ar-SA')+'</td><td>'+(x.profile==='unknown'?'<span class="badge bad">يحتاج تعيين أعمدة</span>':'<span class="badge ok">جاهز</span>')+'</td></tr>'});html+='</tbody></table></div>';
+ html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>المشرف/النطاق</th><th>السجلات</th><th>الموارد/الطلبات</th><th>الخارج</th><th>الرصيد المحسوب</th><th>مطابقة المصدر</th></tr></thead><tbody>';
+ pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=x.profile==='request_snapshot'?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
  var summaries=[];pendingImport.sheets.forEach(function(x){(x.sourceSummary||[]).forEach(function(z){summaries.push(esc(x.sheet)+' — '+esc(z.label))})});if(summaries.length)html+='<div class="notice" style="margin-top:10px"><strong>ملخصات مصدرية تم رصدها ولن تُحتسب كحركات:</strong><br>'+summaries.slice(0,12).join('<br>')+'</div>';
  var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(s,x){return s+x.items.length},0);
  html+='<div class="actions" style="margin-top:12px"><button class="btn primary" '+(known?'':'disabled')+' onclick="commitPreparedImport()">اعتماد استيراد '+known.toLocaleString('ar-SA')+' سجل</button></div>';
@@ -459,7 +481,7 @@ window.commitPreparedImport=function(){
    state.transactions.push(it);existingKeys[k]=1;added++
   })
  });
- state.imports.push({id:id('SRC'),fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[]}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
+ state.imports.push({id:id('SRC'),fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[],control:x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile)}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
  pendingImport=null;save();document.getElementById('importResult').innerHTML='<div class="notice"><strong>تم الاستيراد.</strong> حركات: '+added.toLocaleString('ar-SA')+'، طلبات: '+reqAdded.toLocaleString('ar-SA')+'، لقطات سابقة حُيدت: '+superseded.toLocaleString('ar-SA')+'، مكررات تم تجاوزها: '+dupes.toLocaleString('ar-SA')+'.</div>';toast('تم اعتماد الاستيراد')
 }
 function renderImportRegistry(){
