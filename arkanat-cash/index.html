@@ -657,35 +657,63 @@ window.applyManualMapping=function(sheet){
  var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;var p=sh.manualProfile||'coverage_list',m=readManualMap(sh,p),parsed=parseRowsWithManual(sh,p,m);if(!parsed.items.length){toast('لم ينتج عن التعيين أي سجل. راجع الأعمدة المختارة.');return}sh.profile=p;sh.map=m;sh.items=parsed.items;sh.holder=parsed.holder;sh.region=parsed.region;sh.period=parsed.period;sh.sourceSummary=sourceSummary(sh.rows);sh.control=controlFromSource(sh.items,sh.sourceSummary,p);sh.scopeKey=parsed.scopeKey;sh.ignored=Math.max(0,sh.rows.length-sh.headerIndex-1-parsed.items.length);renderImportPreview();toast('تم تعيين الأعمدة وأصبح الشيت جاهزاً')
 }
 
+function analyzeImportDuplicates(){
+ var out={fileDuplicate:false,newRecords:0,exactDuplicates:0,conflicts:0,newRequests:0,duplicateRequests:0,requestConflicts:0};
+ if(!pendingImport)return out;
+ out.fileDuplicate=state.imports.some(function(x){return x.fingerprint&&x.fingerprint===pendingImport.fingerprint});
+ var txExact={},txConflict={},rqExact={},rqConflict={};
+ state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;txExact[eventKey(t)]=1;txConflict[eventConflictKey(t)]=1});
+ state.requests.forEach(function(r){if(r.snapshotStatus==='superseded'||r.status==='مرفوض')return;rqExact[requestKey(r)]=1;rqConflict[requestConflictKey(r)]=1});
+ pendingImport.sheets.forEach(function(sh){(sh.items||[]).forEach(function(it){
+   if(it.kind==='request'){var rk=requestKey(it),rc=requestConflictKey(it);if(rqExact[rk])out.duplicateRequests++;else if(rqConflict[rc])out.requestConflicts++;else{out.newRequests++;rqExact[rk]=1;rqConflict[rc]=1}return}
+   var ek=eventKey(it),ec=eventConflictKey(it);if(txExact[ek])out.exactDuplicates++;else if(txConflict[ec])out.conflicts++;else{out.newRecords++;txExact[ek]=1;txConflict[ec]=1}
+ })});
+ return out
+}
+function sameSnapshotAccount(t,sh){
+ if(!t||t.snapshotStatus==='superseded'||t.status==='ملغى')return false;
+ var p=sh.period||{},month=p.year&&p.month?(p.year+'-'+String(p.month).padStart(2,'0')):'',td=(t.date||'').slice(0,7);
+ if(month&&td&&month!==td)return false;
+ var tc=t.custodyCategory||inferCustodyCategory('',t.description||'',t.sourceSheet||''),sc=sh.custodyCategory||inferCustodyCategory(sh.profile,pendingImport&&pendingImport.file?pendingImport.file.name:'',sh.sheet);
+ if(cleanArabic(tc)!==cleanArabic(sc))return false;
+ var th=normalizeHolderName(t.custodyHolder||t.supervisor,t.sourceSheet),shh=normalizeHolderName(sh.holder,sh.sheet);
+ if(shh&&cleanArabic(th)!==cleanArabic(shh))return false;
+ if(!shh&&sh.sheet&&t.sourceSheet&&cleanArabic(t.sourceSheet)!==cleanArabic(sh.sheet))return false;
+ return true
+}
 function renderImportPreview(){
- if(!pendingImport)return;var prior=state.imports.some(function(x){return x.fingerprint===pendingImport.fingerprint}),html='';
- if(prior)html+='<div class="notice bad"><strong>هذا الملف سبق استيراده على هذا الجهاز.</strong> يمكن مراجعته في سجل الاستيراد. لن يمنع النظام الاستيراد إذا اخترت ذلك عمداً.</div>';
- html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>المشرف/النطاق</th><th>السجلات</th><th>الموارد/الطلبات</th><th>الخارج</th><th>الرصيد المحسوب</th><th>مطابقة المصدر</th></tr></thead><tbody>';
- pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=x.profile==='request_snapshot'?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
+ if(!pendingImport)return;var ds=analyzeImportDuplicates(),html='';
+ if(ds.fileDuplicate)html+='<div class="notice bad"><strong>تكرار كامل:</strong> بصمة هذا الملف مطابقة لملف سبق استيراده إلى القاعدة المشتركة. '+(isSuperAdmin()?'يمكن لـ Super Admin فقط تجاوزه مع تسجيل سبب.':'لن يسمح النظام بإعادة استيراده.')+'</div>';
+ html+='<div class="kpis" style="margin-bottom:12px"><div class="kpi"><div class="lab">سجلات جديدة</div><div class="val">'+(ds.newRecords+ds.newRequests).toLocaleString('ar-SA')+'</div></div><div class="kpi"><div class="lab">موجودة مسبقاً</div><div class="val">'+(ds.exactDuplicates+ds.duplicateRequests).toLocaleString('ar-SA')+'</div></div><div class="kpi"><div class="lab">تعارضات</div><div class="val">'+(ds.conflicts+ds.requestConflicts).toLocaleString('ar-SA')+'</div><div class="sub">نفس الهوية مع اختلاف مالي</div></div></div>';
+ html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>نوع العهدة</th><th>المشرف/النطاق</th><th>السجلات</th><th>الموارد/الطلبات</th><th>الخارج</th><th>الرصيد المحسوب</th><th>مطابقة المصدر</th></tr></thead><tbody>';
+ pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=x.profile==='request_snapshot'?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.custodyCategory||inferCustodyCategory(x.profile,pendingImport.file.name,x.sheet))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
  var summaries=[];pendingImport.sheets.forEach(function(x){(x.sourceSummary||[]).forEach(function(z){summaries.push(esc(x.sheet)+' — '+esc(z.label))})});if(summaries.length)html+='<div class="notice" style="margin-top:10px"><strong>ملخصات مصدرية تم رصدها ولن تعامل كصفوف مصروف:</strong><br>'+summaries.slice(0,12).join('<br>')+'</div>';
- var synth=pendingImport.sheets.filter(function(x){return x.profile==='coverage_list'&&x.control&&x.control.status==='مطابق'&&x.control.reportedFunding!==null});if(synth.length)html+='<div class="notice warn" style="margin-top:10px"><strong>تمويل مجمع من ملخص المصدر:</strong> عند الاستيراد بوضع «لقطة كاملة» سيضاف مبلغ العهدة المرجعي كسجل تمويل غير موزع على المشرفين حتى تتوفر تفاصيل التغذيات الفردية. '+synth.map(function(x){return esc(x.sheet)+': '+money(x.control.reportedFunding)}).join(' | ')+'</div>';
- var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(s,x){return s+x.items.length},0);
- html+='<div class="actions" style="margin-top:12px"><button class="btn primary" '+(known?'':'disabled')+' onclick="commitPreparedImport()">اعتماد استيراد '+known.toLocaleString('ar-SA')+' سجل</button></div>';
- var unknown=pendingImport.sheets.filter(function(x){return x.profile==='unknown'});
- if(unknown.length){html+='<div class="notice warn" style="margin-top:12px">يوجد '+unknown.length+' شيت غير معروف. يمكنك تعيين أعمدته يدوياً مرة واحدة بدلاً من تعديل ملف Excel.</div>';unknown.forEach(function(sh){html+=renderUnknownMapper(sh)})}
+ var synth=pendingImport.sheets.filter(function(x){return x.profile==='coverage_list'&&x.control&&x.control.status==='مطابق'&&x.control.reportedFunding!==null});if(synth.length)html+='<div class="notice warn" style="margin-top:10px"><strong>تمويل مجمع من ملخص المصدر:</strong> في «اللقطة الكاملة» يضاف مبلغ العهدة المرجعي كسجل تمويل غير موزع حتى تتوفر تفاصيل التغذيات الفردية. '+synth.map(function(x){return esc(x.sheet)+': '+money(x.control.reportedFunding)}).join(' | ')+'</div>';
+ var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(a,x){return a+x.items.length},0),blocked=ds.fileDuplicate&&!isSuperAdmin();
+ html+='<div class="actions" style="margin-top:12px"><button class="btn primary" '+(known&&!blocked?'':'disabled')+' onclick="commitPreparedImport()">'+(ds.fileDuplicate&&isSuperAdmin()?'تجاوز Super Admin واستيراد الملف':'اعتماد الاستيراد')+'</button></div>';
+ var unknown=pendingImport.sheets.filter(function(x){return x.profile==='unknown'});if(unknown.length){html+='<div class="notice warn" style="margin-top:12px">يوجد '+unknown.length+' شيت غير معروف. يمكنك تعيين أعمدته يدوياً مرة واحدة بدلاً من تعديل ملف Excel.</div>';unknown.forEach(function(sh){html+=renderUnknownMapper(sh)})}
  document.getElementById('importResult').innerHTML=html
 }
 window.commitPreparedImport=function(){
- if(!pendingImport)return;var mode=document.getElementById('importMode').value,added=0,dupes=0,superseded=0,reqAdded=0;
- var existingKeys={};state.transactions.forEach(function(t){if(t.snapshotStatus!=='superseded')existingKeys[eventKey(t)]=1});
+ if(!pendingImport)return;var mode=document.getElementById('importMode').value,ds=analyzeImportDuplicates(),overrideReason='';
+ if(ds.fileDuplicate){if(!isSuperAdmin()){toast('تم منع إعادة استيراد الملف المطابق');return}overrideReason=prompt('هذا الملف مطابق لملف سبق استيراده. اكتب سبب التجاوز لتسجيله في سجل التدقيق:','');if(!overrideReason||String(overrideReason).trim().length<5){toast('يجب تسجيل سبب واضح للتجاوز');return}}
+ var added=0,dupes=0,conflicts=0,superseded=0,reqAdded=0,reqDupes=0,reqConflicts=0;
  pendingImport.sheets.forEach(function(sh){if(sh.profile==='unknown')return;
-  if(mode==='snapshot'&&sh.profile!=='request_snapshot'){state.transactions.forEach(function(t){if(t.scopeKey===sh.scopeKey&&t.snapshotStatus!=='superseded'){t.snapshotStatus='superseded';superseded++}})}
-  if(mode==='snapshot'&&sh.profile==='request_snapshot'){state.requests.forEach(function(r){if(r.scopeKey===sh.scopeKey&&r.snapshotStatus!=='superseded'){r.snapshotStatus='superseded';superseded++}})}
-  if(mode==='snapshot'&&sh.profile==='coverage_list'&&sh.control&&sh.control.status==='مطابق'&&sh.control.reportedFunding!==null){var pool='غير موزع — '+(sh.region||sh.sheet);state.transactions.push({id:id('IMP'),date:(sh.fileDate&&sh.fileDate.date)||((sh.period&&sh.period.year)+'-'+String((sh.period&&sh.period.month)||1).padStart(2,'0')+'-01'),dateRaw:(sh.fileDate&&sh.fileDate.raw)||'',amount:sh.control.reportedFunding,type:'تغذية عهدة',region:sh.region||'',custodyHolder:pool,supervisor:'',description:'تمويل مجمع مشتق من ملخص المصدر؛ المسمى في الملف «المبلغ المصروف»',status:'يحتاج مراجعة',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:'SUMMARY',scopeKey:sh.scopeKey,snapshotStatus:'current',summaryDerived:true});added++}
-  sh.items.forEach(function(it){
-   if(it.kind==='request'){it.scopeKey=sh.scopeKey;it.snapshotStatus='current';state.requests.push(it);reqAdded++;return}
-   it.scopeKey=sh.scopeKey;it.snapshotStatus='current';var k=eventKey(it);
-   if(mode==='delta'&&existingKeys[k]){dupes++;return}
-   state.transactions.push(it);existingKeys[k]=1;added++
-  })
+   if(mode==='snapshot'&&sh.profile!=='request_snapshot'){
+     state.transactions.forEach(function(t){if(sameSnapshotAccount(t,sh)){t.snapshotStatus='superseded';superseded++}})
+   }
+   var existingKeys={},conflictKeys={};state.transactions.forEach(function(t){if(t.snapshotStatus!=='superseded'&&t.status!=='ملغى'){existingKeys[eventKey(t)]=1;conflictKeys[eventConflictKey(t)]=1}});
+   var requestKeys={},requestConflicts={};state.requests.forEach(function(r){if(r.snapshotStatus!=='superseded'&&r.status!=='مرفوض'){requestKeys[requestKey(r)]=1;requestConflicts[requestConflictKey(r)]=1}});
+   if(mode==='snapshot'&&sh.profile==='coverage_list'&&sh.control&&sh.control.status==='مطابق'&&sh.control.reportedFunding!==null){var pool='غير موزع — '+(sh.region||sh.sheet),cat='تغطيات',syn={id:id('IMP'),date:(sh.fileDate&&sh.fileDate.date)||((sh.period&&sh.period.year)+'-'+String((sh.period&&sh.period.month)||1).padStart(2,'0')+'-01'),dateRaw:(sh.fileDate&&sh.fileDate.raw)||'',amount:sh.control.reportedFunding,type:'تغذية عهدة',region:sh.region||'',custodyHolder:pool,supervisor:'',custodyCategory:cat,accountKey:makeAccountKey(sh.region||'',pool,cat),periodExpense:false,description:'تمويل مجمع مشتق من ملخص المصدر؛ المسمى في الملف «المبلغ المصروف»',status:'يحتاج مراجعة',source:pendingImport.file.name,sourceSheet:sh.sheet,sourceRow:'SUMMARY',scopeKey:sh.scopeKey,snapshotStatus:'current',summaryDerived:true};syn.recordFingerprint=eventKey(syn);if(!existingKeys[syn.recordFingerprint]){state.transactions.push(syn);existingKeys[syn.recordFingerprint]=1;added++}}
+   sh.items.forEach(function(it){
+     it.scopeKey=sh.scopeKey;it.snapshotStatus='current';
+     if(it.kind==='request'){it.custodyCategory=it.custodyCategory||inferCustodyCategory('request_snapshot',it.purpose,sh.sheet);it.accountKey=it.accountKey||makeAccountKey(it.region,it.supervisor,it.custodyCategory);it.recordFingerprint=requestKey(it);var rk=it.recordFingerprint,rc=requestConflictKey(it);if(requestKeys[rk]){reqDupes++;return}if(requestConflicts[rc]){reqConflicts++;return}state.requests.push(it);requestKeys[rk]=1;requestConflicts[rc]=1;reqAdded++;return}
+     it.custodyCategory=it.custodyCategory||sh.custodyCategory||inferCustodyCategory(sh.profile,pendingImport.file.name,sh.sheet);it.accountKey=it.accountKey||makeAccountKey(it.region,it.custodyHolder||it.supervisor,it.custodyCategory);it.recordFingerprint=eventKey(it);var k=it.recordFingerprint,ck=eventConflictKey(it);if(existingKeys[k]){dupes++;return}if(conflictKeys[ck]&&mode==='delta'){conflicts++;return}state.transactions.push(it);existingKeys[k]=1;conflictKeys[ck]=1;added++
+   })
  });
- var importId=id('SRC');state.imports.push({id:importId,fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[],control:x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile)}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes});
- audit('استيراد ملف عهدة','Import',importId,pendingImport.file.name+' | '+(mode==='snapshot'?'Snapshot':'Delta')+' | حركات '+added+' | طلبات '+reqAdded);pendingImport=null;save();document.getElementById('importResult').innerHTML='<div class="notice"><strong>تم الاستيراد.</strong> حركات: '+added.toLocaleString('ar-SA')+'، طلبات: '+reqAdded.toLocaleString('ar-SA')+'، لقطات سابقة حُيدت: '+superseded.toLocaleString('ar-SA')+'، مكررات تم تجاوزها: '+dupes.toLocaleString('ar-SA')+'.</div>';toast('تم اعتماد الاستيراد')
+ var importId=id('SRC');state.imports.push({id:importId,fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,custodyCategory:x.custodyCategory,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[],control:x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile)}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes+reqDupes,conflictsSkipped:conflicts+reqConflicts,overrideReason:overrideReason||''});
+ audit(ds.fileDuplicate?'تجاوز تكرار ملف عهدة':'استيراد ملف عهدة','Import',importId,pendingImport.file.name+' | '+(mode==='snapshot'?'Snapshot':'Delta')+' | حركات '+added+' | طلبات '+reqAdded+' | مكررات '+(dupes+reqDupes)+' | تعارضات '+(conflicts+reqConflicts)+(overrideReason?' | سبب التجاوز: '+overrideReason:''));
+ pendingImport=null;save();document.getElementById('importResult').innerHTML='<div class="notice"><strong>تم الاستيراد.</strong> حركات: '+added.toLocaleString('ar-SA')+'، طلبات: '+reqAdded.toLocaleString('ar-SA')+'، لقطات سابقة حُيدت: '+superseded.toLocaleString('ar-SA')+'، مكررات تم تجاوزها: '+(dupes+reqDupes).toLocaleString('ar-SA')+'، تعارضات تم إيقافها: '+(conflicts+reqConflicts).toLocaleString('ar-SA')+'.</div>';toast('تم اعتماد الاستيراد')
 }
 function renderImportRegistry(){
  var el=document.getElementById('importRegistry');if(!el)return;var a=(state.imports||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد ملفات مستوردة بعد.</div>';return}
