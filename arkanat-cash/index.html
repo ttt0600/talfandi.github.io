@@ -244,7 +244,14 @@ var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
-function persistLocal(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
+function ensureAccountsFromState(){
+ if(!state.accounts)state.accounts=[];var by={};state.accounts.forEach(function(a){by[a.accountKey]=a});
+ state.transactions.forEach(function(t){if(!t.accountKey||t.snapshotStatus==='superseded')return;var a=by[t.accountKey];if(!a){a={accountKey:t.accountKey,region:t.region||'',holderName:t.custodyHolder||t.supervisor||'غير محدد',custodyCategory:t.custodyCategory||'عام',accountRole:'مستقلة',parentAccountKey:'',status:'نشط',openedPeriod:(t.date||'').slice(0,7)+'-01',lastActivityDate:t.date||'',sourceFile:t.sourceFile||t.source||'',notes:''};state.accounts.push(a);by[t.accountKey]=a}else if(t.date&&(!a.lastActivityDate||t.date>a.lastActivityDate))a.lastActivityDate=t.date;
+   if(t.type==='عهدة فرعية مفتوحة')a.accountRole='رئيسية مجمعة';
+   if(t.type==='تحويل وارد'&&t.linkedId){var p=state.transactions.find(function(x){return x.id===t.linkedId});if(p&&p.accountKey){a.accountRole='فرعية';a.parentAccountKey=p.accountKey}}
+ });
+}
+function persistLocal(){ensureAccountsFromState();localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
 function setSyncState(msg,kind){var el=document.getElementById('syncState');if(!el)return;el.textContent=msg||'—';el.className=kind==='ok'?'cloudok':kind==='warn'?'cloudwarn':''}
 function scheduleCloudSync(){
   if(cloudHydrating||!cloudReady||!window.ArkanatCashCloud||!ArkanatCashCloud.session)return;
@@ -298,7 +305,7 @@ var out=[];
 if(t.type==='تغطية'&&t.absent&&t.cover&&same(t.absent,t.cover))out.push(['تغطية ذاتية','عالية']);
 if(t.type==='تغطية'&&(/لا\s*يوجد|لايوجد/.test(String(t.absent||''))))out.push(['لا يوجد فرد أساسي','معلومة تشغيلية']);
 if(textHas([t.reason,t.description].join(' '),['تخصم من راتبه','تخصم من راتب','تخصم منه','خصم من راتب','نقص من راتب']))out.push(['مرشح استرداد/خصم يحتاج اعتماد','متوسطة']);
-if(t.type!=='تغطية'&&t.type!=='تغذية عهدة'&&t.type!=='تحويل داخلي'&&t.type!=='تحويل وارد'&&!t.documentRef)out.push(['مصروف غير تغطية بلا مستند','عالية']);
+if((t.expenseCategory==='وقود'||t.expenseCategory==='مصروف تشغيلي')&&t.periodExpense!==false&&!t.documentRef&&!evidenceCount(t.id))out.push(['مصروف تشغيلي بلا مستند مؤيد','عالية']);
 if(t.dateStatus==='needs_review')out.push(['تاريخ يحتاج مراجعة','عالية']);
 return out}
 function duplicates(){
@@ -313,7 +320,7 @@ document.getElementById('kpis').innerHTML=data.map(function(x){return '<div clas
 function evidenceCount(txId){return (state.evidence||[]).filter(function(e){return e.transactionId===txId}).length}
 function rowTable(list){
 if(!list.length)return '<div class="empty">لا توجد حركات مسجلة.</div>';
-return '<div class="tablewrap"><table class="tbl"><thead><tr><th>الرقم</th><th>التاريخ</th><th>النوع</th><th>نوع العهدة</th><th>المبلغ</th><th>حامل العهدة</th><th>المشرف التشغيلي</th><th>الموقع</th><th>البيان</th><th>المستندات</th><th>الحالة</th></tr></thead><tbody>'+list.map(function(t){var ec=evidenceCount(t.id);return '<tr><td>'+esc(t.legacyNo||t.id)+'</td><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(t.type)+'</td><td>'+esc(t.custodyCategory||'عام')+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.custodyHolder||t.supervisor||'-')+'</td><td>'+esc(t.supervisor||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.description||t.reason||'-')+'</td><td>'+(ec?'<span class="badge ok">'+ec+'</span>':'-')+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'}).join('')+'</tbody></table></div>'
+return '<div class="tablewrap"><table class="tbl"><thead><tr><th>الرقم</th><th>التاريخ</th><th>النوع</th><th>محفظة العهدة</th><th>تصنيف المصروف</th><th>المبلغ</th><th>حامل العهدة</th><th>المشرف التشغيلي</th><th>الموقع</th><th>البيان</th><th>المستندات</th><th>الحالة</th></tr></thead><tbody>'+list.map(function(t){var ec=evidenceCount(t.id);return '<tr><td>'+esc(t.legacyNo||t.id)+'</td><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(t.type)+'</td><td>'+esc(t.custodyCategory||'عام')+'</td><td>'+esc(t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory))+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.custodyHolder||t.supervisor||'-')+'</td><td>'+esc(t.supervisor||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.description||t.reason||'-')+'</td><td>'+(ec?'<span class="badge ok">'+ec+'</span>':'-')+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'}).join('')+'</tbody></table></div>'
 }
 function renderRecent(){document.getElementById('recent').innerHTML=rowTable(state.transactions.slice().reverse().slice(0,7))}
 function renderReviewMini(){var n=state.requests.filter(function(r){return r.status==='جديد'||r.status==='يحتاج استكمال'}).length+state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'}).length;document.getElementById('reviewMini').innerHTML=n?'<div class="notice warn">يوجد <strong>'+n+'</strong> عنصر يحتاج مراجعة مالية.</div><button class="btn" onclick="go(\'review\')">فتح صندوق المراجعة</button>':'<div class="notice">لا توجد عناصر معلقة حالياً.</div>'}
@@ -358,9 +365,10 @@ var h=(document.getElementById('settleHolder').value||'').trim(),f=document.getE
 var a=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&(!h||(String(t.custodyHolder||'').indexOf(h)>=0||String(t.supervisor||'').indexOf(h)>=0))&&(!f||String(t.date||'')>=f)&&(!to||String(t.date||'')<=to)});
 var inc=a.filter(function(t){return t.type==='رصيد افتتاحي'||t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+(t.type==='رصيد افتتاحي'?num(t.amount)*(t.openingSign===-1?-1:1):num(t.amount))},0);
 var exp=a.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0);
+var advances=a.filter(function(t){return t.type==='دفعة تحت التسوية'||t.expenseCategory==='سلف وذمم'}).reduce(function(s,t){return s+num(t.amount)},0);
 var out=a.filter(function(t){return t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة'}).reduce(function(s,t){return s+num(t.amount)},0);
 var bal=a.reduce(function(s,t){return s+txnEffect(t)},0);
-document.getElementById('settlementResult').innerHTML='<div class="kpis"><div class="kpi"><div class="lab">الموارد</div><div class="val">'+money(inc)+'</div></div><div class="kpi"><div class="lab">المصروفات</div><div class="val">'+money(exp)+'</div></div><div class="kpi"><div class="lab">تحويل/إعادة</div><div class="val">'+money(out)+'</div></div><div class="kpi"><div class="lab">الرصيد</div><div class="val">'+money(bal)+'</div></div><div class="kpi"><div class="lab">عدد الحركات</div><div class="val">'+a.length.toLocaleString('ar-SA')+'</div></div></div>'+rowTable(a.slice().reverse())+'<div class="card" style="margin-top:14px"><h3>ملخص المصروفات حسب الموقع</h3><div class="subtitle" style="margin-bottom:10px">يستخدم في جرد نهاية الشهر ومراجعة التغطيات ومرشحات الاسترداد. لا ينشئ خصماً على الرواتب تلقائياً.</div>'+siteSummaryHtml(a)+'</div>'
+document.getElementById('settlementResult').innerHTML='<div class="kpis"><div class="kpi"><div class="lab">الموارد</div><div class="val">'+money(inc)+'</div></div><div class="kpi"><div class="lab">مصروف فترة</div><div class="val">'+money(exp)+'</div></div><div class="kpi"><div class="lab">سلف/ذمم</div><div class="val">'+money(advances)+'</div></div><div class="kpi"><div class="lab">تحويل/إعادة</div><div class="val">'+money(out)+'</div></div><div class="kpi"><div class="lab">الرصيد</div><div class="val">'+money(bal)+'</div></div><div class="kpi"><div class="lab">عدد الحركات</div><div class="val">'+a.length.toLocaleString('ar-SA')+'</div></div></div>'+rowTable(a.slice().reverse())+'<div class="card" style="margin-top:14px"><h3>ملخص المصروفات حسب الموقع</h3><div class="subtitle" style="margin-bottom:10px">يستخدم في جرد نهاية الشهر ومراجعة التغطيات ومرشحات الاسترداد. لا ينشئ خصماً على الرواتب تلقائياً.</div>'+siteSummaryHtml(a)+'</div>'
 }
 function coverageAmountPatterns(){
  var groups={};state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.type==='تغطية'}).forEach(function(t){var k=cleanArabic(t.region)+'|'+cleanArabic(t.supervisor);if(!groups[k])groups[k]=[];groups[k].push(t)});
