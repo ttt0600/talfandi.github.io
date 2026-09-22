@@ -287,7 +287,7 @@ if(t.type==='رصيد افتتاحي')return num(t.amount)*(t.openingSign===-1?-
 if(t.type==='تغذية عهدة'||t.type==='تحويل وارد')return num(t.amount);
 if(t.type==='تغطية'||t.type==='مصروف تشغيلي'||t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة'||t.type==='دفعة تحت التسوية'||t.type==='دفع نقدي لفرد')return -num(t.amount);
 return 0}
-function isExpense(t){return ['تغطية','مصروف تشغيلي','دفعة تحت التسوية','دفع نقدي لفرد'].indexOf(t.type)>=0&&t.status!=='ملغى'&&t.snapshotStatus!=='superseded'}
+function isExpense(t){return t.periodExpense!==false&&['رصيد افتتاحي','تغذية عهدة','تحويل داخلي','تحويل وارد','عهدة فرعية مفتوحة','إعادة للشركة'].indexOf(t.type)<0&&t.status!=='ملغى'&&t.snapshotStatus!=='superseded'}
 function calc(){
 var incoming=0,expenses=0,returns=0,transfers=0;
 state.transactions.forEach(function(t){if(t.status==='ملغى'||t.snapshotStatus==='superseded')return;if(t.type==='رصيد افتتاحي')incoming+=num(t.amount)*(t.openingSign===-1?-1:1);else if(t.type==='تغذية عهدة'||t.type==='تحويل وارد')incoming+=num(t.amount);if(isExpense(t))expenses+=num(t.amount);if(t.type==='إعادة للشركة')returns+=num(t.amount);if(t.type==='تحويل داخلي')transfers+=num(t.amount)});
@@ -454,23 +454,52 @@ var pendingImport=null;
 function cleanArabic(s){return String(s==null?'':s).replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim()}
 function normHeader(x){return cleanArabic(x).replace(/[()_\-\/]/g,'').replace(/\s+/g,'').toLowerCase()}
 function textHas(s,arr){var z=cleanArabic(s).toLowerCase();return arr.some(function(x){return z.indexOf(cleanArabic(x).toLowerCase())>=0})}
+function parsePeriodText(text){
+ var m=String(text||'').match(/(20\d{2})\D{0,4}(0?[1-9]|1[0-2])/);if(m)return {year:+m[1],month:+m[2]};
+ m=String(text||'').match(/(0?[1-9]|1[0-2])\D{0,4}(20\d{2})/);if(m)return {year:+m[2],month:+m[1]};
+ m=String(text||'').match(/شهر\s*(\d{1,2})/);if(m)return {year:new Date().getFullYear(),month:+m[1]};
+ return null
+}
 function inferPeriod(fileName,rows){
- var text=(fileName||'')+' '+rows.slice(0,8).map(function(r){return (r||[]).join(' ')}).join(' ');
- var m=text.match(/(20\d{2})\D{0,4}(0?[1-9]|1[0-2])/); if(m)return {year:+m[1],month:+m[2]};
- m=text.match(/(0?[1-9]|1[0-2])\D{0,4}(20\d{2})/); if(m)return {year:+m[2],month:+m[1]};
- m=text.match(/شهر\s*(\d{1,2})/); if(m)return {year:new Date().getFullYear(),month:+m[1]};
- return {year:new Date().getFullYear(),month:null}
+ var headerText=rows.slice(0,8).map(function(r){return (r||[]).join(' ')}).join(' '),fromHeader=parsePeriodText(headerText),fromFile=parsePeriodText(fileName||''),p=fromHeader||fromFile||{year:new Date().getFullYear(),month:null};
+ p.source=fromHeader?'داخل الملف':fromFile?'اسم الملف':'افتراضي';
+ p.fileYear=fromFile&&fromFile.year||null;p.fileMonth=fromFile&&fromFile.month||null;
+ p.mismatch=!!(fromHeader&&fromFile&&(fromHeader.year!==fromFile.year||fromHeader.month!==fromFile.month));
+ return p
+}
+function inferCustodyCategory(profile,text,sheet){
+ var z=cleanArabic((text||'')+' '+(sheet||''));
+ if(profile==='request_snapshot')return textHas(z,['وقود','بنزين'])?'وقود':'تغطيات';
+ if(profile==='expense_ledger')return textHas(z,['وقود','بنزين'])?'وقود':'تشغيل عام';
+ if(profile==='cash_ledger'&&textHas(z,['مدير تشغيل','عهدة محولة من الشركة لحساب','عهده محوله من الشركه لحساب']))return 'تشغيل عام';
+ if(profile==='cash_ledger'||profile==='coverage_list')return 'تغطيات';
+ return 'عام'
+}
+function inferExpenseCategory(type,desc,absent,reason,custodyCategory){
+ var z=cleanArabic([desc,absent,reason].join(' '));
+ if(type==='رصيد افتتاحي'||type==='تغذية عهدة')return 'تمويل ورصيد';
+ if(type==='تحويل داخلي'||type==='تحويل وارد'||type==='عهدة فرعية مفتوحة')return 'تحويل عهدة';
+ if(type==='تغطية')return 'تغطيات';
+ if(type==='دفعة تحت التسوية'||textHas(z,['سلفه','سلفة','تحت الحساب']))return 'سلف وذمم';
+ if(type==='دفع نقدي لفرد'||textHas(z,['مستحقات','راتب']))return 'مستحقات وأفراد';
+ if(custodyCategory==='وقود'||textHas(z,['وقود','بنزين']))return 'وقود';
+ return 'مصروف تشغيلي'
+}
+function dateStatusForPeriod(ds,ctx){
+ var st=futureDateStatus(ds);if(st==='needs_review')return st;
+ if(ctx&&ctx.year&&ctx.month){var m=String(ds||'').match(/^(\d{4})-(\d{2})-/);if(m&&(+m[1]!==+ctx.year||+m[2]!==+ctx.month))return 'needs_review'}
+ return st
 }
 function dateGuess(v,ctx){
  var raw=v==null?'':String(v);
- if(v instanceof Date&&!isNaN(v)){var ds0=v.toISOString().slice(0,10);return {date:ds0,raw:raw||v.toLocaleDateString('en-GB'),status:futureDateStatus(ds0)}}
- if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var d=XLSX.SSF.parse_date_code(v);if(d){var ds=String(d.y).padStart(4,'0')+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');return {date:ds,raw:String(v),status:futureDateStatus(ds)}}}
+ if(v instanceof Date&&!isNaN(v)){var ds0=v.toISOString().slice(0,10);return {date:ds0,raw:raw||v.toLocaleDateString('en-GB'),status:dateStatusForPeriod(ds0,ctx)}}
+ if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var d=XLSX.SSF.parse_date_code(v);if(d){var ds=String(d.y).padStart(4,'0')+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');return {date:ds,raw:String(v),status:dateStatusForPeriod(ds,ctx)}}}
  var s0=String(v==null?'':v).trim(); if(!s0)return {date:'',raw:'',status:'needs_review'};
- var iso=s0.match(/^(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(iso){var yy=+iso[1],mm=+iso[2],dd=+iso[3],ds1=yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');return {date:ds1,raw:s0,status:(mm>12||dd>31)?'needs_review':futureDateStatus(ds1)}}
+ var iso=s0.match(/^(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(iso){var yy=+iso[1],mm=+iso[2],dd=+iso[3],ds1=yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');return {date:ds1,raw:s0,status:(mm>12||dd>31)?'needs_review':dateStatusForPeriod(ds1,ctx)}}
  var m=s0.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2,4}))?$/);
  if(m){var a=+m[1],b=+m[2],y=m[3]?+m[3]:(ctx&&ctx.year)||new Date().getFullYear();if(y<100)y+=2000;
    var day=a,mon=b;if(ctx&&ctx.month&&a===ctx.month&&b<=31){mon=a;day=b}
-   if(mon<=12&&day<=31){var ds2=String(y).padStart(4,'0')+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');return {date:ds2,raw:s0,status:futureDateStatus(ds2)}}
+   if(mon<=12&&day<=31){var ds2=String(y).padStart(4,'0')+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');return {date:ds2,raw:s0,status:dateStatusForPeriod(ds2,ctx)}}
  }
  return {date:'',raw:s0,status:'needs_review'}
 }
@@ -560,7 +589,8 @@ function classifyOut(desc,absent,cover,reason){
  if(textHas(z,['رصيد عهده متبقي مع المشرف','رصيد عهدة متبقي مع المشرف']))return 'عهدة فرعية مفتوحة';
  if(textHas(z,['عهده محوله الي','عهدة محولة الى','محوله الي','محولة الى']))return 'تحويل داخلي';
  if(textHas(z,['دفع تحت الحساب','تحت الحساب']))return 'دفعة تحت التسوية';
- if(textHas(z,['مستحقات','سلفه','سلفة','راتب']))return 'دفع نقدي لفرد';
+ if(textHas(z,['سلفه','سلفة']))return 'دفعة تحت التسوية';
+ if(textHas(z,['مستحقات','راتب']))return 'دفع نقدي لفرد';
  var operational=['وقود','بنزين','بطاري','مياه','لوجو','نظاف','بصمه','بصمة','صيانه','صيانة','شعار','سرقه','سرقة','مخالف','تاكسي','شاحن','اغراض','أغراض','ضيافه','ضيافة','زيت','غسيل','تكييف','مخروط','بدله حارس','بدلة حارس'];
  if(textHas(z,operational))return 'مصروف تشغيلي';
  if(cleanArabic(cover)||textHas(reason,['off','غياب','اذن','استئذ','اجاز','اجازه','راحة','راحه','نقص','استبعاد','استقال','وفاه','وفاة','مرض','سكليف','ظرف','تغطي']))return 'تغطية';
