@@ -23,6 +23,7 @@
       request_date:r.date||null, source_date_raw:r.dateRaw||null, date_status:r.dateStatus||null,
       region:r.region||null, supervisor:r.supervisor||"", amount:n(r.amount),
       purpose:r.purpose||null, site:r.site||null, beneficiary:r.beneficiary||null, iban:r.iban||null,
+      custody_category:r.custodyCategory||null, account_key:r.accountKey||null, record_fingerprint:r.recordFingerprint||null,
       source_channel:r.sourceChannel||null, source_reference:r.sourceReference||null, source_message:r.sourceMessage||null,
       finance_notes:r.notes||null, status:r.status||"جديد", source_name:r.source||null,
       source_file:r.sourceFile||null, source_sheet:r.sourceSheet||null, source_row:r.sourceRow==null?null:String(r.sourceRow),
@@ -36,6 +37,7 @@
       id:r.id, legacyNo:r.legacy_id||"", date:r.request_date||"", dateRaw:r.source_date_raw||"",
       dateStatus:r.date_status||"", region:r.region||"", supervisor:r.supervisor||"", amount:n(r.amount),
       purpose:r.purpose||"", site:r.site||"", beneficiary:r.beneficiary||"", iban:r.iban||"",
+      custodyCategory:r.custody_category||"", accountKey:r.account_key||"", recordFingerprint:r.record_fingerprint||"",
       sourceChannel:r.source_channel||"", sourceReference:r.source_reference||"", sourceMessage:r.source_message||"",
       notes:r.finance_notes||"", status:r.status||"جديد", source:r.source_name||"",
       sourceFile:r.source_file||"", sourceSheet:r.source_sheet||"", sourceRow:r.source_row||"",
@@ -50,6 +52,7 @@
       transaction_date:t.date||null, source_date_raw:t.dateRaw||null, date_status:t.dateStatus||null,
       transaction_type:t.type||"مصروف تشغيلي", amount:n(t.amount), opening_sign:t.openingSign==null?null:Number(t.openingSign),
       region:t.region||null, custody_holder:t.custodyHolder||null, operational_supervisor:t.supervisor||null,
+      custody_category:t.custodyCategory||null, account_key:t.accountKey||null, period_expense:t.periodExpense!==false, record_fingerprint:t.recordFingerprint||null,
       transfer_to:t.transferTo||null, site:t.site||null, absent_employee:t.absent||null, cover_employee:t.cover||null,
       reason:t.reason||null, description:t.description||null, document_ref:t.documentRef||null, vehicle:t.vehicle||null,
       funding_method:t.fundingMethod||null, funding_ref:t.fundingRef||null, beneficiary:t.beneficiary||null,
@@ -68,6 +71,7 @@
       dateRaw:t.source_date_raw||"", dateStatus:t.date_status||"", type:t.transaction_type||"",
       amount:n(t.amount), openingSign:t.opening_sign==null?null:Number(t.opening_sign),
       region:t.region||"", custodyHolder:t.custody_holder||"", supervisor:t.operational_supervisor||"",
+      custodyCategory:t.custody_category||"", accountKey:t.account_key||"", periodExpense:t.period_expense!==false, recordFingerprint:t.record_fingerprint||"",
       transferTo:t.transfer_to||"", site:t.site||"", absent:t.absent_employee||"", cover:t.cover_employee||"",
       reason:t.reason||"", description:t.description||"", documentRef:t.document_ref||"", vehicle:t.vehicle||"",
       fundingMethod:t.funding_method||"", fundingRef:t.funding_ref||"", beneficiary:t.beneficiary||"",
@@ -109,6 +113,26 @@
       id:x.id, at:x.event_time||"", userEmail:x.user_email||"", operator:x.user_label||"",
       action:x.action||"", entityType:x.entity_type||"", entityId:x.entity_id||"", details:x.details||"",
       metadata:x.metadata||{}
+    };
+  }
+  function evidenceToDb(x,email){
+    return {
+      id:x.id, transaction_id:x.transactionId||null, evidence_type:x.evidenceType||"مستند مؤيد",
+      file_name:x.fileName||null, drive_file_id:x.driveFileId||null, file_url:x.fileUrl||null,
+      page_number:x.pageNumber==null?null:Number(x.pageNumber), invoice_number:x.invoiceNumber||null,
+      evidence_date:x.evidenceDate||null, amount:x.amount==null?null:n(x.amount),
+      verification_status:x.verificationStatus||"غير مراجع", notes:x.notes||null,
+      created_at:x.createdAt||new Date().toISOString(), created_by_email:x.createdByEmail||email||null
+    };
+  }
+  function evidenceFromDb(x){
+    return {
+      id:x.id, transactionId:x.transaction_id||"", evidenceType:x.evidence_type||"",
+      fileName:x.file_name||"", driveFileId:x.drive_file_id||"", fileUrl:x.file_url||"",
+      pageNumber:x.page_number==null?null:Number(x.page_number), invoiceNumber:x.invoice_number||"",
+      evidenceDate:x.evidence_date||"", amount:x.amount==null?null:n(x.amount),
+      verificationStatus:x.verification_status||"", notes:x.notes||"",
+      createdAt:x.created_at||"", createdByEmail:x.created_by_email||""
     };
   }
 
@@ -162,18 +186,20 @@
 
   api.loadState = async function(){
     if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
-    const [rq,tx,im,au]=await Promise.all([
+    const [rq,tx,im,au,ev]=await Promise.all([
       api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_imports").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_audit_log").select("*").order("event_time",{ascending:true})
+      api.client.from("cash_audit_log").select("*").order("event_time",{ascending:true}),
+      api.client.from("cash_transaction_evidence").select("*").order("created_at",{ascending:true})
     ]);
-    for(const x of [rq,tx,im,au]) if(x.error) throw x.error;
+    for(const x of [rq,tx,im,au,ev]) if(x.error) throw x.error;
     return {
       requests:(rq.data||[]).map(requestFromDb),
       transactions:(tx.data||[]).map(txnFromDb),
       imports:(im.data||[]).map(importFromDb),
-      auditLog:(au.data||[]).map(auditFromDb)
+      auditLog:(au.data||[]).map(auditFromDb),
+      evidence:(ev.data||[]).map(evidenceFromDb)
     };
   };
 
@@ -184,11 +210,13 @@
     const transactions=(state.transactions||[]).map(x=>txnToDb(x,email));
     const imports=(state.imports||[]).map(x=>importToDb(x,email));
     const audit=(state.auditLog||[]).map(x=>auditToDb(x,email));
+    const evidence=(state.evidence||[]).map(x=>evidenceToDb(x,email));
     for(const rows of chunk(requests,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_requests").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(transactions,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transactions").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(imports,100)){ if(!rows.length) continue; const {error}=await api.client.from("cash_imports").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(audit,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_audit_log").upsert(rows,{onConflict:"id"}); if(error) throw error; }
-    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length};
+    for(const rows of chunk(evidence,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transaction_evidence").upsert(rows,{onConflict:"id"}); if(error) throw error; }
+    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length};
   };
 
   api.adminUsers = async function(action,payload={}){
