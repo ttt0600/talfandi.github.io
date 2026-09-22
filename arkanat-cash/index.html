@@ -455,15 +455,14 @@ function inferPeriod(fileName,rows){
 }
 function dateGuess(v,ctx){
  var raw=v==null?'':String(v);
- if(v instanceof Date&&!isNaN(v)){var y=v.getFullYear();return {date:v.toISOString().slice(0,10),raw:raw||v.toLocaleDateString('en-GB'),status:(y<2020||y>2035)?'needs_review':'parsed'}}
- if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var d=XLSX.SSF.parse_date_code(v);if(d){var ds=String(d.y).padStart(4,'0')+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');return {date:ds,raw:String(v),status:(d.y<2020||d.y>2035)?'needs_review':'parsed'}}}
+ if(v instanceof Date&&!isNaN(v)){var ds0=v.toISOString().slice(0,10);return {date:ds0,raw:raw||v.toLocaleDateString('en-GB'),status:futureDateStatus(ds0)}}
+ if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var d=XLSX.SSF.parse_date_code(v);if(d){var ds=String(d.y).padStart(4,'0')+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');return {date:ds,raw:String(v),status:futureDateStatus(ds)}}}
  var s0=String(v==null?'':v).trim(); if(!s0)return {date:'',raw:'',status:'needs_review'};
- var iso=s0.match(/^(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(iso){var yy=+iso[1],mm=+iso[2],dd=+iso[3];return {date:yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0'),raw:s0,status:(yy<2020||yy>2035||mm>12||dd>31)?'needs_review':'parsed'}}
+ var iso=s0.match(/^(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(iso){var yy=+iso[1],mm=+iso[2],dd=+iso[3],ds1=yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');return {date:ds1,raw:s0,status:(mm>12||dd>31)?'needs_review':futureDateStatus(ds1)}}
  var m=s0.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2,4}))?$/);
  if(m){var a=+m[1],b=+m[2],y=m[3]?+m[3]:(ctx&&ctx.year)||new Date().getFullYear();if(y<100)y+=2000;
-   var day=a,mon=b;
-   if(ctx&&ctx.month&&a===ctx.month&&b<=31){mon=a;day=b}
-   if(mon<=12&&day<=31)return {date:String(y).padStart(4,'0')+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0'),raw:s0,status:'parsed'};
+   var day=a,mon=b;if(ctx&&ctx.month&&a===ctx.month&&b<=31){mon=a;day=b}
+   if(mon<=12&&day<=31){var ds2=String(y).padStart(4,'0')+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');return {date:ds2,raw:s0,status:futureDateStatus(ds2)}}
  }
  return {date:'',raw:s0,status:'needs_review'}
 }
@@ -569,8 +568,9 @@ function openingOrFunding(desc){
 }
 function get(row,idx){return idx==null?'':row[idx]}
 function sheetRegion(title,rows){var txt=cleanArabic((rows[0]||[]).join(' ')+' '+title);if(txt.indexOf('الشرقي')>=0)return 'الشرقية';if(txt.indexOf('الغربي')>=0||txt.indexOf('جده')>=0||txt.indexOf('جدة')>=0||txt.indexOf('الطائف')>=0)return 'الغربية';if(txt.indexOf('الرياض')>=0||txt.indexOf('الوسط')>=0)return 'الوسطى';return ''}
-function scopeKey(profile,region,holder,period,sheet){return [profile,region||'',holder||'',period.year||'',period.month||'',sheet||''].join('|')}
-function eventKey(t){return [t.type,t.dateRaw||t.date,num(t.amount),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason)].join('|')}
+function scopeKey(profile,region,holder,period,sheet,category){return [profile,region||'',holder||'',category||'',period.year||'',period.month||'',sheet||''].join('|')}
+function eventKey(t){return [t.type,t.date||t.dateRaw||'',num(t.amount),cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef)].join('|')}
+function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef)].join('|')}
 function parseSheet(wb,sheetName,fileName){
  var ws=wb.Sheets[sheetName],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true}),hi=findHeader(rows),ctx=inferPeriod(fileName,rows);
  if(hi<0)return {sheet:sheetName,profile:'unknown',rows:rows,headerIndex:-1,headers:[],map:{},items:[],ignored:rows.length,warnings:['لم يتم التعرف على صف العناوين']};
