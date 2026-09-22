@@ -58,6 +58,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <button class="navbtn" data-view="exceptions"><span>!</span>الاستثناءات</button>
 <button class="navbtn" data-view="audit"><span>⌁</span>سجل التدقيق</button>
 <button class="navbtn" id="adminNav" data-view="users" style="display:none"><span>♛</span>إدارة المستخدمين</button>
+<button class="navbtn" data-view="evidence"><span>▣</span>المستندات المؤيدة</button>
 <button class="navbtn" data-view="io"><span>⇄</span>استيراد وتصدير</button>
 </aside>
 <main>
@@ -90,7 +91,8 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <div class="field"><label>المنطقة</label><input name="region" placeholder="مثال: الشرقية" required></div>
 <div class="field"><label>المشرف</label><input name="supervisor" required></div>
 <div class="field"><label>المبلغ</label><input name="amount" type="number" min="0.01" step="0.01" required></div>
-<div class="field"><label>الغرض</label><input name="purpose" placeholder="تغطيات / وقود / غيره" required></div>
+<div class="field"><label>نوع العهدة</label><select name="custodyCategory" required><option value="تغطيات">تغطيات</option><option value="وقود">وقود</option><option value="عام">عام/أخرى</option></select></div>
+<div class="field"><label>الغرض</label><input name="purpose" placeholder="وصف مختصر للطلب" required></div>
 <div class="field"><label>الموقع/المشروع</label><input name="site"></div>
 <div class="field"><label>اسم صاحب الحساب</label><input name="beneficiary"></div>
 <div class="field"><label>IBAN</label><input name="iban" dir="ltr"></div>
@@ -113,6 +115,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <div class="field"><label>المبلغ</label><input name="amount" type="number" min="0.01" step="0.01" required></div>
 <div class="field"><label>المنطقة</label><input name="region"></div>
 <div class="field"><label>المشرف/حامل العهدة</label><input name="supervisor"></div>
+<div class="field"><label>نوع العهدة</label><select name="custodyCategory"><option value="تغطيات">تغطيات</option><option value="وقود">وقود</option><option value="عام">عام/أخرى</option></select></div>
 <div class="field"><label>الموقع/الفرع</label><input name="site"></div>
 <div class="field coverage"><label>الحارس الغائب/الأساسي</label><input name="absent"></div>
 <div class="field coverage"><label>الحارس المغطي</label><input name="cover"></div>
@@ -196,16 +199,21 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 <div class="card"><div id="auditTable"></div></div>
 </section>
 
+<section id="evidence" class="view">
+<div class="titlebar"><div><h2>المستندات المؤيدة</h2><div class="subtitle">ربط الفواتير والإيصالات بالحركات المالية ومتابعة حالة المطابقة</div></div></div>
+<div class="card"><div id="evidenceTable"></div></div>
+</section>
+
 <section id="io" class="view">
 <div class="titlebar"><div><h2>الاستيراد والتصدير</h2><div class="subtitle">محرك استيراد متعدد الأنماط لملفات العهد النقدية القديمة والحالية والمستقبلية</div></div></div>
-<div class="notice warn"><strong>الخصوصية:</strong> تتم قراءة ملفات Excel داخل المتصفح. لا ترفع بيانات العهد أو الموظفين إلى GitHub. النسخة الحالية تعمل محلياً، وتم تجهيز طبقة اتصال مستقلة لقاعدة مشتركة تُفعّل فقط بعد إنشاء المشروع المخصص واعتماد الوصول.</div>
+<div class="notice warn"><strong>الخصوصية:</strong> تتم قراءة ملفات Excel داخل المتصفح، ثم تحفظ السجلات المنظمة في قاعدة العهد المشتركة. لا يتم رفع ملفات العهد الأصلية إلى GitHub.</div>
 <div class="grid2">
 <div class="card"><h3>استيراد ملف عهدة</h3>
 <div class="drop" id="drop"><strong>اختر ملف Excel أو اسحبه هنا</strong><br>
 <span class="muted">يدعم تلقائياً: كشوف التغطيات، دفاتر الأستاذ مدين/دائن، دفاتر الوقود والمصروفات، طلبات العهد، والملفات متعددة المشرفين.</span><br><br>
 <input id="fileInput" type="file" accept=".xlsx,.xls"></div>
 <div style="margin-top:12px" class="field"><label>طريقة التعامل مع الملف</label>
-<select id="importMode"><option value="snapshot">لقطة محدثة كاملة — تستبدل اللقطة السابقة لنفس النطاق</option><option value="delta">حركات إضافية فقط — يضاف الجديد بعد منع التكرار</option></select></div>
+<select id="importMode"><option value="snapshot">لقطة محدثة كاملة — تستبدل اللقطة السابقة لنفس الحساب/الفترة</option><option value="delta">حركات إضافية فقط — يضاف الجديد بعد منع التكرار</option></select></div>
 <div id="importResult" style="margin-top:12px"></div>
 </div>
 <div class="card"><h3>التصدير والنسخ الاحتياطي</h3>
@@ -218,7 +226,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة مشتركة مستقلة منطقياً v1.1 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
+<div class="footer">نسخة مشتركة مستقلة منطقياً v1.2 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
 <div id="toast" class="toast"></div>
 
 <script>
