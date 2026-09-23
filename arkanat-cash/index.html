@@ -428,11 +428,11 @@ function renderExceptions(){
  coverageAmountPatterns().forEach(function(x){list.push({type:'قيمة تغطية مختلفة عن النمط',severity:'معلومة تشغيلية',txn:x.txn,msg:x.msg})});
  duplicates().forEach(function(p){list.push({type:'تكرار محتمل',severity:'عالية',txn:p[1],msg:'تشابه مع الحركة '+(p[0].legacyNo||p[0].id)})});
  var rows=structured.map(function(q){
-   var t=state.transactions.find(function(x){return x.id===q.entityId}),amount=t?money(t.amount):'-',suggest=q.suggestedValue?'<div><strong>المقترح:</strong> '+esc(q.suggestedValue)+'</div>':'',action=q.suggestedAction?'<div>'+esc(q.suggestedAction)+'</div>':'';
+   var t=state.transactions.find(function(x){return x.id===q.entityId}),r=state.requests.find(function(x){return x.id===q.entityId}),ev=state.evidence.find(function(x){return x.id===q.entityId}),amount=t?money(t.amount):r?money(r.amount):(ev&&ev.amount!=null?money(ev.amount):'-'),suggest=q.suggestedValue?'<div><strong>المقترح:</strong> '+esc(q.suggestedValue)+'</div>':'',action=q.suggestedAction?'<div>'+esc(q.suggestedAction)+'</div>':'';
    return '<tr><td>'+esc(q.issueTitle||q.issueCode)+'</td><td><span class="badge '+(q.severity==='عالية'?'bad':q.severity==='متوسطة'?'warn':'info')+'">'+esc(q.severity)+'</span></td><td>'+esc(q.entityId)+'</td><td>'+amount+'</td><td><div><strong>المرصود:</strong> '+esc(q.observedValue||'-')+'</div>'+suggest+action+'</td><td><button class="btn" data-write-action onclick="resolveQualityIssue(\''+q.id+'\')">إغلاق بعد المراجعة</button></td></tr>'
  }).join('');
  rows+=list.map(function(x){return '<tr><td>'+esc(x.type)+'</td><td><span class="badge '+(x.severity==='عالية'?'bad':x.severity==='متوسطة'?'warn':'info')+'">'+esc(x.severity)+'</span></td><td>'+esc(x.txn.legacyNo||x.txn.id)+'</td><td>'+money(x.txn.amount)+'</td><td>'+esc(x.msg||x.txn.description||x.txn.reason||'')+'</td><td>-</td></tr>'}).join('');
- document.getElementById('exceptionList').innerHTML=rows?'<div class="card"><div class="tablewrap"><table class="tbl"><thead><tr><th>النوع</th><th>الأهمية</th><th>الحركة</th><th>المبلغ</th><th>التفاصيل/المقترح</th><th>الإجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>':'<div class="card empty">لا توجد استثناءات مكتشفة.</div>';
+ document.getElementById('exceptionList').innerHTML=rows?'<div class="card"><div class="tablewrap"><table class="tbl"><thead><tr><th>النوع</th><th>الأهمية</th><th>المرجع</th><th>المبلغ</th><th>التفاصيل/المقترح</th><th>الإجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>':'<div class="card empty">لا توجد استثناءات مكتشفة.</div>';
  renderRoleUi()
 }
 window.resolveQualityIssue=function(id){
