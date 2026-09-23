@@ -50,7 +50,7 @@
   }
   function txnToDb(t,email){
     return {
-      id:t.id, legacy_id:t.legacyNo||t.legacy_id||null, request_id:t.requestId||null,
+      id:t.id, legacy_id:t.legacyNo||t.legacy_id||null, request_id:t.requestId||null, request_component_id:t.requestComponentId||null,
       transaction_date:t.date||null, source_date_raw:t.dateRaw||null, date_status:t.dateStatus||null,
       transaction_type:t.type||"مصروف تشغيلي", amount:n(t.amount), opening_sign:t.openingSign==null?null:Number(t.openingSign),
       region:t.region||null, custody_holder:t.custodyHolder||null, operational_supervisor:t.supervisor||null,
@@ -69,7 +69,7 @@
   }
   function txnFromDb(t){
     return {
-      id:t.id, legacyNo:t.legacy_id||"", requestId:t.request_id||"", date:t.transaction_date||"",
+      id:t.id, legacyNo:t.legacy_id||"", requestId:t.request_id||"", requestComponentId:t.request_component_id||"", date:t.transaction_date||"",
       dateRaw:t.source_date_raw||"", dateStatus:t.date_status||"", type:t.transaction_type||"",
       amount:n(t.amount), openingSign:t.opening_sign==null?null:Number(t.opening_sign),
       region:t.region||"", custodyHolder:t.custody_holder||"", supervisor:t.operational_supervisor||"",
