@@ -445,7 +445,33 @@ function renderAudit(){
  var el=document.getElementById('auditTable');if(!el)return;var a=(state.auditLog||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد أحداث تدقيق بعد.</div>';return}
  el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>الوقت</th><th>المستخدم</th><th>الإجراء</th><th>الكيان</th><th>المرجع</th><th>التفاصيل</th></tr></thead><tbody>'+a.map(function(x){return '<tr><td>'+esc((x.at||'').replace('T',' ').slice(0,19))+'</td><td>'+esc(x.operator||'-')+'</td><td>'+esc(x.action||'')+'</td><td>'+esc(x.entityType||'')+'</td><td>'+esc(x.entityId||'')+'</td><td>'+esc(x.details||'')+'</td></tr>'}).join('')+'</tbody></table></div>'
 }
-function accountBalance(key){return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.accountKey===key}).reduce(function(s,t){return s+txnEffect(t)},0)}
+function latestPeriodBalance(key){
+ var a=(state.periodBalances||[]).filter(function(x){return x.accountKey===key}).slice().sort(function(x,y){return String(x.periodMonth||'').localeCompare(String(y.periodMonth||''))});
+ return a.length?a[a.length-1]:null
+}
+function accountBalance(key){
+ var pb=latestPeriodBalance(key);if(pb)return num(pb.closingBalance);
+ return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.accountKey===key}).reduce(function(s,t){return s+txnEffect(t)},0)
+}
+function requestComponentsFor(requestId){return (state.requestComponents||[]).filter(function(x){return x.requestId===requestId})}
+function requestComponentsTotal(requestId){return requestComponentsFor(requestId).reduce(function(s,x){return s+num(x.amount)},0)}
+function requestComponentHtml(r){
+ var a=requestComponentsFor(r.id);if(!a.length)return '';
+ return '<small class="muted">مكونات الطلب: '+a.map(function(x){return esc(x.componentType)+' '+money(x.amount)+(x.status&&x.status!=='مخطط'?' ('+esc(x.status)+')':'')}).join(' · ')+'</small>'
+}
+function activeRequestRemaining(r){if(r.snapshotStatus==='superseded'||r.status==='مرفوض'||r.status==='ممول')return 0;return Math.max(0,num(r.amount)-requestFundedAmount(r))}
+function pendingForAccount(key){return state.requests.filter(function(r){return r.accountKey===key}).reduce(function(s,r){return s+activeRequestRemaining(r)},0)}
+function suggestedRequestComponents(r){
+ var notes=cleanArabic(r.notes||r.financeNotes||''),out=[],m=notes.match(/([\d,.]+)\s*قديم[^+]*\+\s*([\d,.]+)\s*عهده\s*جديد/);
+ if(m){var old=num(m[1]),fresh=num(m[2]);if(old)out.push({componentType:'تسوية رصيد سالب/مصروف شخصي سابق',amount:old,status:'مخطط',notes:'مستخرج من ملاحظة المصدر'});if(fresh)out.push({componentType:'تمويل عهدة جديدة',amount:fresh,status:'مخطط',notes:'مستخرج من ملاحظة المصدر'});return out}
+ var bal=accountBalance(r.accountKey);
+ if(bal<0&&num(r.amount)>Math.abs(bal)){out.push({componentType:'تسوية رصيد سالب مقترحة',amount:Math.abs(bal),status:'مقترح للمراجعة',notes:'استنتاج من أحدث إقفال للحساب'});out.push({componentType:'تمويل عهدة جديدة مقترح',amount:num(r.amount)-Math.abs(bal),status:'مقترح للمراجعة',notes:'المتبقي بعد تغطية العجز'});return out}
+ out.push({componentType:'تمويل عهدة جديدة',amount:num(r.amount),status:'مخطط',notes:''});return out
+}
+function ensureRequestComponents(r){
+ if(!state.requestComponents)state.requestComponents=[];if(requestComponentsFor(r.id).length)return;
+ suggestedRequestComponents(r).forEach(function(x,i){state.requestComponents.push({id:'CMP-'+r.id+'-'+(i+1),requestId:r.id,componentType:x.componentType,amount:x.amount,accountKey:r.accountKey||'',notes:x.notes||'',status:x.status||'مخطط',sourceReference:r.sourceReference||'',createdAt:new Date().toISOString()})})
+}
 function renderAccounts(){
  var el=document.getElementById('accountsTable'),kp=document.getElementById('accountKpis'),sc=document.getElementById('settlementControlsTable');if(!el)return;ensureAccountsFromState();
  var a=(state.accounts||[]).slice().sort(function(x,y){return (x.region+'|'+x.holderName+'|'+x.custodyCategory).localeCompare(y.region+'|'+y.holderName+'|'+y.custodyCategory,'ar')});
