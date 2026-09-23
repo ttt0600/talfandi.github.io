@@ -162,6 +162,21 @@
       status:x.status||"", metadata:x.metadata||{}
     };
   }
+  function requestComponentToDb(x,email){
+    return {
+      id:x.id,request_id:x.requestId||"",component_type:x.componentType||"",amount:n(x.amount),
+      account_key:x.accountKey||null,notes:x.notes||null,status:x.status||"مخطط",
+      source_reference:x.sourceReference||null,created_at:x.createdAt||new Date().toISOString(),
+      created_by_email:x.createdByEmail||email||null
+    };
+  }
+  function requestComponentFromDb(x){
+    return {
+      id:x.id,requestId:x.request_id||"",componentType:x.component_type||"",amount:n(x.amount),
+      accountKey:x.account_key||"",notes:x.notes||"",status:x.status||"",
+      sourceReference:x.source_reference||"",createdAt:x.created_at||"",createdByEmail:x.created_by_email||""
+    };
+  }
 
   api.init = async function(){
     if(api.mode!=="supabase") return {mode:"local",ready:false};
@@ -213,16 +228,17 @@
 
   api.loadState = async function(){
     if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
-    const [rq,tx,im,au,ev,ac,sc]=await Promise.all([
+    const [rq,tx,im,au,ev,ac,sc,rc]=await Promise.all([
       api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_imports").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_audit_log").select("*").order("event_time",{ascending:true}),
       api.client.from("cash_transaction_evidence").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_custody_accounts").select("*").order("holder_name",{ascending:true}),
-      api.client.from("cash_settlement_controls").select("*").order("period_start",{ascending:true})
+      api.client.from("cash_settlement_controls").select("*").order("period_start",{ascending:true}),
+      api.client.from("cash_request_components").select("*").order("created_at",{ascending:true})
     ]);
-    for(const x of [rq,tx,im,au,ev,ac,sc]) if(x.error) throw x.error;
+    for(const x of [rq,tx,im,au,ev,ac,sc,rc]) if(x.error) throw x.error;
     return {
       requests:(rq.data||[]).map(requestFromDb),
       transactions:(tx.data||[]).map(txnFromDb),
@@ -230,7 +246,8 @@
       auditLog:(au.data||[]).map(auditFromDb),
       evidence:(ev.data||[]).map(evidenceFromDb),
       accounts:(ac.data||[]).map(accountFromDb),
-      settlementControls:(sc.data||[]).map(settlementFromDb)
+      settlementControls:(sc.data||[]).map(settlementFromDb),
+      requestComponents:(rc.data||[]).map(requestComponentFromDb)
     };
   };
 
@@ -243,13 +260,15 @@
     const audit=(state.auditLog||[]).map(x=>auditToDb(x,email));
     const evidence=(state.evidence||[]).map(x=>evidenceToDb(x,email));
     const accounts=(state.accounts||[]).map(accountToDb).filter(x=>x.account_key);
+    const requestComponents=(state.requestComponents||[]).map(x=>requestComponentToDb(x,email));
     for(const rows of chunk(requests,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_requests").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(transactions,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transactions").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(imports,100)){ if(!rows.length) continue; const {error}=await api.client.from("cash_imports").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(audit,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_audit_log").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(evidence,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transaction_evidence").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(accounts,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_custody_accounts").upsert(rows,{onConflict:"account_key"}); if(error) throw error; }
-    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length};
+    for(const rows of chunk(requestComponents,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_request_components").upsert(rows,{onConflict:"id"}); if(error) throw error; }
+    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length};
   };
 
   api.adminUsers = async function(action,payload={}){
