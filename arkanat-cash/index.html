@@ -234,13 +234,13 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة مشتركة مستقلة منطقياً v1.4 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
+<div class="footer">نسخة مشتركة مستقلة منطقياً v1.5 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],meta:{createdAt:new Date().toISOString(),version:'1.4.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.4.0';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.4.0';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -275,7 +275,7 @@ function isSuperAdmin(){return !!(portalAccess&&portalAccess.role==='super_admin
 function canWritePortal(){return !!(portalAccess&&portalAccess.enabled&&['super_admin','finance_manager','finance'].indexOf(portalAccess.role)>=0)}
 function renderRoleUi(){
  var role=document.getElementById('userRole'),nav=document.getElementById('adminNav'),readOnly=!!portalAccess&&!canWritePortal();if(role)role.textContent=roleLabel(portalAccess&&portalAccess.role);if(nav)nav.style.display=isSuperAdmin()?'flex':'none';
- document.querySelectorAll('#requestForm input,#requestForm select,#requestForm textarea,#requestForm button,#txnForm input,#txnForm select,#txnForm textarea,#txnForm button,#fundingForm input,#fundingForm select,#fundingForm textarea,#fundingForm button,#review button').forEach(function(b){b.disabled=readOnly});
+ document.querySelectorAll('#requestForm input,#requestForm select,#requestForm textarea,#requestForm button,#txnForm input,#txnForm select,#txnForm textarea,#txnForm button,#fundingForm input,#fundingForm select,#fundingForm textarea,#fundingForm button,#review button,[data-write-action]').forEach(function(b){b.disabled=readOnly});
  var fi=document.getElementById('fileInput'),im=document.getElementById('importMode'),ji=document.getElementById('jsonInput');if(fi)fi.disabled=readOnly;if(im)im.disabled=readOnly;if(ji)ji.disabled=readOnly;
 }
 function id(prefix){return prefix+'-'+new Date().toISOString().replace(/\D/g,'').slice(0,14)+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
@@ -380,8 +380,34 @@ function coverageAmountPatterns(){
  var out=[];Object.keys(groups).forEach(function(k){var a=groups[k];if(a.length<4)return;var f={};a.forEach(function(t){var v=num(t.amount);f[v]=(f[v]||0)+1});var mode=Number(Object.keys(f).sort(function(x,y){return f[y]-f[x]})[0]),freq=f[mode]||0;if(!mode||freq<3)return;a.forEach(function(t){var v=num(t.amount);if(v===mode)return;var ratio=v/mode,whole=Math.abs(ratio-Math.round(ratio))<0.001;if(!whole)out.push({txn:t,mode:mode,msg:'القيمة '+money(v)+' تختلف عن النمط الأكثر تكراراً '+money(mode)+' لهذا المشرف. تحقق فقط؛ لا تعد خطأ تلقائياً.'})})});return out
 }
 function renderExceptions(){
-var list=[];state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded')return;exceptionFor(t).forEach(function(e){list.push({type:e[0],severity:e[1],txn:t})})});coverageAmountPatterns().forEach(function(x){list.push({type:'قيمة تغطية مختلفة عن النمط',severity:'معلومة تشغيلية',txn:x.txn,msg:x.msg})});duplicates().forEach(function(p){list.push({type:'تكرار محتمل',severity:'عالية',txn:p[1],msg:'تشابه مع الحركة '+(p[0].legacyNo||p[0].id)})});
-document.getElementById('exceptionList').innerHTML=list.length?'<div class="card"><div class="tablewrap"><table class="tbl"><thead><tr><th>النوع</th><th>الأهمية</th><th>الحركة</th><th>المبلغ</th><th>التفاصيل</th></tr></thead><tbody>'+list.map(function(x){return '<tr><td>'+esc(x.type)+'</td><td><span class="badge '+(x.severity==='عالية'?'bad':x.severity==='متوسطة'?'warn':'info')+'">'+esc(x.severity)+'</span></td><td>'+esc(x.txn.legacyNo||x.txn.id)+'</td><td>'+money(x.txn.amount)+'</td><td>'+esc(x.msg||x.txn.description||x.txn.reason||'')+'</td></tr>'}).join('')+'</tbody></table></div></div>':'<div class="card empty">لا توجد استثناءات مكتشفة.</div>'
+ var structured=(state.qualityIssues||[]).filter(function(q){return q.status!=='مغلق'}),covered={};
+ structured.forEach(function(q){covered[(q.entityId||'')+'|'+(q.issueCode||'')]=1});
+ var list=[];
+ state.transactions.forEach(function(t){
+   if(t.snapshotStatus==='superseded')return;
+   exceptionFor(t).forEach(function(e){
+     var code=e[0]==='تغطية ذاتية'?'SELF_COVERAGE':e[0]==='تاريخ يحتاج مراجعة'?'DATE_REVIEW':'';
+     if(code&&Object.keys(covered).some(function(k){return k.indexOf(t.id+'|')===0&&(code==='DATE_REVIEW'?/PRIOR_PERIOD_DATE|YEAR_TYPO_SUSPECTED/.test(k):k===t.id+'|'+code)}))return;
+     list.push({type:e[0],severity:e[1],txn:t})
+   })
+ });
+ coverageAmountPatterns().forEach(function(x){list.push({type:'قيمة تغطية مختلفة عن النمط',severity:'معلومة تشغيلية',txn:x.txn,msg:x.msg})});
+ duplicates().forEach(function(p){list.push({type:'تكرار محتمل',severity:'عالية',txn:p[1],msg:'تشابه مع الحركة '+(p[0].legacyNo||p[0].id)})});
+ var rows=structured.map(function(q){
+   var t=state.transactions.find(function(x){return x.id===q.entityId}),amount=t?money(t.amount):'-',suggest=q.suggestedValue?'<div><strong>المقترح:</strong> '+esc(q.suggestedValue)+'</div>':'',action=q.suggestedAction?'<div>'+esc(q.suggestedAction)+'</div>':'';
+   return '<tr><td>'+esc(q.issueTitle||q.issueCode)+'</td><td><span class="badge '+(q.severity==='عالية'?'bad':q.severity==='متوسطة'?'warn':'info')+'">'+esc(q.severity)+'</span></td><td>'+esc(q.entityId)+'</td><td>'+amount+'</td><td><div><strong>المرصود:</strong> '+esc(q.observedValue||'-')+'</div>'+suggest+action+'</td><td><button class="btn" data-write-action onclick="resolveQualityIssue(\''+q.id+'\')">إغلاق بعد المراجعة</button></td></tr>'
+ }).join('');
+ rows+=list.map(function(x){return '<tr><td>'+esc(x.type)+'</td><td><span class="badge '+(x.severity==='عالية'?'bad':x.severity==='متوسطة'?'warn':'info')+'">'+esc(x.severity)+'</span></td><td>'+esc(x.txn.legacyNo||x.txn.id)+'</td><td>'+money(x.txn.amount)+'</td><td>'+esc(x.msg||x.txn.description||x.txn.reason||'')+'</td><td>-</td></tr>'}).join('');
+ document.getElementById('exceptionList').innerHTML=rows?'<div class="card"><div class="tablewrap"><table class="tbl"><thead><tr><th>النوع</th><th>الأهمية</th><th>الحركة</th><th>المبلغ</th><th>التفاصيل/المقترح</th><th>الإجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>':'<div class="card empty">لا توجد استثناءات مكتشفة.</div>';
+ renderRoleUi()
+}
+window.resolveQualityIssue=function(id){
+ if(!canWritePortal()){toast('لا توجد صلاحية لتعديل الاستثناءات');return}
+ var q=(state.qualityIssues||[]).find(function(x){return x.id===id});if(!q)return;
+ var note=prompt('اكتب نتيجة المراجعة أو سبب إغلاق الاستثناء:','');if(note===null)return;
+ if(String(note).trim().length<3){toast('اكتب نتيجة مراجعة واضحة');return}
+ q.status='مغلق';q.resolvedAt=new Date().toISOString();q.resolvedByEmail=(ArkanatCashCloud&&ArkanatCashCloud.session&&ArkanatCashCloud.session.user&&ArkanatCashCloud.session.user.email)||'';q.resolutionNote=String(note).trim();
+ audit('إغلاق استثناء جودة بيانات','DataQualityIssue',q.id,(q.issueTitle||q.issueCode)+' | '+q.resolutionNote);save();toast('تم إغلاق الاستثناء وتسجيل نتيجة المراجعة')
 }
 function showAuthGate(show,msg){
  var g=document.getElementById('authGate'),m=document.getElementById('authMessage');if(g)g.classList.toggle('show',!!show);if(m)m.textContent=msg||''
@@ -389,7 +415,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.4.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.5.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -860,7 +886,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],meta:{createdAt:new Date().toISOString(),version:'1.4.0',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
