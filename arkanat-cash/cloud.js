@@ -177,6 +177,15 @@
       sourceReference:x.source_reference||"",createdAt:x.created_at||"",createdByEmail:x.created_by_email||""
     };
   }
+  function periodBalanceFromDb(x){
+    return {
+      id:x.id,accountKey:x.account_key||"",periodMonth:x.period_month||"",
+      openingBalance:n(x.opening_balance),funding:n(x.funding),recognizedExpense:n(x.recognized_expense),
+      nonExpenseOutflow:n(x.non_expense_outflow),internalTransfers:n(x.internal_transfers),
+      closingBalance:n(x.closing_balance),sourceImportId:x.source_import_id||"",sourceFile:x.source_file||"",
+      status:x.status||"",metadata:x.metadata||{}
+    };
+  }
 
   api.init = async function(){
     if(api.mode!=="supabase") return {mode:"local",ready:false};
@@ -228,7 +237,7 @@
 
   api.loadState = async function(){
     if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
-    const [rq,tx,im,au,ev,ac,sc,rc]=await Promise.all([
+    const [rq,tx,im,au,ev,ac,sc,rc,pb]=await Promise.all([
       api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_imports").select("*").order("created_at",{ascending:true}),
@@ -236,9 +245,10 @@
       api.client.from("cash_transaction_evidence").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_custody_accounts").select("*").order("holder_name",{ascending:true}),
       api.client.from("cash_settlement_controls").select("*").order("period_start",{ascending:true}),
-      api.client.from("cash_request_components").select("*").order("created_at",{ascending:true})
+      api.client.from("cash_request_components").select("*").order("created_at",{ascending:true}),
+      api.client.from("cash_account_period_balances").select("*").order("period_month",{ascending:true})
     ]);
-    for(const x of [rq,tx,im,au,ev,ac,sc,rc]) if(x.error) throw x.error;
+    for(const x of [rq,tx,im,au,ev,ac,sc,rc,pb]) if(x.error) throw x.error;
     return {
       requests:(rq.data||[]).map(requestFromDb),
       transactions:(tx.data||[]).map(txnFromDb),
@@ -247,7 +257,8 @@
       evidence:(ev.data||[]).map(evidenceFromDb),
       accounts:(ac.data||[]).map(accountFromDb),
       settlementControls:(sc.data||[]).map(settlementFromDb),
-      requestComponents:(rc.data||[]).map(requestComponentFromDb)
+      requestComponents:(rc.data||[]).map(requestComponentFromDb),
+      periodBalances:(pb.data||[]).map(periodBalanceFromDb)
     };
   };
 
