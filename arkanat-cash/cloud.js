@@ -192,6 +192,26 @@
       status:x.status||"",metadata:x.metadata||{}
     };
   }
+  function qualityIssueToDb(x,email){
+    return {
+      id:x.id,source_file:x.sourceFile||null,entity_type:x.entityType||"Transaction",entity_id:x.entityId||"",
+      issue_code:x.issueCode||"",issue_title:x.issueTitle||"",severity:x.severity||"متوسطة",
+      observed_value:x.observedValue||null,suggested_value:x.suggestedValue||null,
+      suggested_action:x.suggestedAction||null,status:x.status||"مفتوح",metadata:x.metadata||{},
+      created_at:x.createdAt||new Date().toISOString(),resolved_at:x.resolvedAt||null,
+      resolved_by_email:x.resolvedByEmail||null,resolution_note:x.resolutionNote||null
+    };
+  }
+  function qualityIssueFromDb(x){
+    return {
+      id:x.id,sourceFile:x.source_file||"",entityType:x.entity_type||"Transaction",entityId:x.entity_id||"",
+      issueCode:x.issue_code||"",issueTitle:x.issue_title||"",severity:x.severity||"متوسطة",
+      observedValue:x.observed_value||"",suggestedValue:x.suggested_value||"",
+      suggestedAction:x.suggested_action||"",status:x.status||"مفتوح",metadata:x.metadata||{},
+      createdAt:x.created_at||"",resolvedAt:x.resolved_at||"",resolvedByEmail:x.resolved_by_email||"",
+      resolutionNote:x.resolution_note||""
+    };
+  }
 
   api.init = async function(){
     if(api.mode!=="supabase") return {mode:"local",ready:false};
@@ -243,7 +263,7 @@
 
   api.loadState = async function(){
     if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
-    const [rq,tx,im,au,ev,ac,sc,rc,pb]=await Promise.all([
+    const [rq,tx,im,au,ev,ac,sc,rc,pb,qi]=await Promise.all([
       api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_imports").select("*").order("created_at",{ascending:true}),
@@ -252,9 +272,10 @@
       api.client.from("cash_custody_accounts").select("*").order("holder_name",{ascending:true}),
       api.client.from("cash_settlement_controls").select("*").order("period_start",{ascending:true}),
       api.client.from("cash_request_components").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_account_period_balances").select("*").order("period_month",{ascending:true})
+      api.client.from("cash_account_period_balances").select("*").order("period_month",{ascending:true}),
+      api.client.from("cash_data_quality_issues").select("*").order("created_at",{ascending:true})
     ]);
-    for(const x of [rq,tx,im,au,ev,ac,sc,rc,pb]) if(x.error) throw x.error;
+    for(const x of [rq,tx,im,au,ev,ac,sc,rc,pb,qi]) if(x.error) throw x.error;
     return {
       requests:(rq.data||[]).map(requestFromDb),
       transactions:(tx.data||[]).map(txnFromDb),
@@ -264,7 +285,8 @@
       accounts:(ac.data||[]).map(accountFromDb),
       settlementControls:(sc.data||[]).map(settlementFromDb),
       requestComponents:(rc.data||[]).map(requestComponentFromDb),
-      periodBalances:(pb.data||[]).map(periodBalanceFromDb)
+      periodBalances:(pb.data||[]).map(periodBalanceFromDb),
+      qualityIssues:(qi.data||[]).map(qualityIssueFromDb)
     };
   };
 
@@ -278,6 +300,7 @@
     const evidence=(state.evidence||[]).map(x=>evidenceToDb(x,email));
     const accounts=(state.accounts||[]).map(accountToDb).filter(x=>x.account_key);
     const requestComponents=(state.requestComponents||[]).map(x=>requestComponentToDb(x,email));
+    const qualityIssues=(state.qualityIssues||[]).map(x=>qualityIssueToDb(x,email));
     for(const rows of chunk(requests,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_requests").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(transactions,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transactions").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(imports,100)){ if(!rows.length) continue; const {error}=await api.client.from("cash_imports").upsert(rows,{onConflict:"id"}); if(error) throw error; }
@@ -285,7 +308,8 @@
     for(const rows of chunk(evidence,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transaction_evidence").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(accounts,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_custody_accounts").upsert(rows,{onConflict:"account_key"}); if(error) throw error; }
     for(const rows of chunk(requestComponents,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_request_components").upsert(rows,{onConflict:"id"}); if(error) throw error; }
-    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length};
+    for(const rows of chunk(qualityIssues,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_data_quality_issues").upsert(rows,{onConflict:"id"}); if(error) throw error; }
+    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length,qualityIssues:qualityIssues.length};
   };
 
   api.adminUsers = async function(action,payload={}){
