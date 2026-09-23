@@ -24,6 +24,7 @@
       region:r.region||null, supervisor:r.supervisor||"", amount:n(r.amount),
       purpose:r.purpose||null, site:r.site||null, beneficiary:r.beneficiary||null, iban:r.iban||null,
       custody_category:r.custodyCategory||null, account_key:r.accountKey||null, record_fingerprint:r.recordFingerprint||null,
+      request_kind:r.requestKind||"بسيط", requested_period_days:r.requestedPeriodDays==null?null:Number(r.requestedPeriodDays),
       source_channel:r.sourceChannel||null, source_reference:r.sourceReference||null, source_message:r.sourceMessage||null,
       finance_notes:r.notes||null, status:r.status||"جديد", source_name:r.source||null,
       source_file:r.sourceFile||null, source_sheet:r.sourceSheet||null, source_row:r.sourceRow==null?null:String(r.sourceRow),
@@ -38,6 +39,7 @@
       dateStatus:r.date_status||"", region:r.region||"", supervisor:r.supervisor||"", amount:n(r.amount),
       purpose:r.purpose||"", site:r.site||"", beneficiary:r.beneficiary||"", iban:r.iban||"",
       custodyCategory:r.custody_category||"", accountKey:r.account_key||"", recordFingerprint:r.record_fingerprint||"",
+      requestKind:r.request_kind||"بسيط", requestedPeriodDays:r.requested_period_days==null?null:Number(r.requested_period_days),
       sourceChannel:r.source_channel||"", sourceReference:r.source_reference||"", sourceMessage:r.source_message||"",
       notes:r.finance_notes||"", status:r.status||"جديد", source:r.source_name||"",
       sourceFile:r.source_file||"", sourceSheet:r.source_sheet||"", sourceRow:r.source_row||"",
@@ -166,6 +168,8 @@
     return {
       id:x.id,request_id:x.requestId||"",component_type:x.componentType||"",amount:n(x.amount),
       account_key:x.accountKey||null,notes:x.notes||null,status:x.status||"مخطط",
+      treatment:x.treatment||null,duration_days:x.durationDays==null?null:Number(x.durationDays),
+      description:x.description||null,source_note:x.sourceNote||null,
       source_reference:x.sourceReference||null,created_at:x.createdAt||new Date().toISOString(),
       created_by_email:x.createdByEmail||email||null
     };
@@ -174,6 +178,8 @@
     return {
       id:x.id,requestId:x.request_id||"",componentType:x.component_type||"",amount:n(x.amount),
       accountKey:x.account_key||"",notes:x.notes||"",status:x.status||"",
+      treatment:x.treatment||"",durationDays:x.duration_days==null?null:Number(x.duration_days),
+      description:x.description||"",sourceNote:x.source_note||"",
       sourceReference:x.source_reference||"",createdAt:x.created_at||"",createdByEmail:x.created_by_email||""
     };
   }
