@@ -237,7 +237,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة مشتركة مستقلة منطقياً v1.5 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
+<div class="footer">نسخة مشتركة مستقلة منطقياً v1.5.1 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -750,11 +750,13 @@ function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.
 function parseSheet(wb,sheetName,fileName){
  var ws=wb.Sheets[sheetName],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true}),hi=findHeader(rows),ctx=inferPeriod(fileName,rows);
  if(hi<0)return {sheet:sheetName,profile:'unknown',rows:rows,headerIndex:-1,headers:[],map:{},items:[],ignored:rows.length,warnings:['لم يتم التعرف على صف العناوين']};
- var headers=rows[hi],map=colMap(headers),profile=detectProfile(rows,hi,headers,map),holder=normalizeHolderName(extractHolder(rows,hi,sheetName),sheetName),region=sheetRegion(sheetName,rows,fileName),preText=rows.slice(0,hi+1).map(function(x){return (x||[]).join(' ')}).join(' '),category=inferCustodyCategory(profile,fileName+' '+preText,sheetName),items=[],ignored=0,warnings=[],fileDate=extractFileDate(rows,hi,ctx),summary=sourceSummary(rows);if(ctx.mismatch)warnings.push('تعارض بين فترة اسم الملف والفترة المكتوبة داخل الملف؛ تم اعتماد الفترة الداخلية.');
+ var headers=rows[hi],map=colMap(headers),profile=detectProfile(rows,hi,headers,map),holder=normalizeHolderName(extractHolder(rows,hi,sheetName),sheetName),region=sheetRegion(sheetName,rows,fileName),preText=rows.slice(0,hi+1).map(function(x){return (x||[]).join(' ')}).join(' '),category=inferCustodyCategory(profile,fileName+' '+preText,sheetName),items=[],requestTombstones=[],ignored=0,warnings=[],fileDate=extractFileDate(rows,hi,ctx),summary=sourceSummary(rows);if(ctx.mismatch)warnings.push('تعارض بين فترة اسم الملف والفترة المكتوبة داخل الملف؛ تم اعتماد الفترة الداخلية.');
  for(var r=hi+1;r<rows.length;r++){var row=rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined})||isFooterRow(row)){ignored++;continue}
    if(profile==='request_snapshot'){
-     var amt=num(get(row,map.amount)),reqSup=normalizeHolderName(get(row,map.supervisor),sheetName);if(!amt||!cleanArabic(reqSup)){ignored++;continue}
-     var reqDate=get(row,map.date)?dateGuess(get(row,map.date),ctx):fileDate,purpose=get(row,map.description)||'طلب عهدة',reqCat=inferCustodyCategory(profile,purpose,sheetName),reqNote=get(row,map.reason)||'',comp=parseCompositeRequestNote(reqNote,amt,reqCat);
+     var amt=num(get(row,map.amount)),reqSup=normalizeHolderName(get(row,map.supervisor),sheetName),purpose=get(row,map.description)||'طلب عهدة',reqCat=inferCustodyCategory(profile,purpose,sheetName);
+     if(!amt){if(cleanArabic(reqSup)&&cleanArabic(purpose))requestTombstones.push({region:region,supervisor:reqSup,custodyCategory:reqCat,purpose:purpose,sourceRow:r+1});ignored++;continue}
+     if(!cleanArabic(reqSup)){ignored++;continue}
+     var reqDate=get(row,map.date)?dateGuess(get(row,map.date),ctx):fileDate,reqNote=get(row,map.reason)||'',comp=parseCompositeRequestNote(reqNote,amt,reqCat);
      var rq={kind:'request',id:id('REQ'),legacyNo:get(row,map.legacy),date:reqDate.date,dateRaw:reqDate.raw,dateStatus:reqDate.status,region:region,supervisor:reqSup,amount:amt,purpose:purpose,site:get(row,map.site)||'',iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:reqNote,sourceMessage:reqNote,status:'جديد',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:reqCat,accountKey:makeAccountKey(region,reqSup,reqCat),requestKind:comp&&comp.requestKind||'بسيط',requestedPeriodDays:comp&&comp.durationDays||null,componentDrafts:comp&&comp.components||[],componentWarning:comp&&comp.warning||''};
      if(rq.componentWarning)warnings.push('الصف '+(r+1)+' — '+rq.componentWarning);
      rq.recordFingerprint=requestKey(rq);items.push(rq);continue
@@ -787,7 +789,7 @@ function parseSheet(wb,sheetName,fileName){
  }
  items.forEach(function(t){if(t.kind==='txn'){if(!t.custodyCategory)t.custodyCategory=category;if(!t.custodyHolder)t.custodyHolder=holder;if(!t.accountKey)t.accountKey=makeAccountKey(region,t.custodyHolder||t.supervisor,t.custodyCategory);if(!t.expenseCategory)t.expenseCategory=inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory);if(t.periodExpense==null)t.periodExpense=isExpense(t);t.recordFingerprint=eventKey(t);if(exceptionFor(t).length)t.status='يحتاج مراجعة'}else if(t.kind==='request'){t.recordFingerprint=requestKey(t)}});
  var scope=scopeKey(profile,region,holder,ctx,sheetName,category),control=controlFromSource(items,summary,profile);
- return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,custodyCategory:category,period:ctx,fileDate:fileDate,sourceSummary:summary,control:control,scopeKey:scope,items:items,ignored:ignored,warnings:warnings}
+ return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,custodyCategory:category,period:ctx,fileDate:fileDate,sourceSummary:summary,control:control,scopeKey:scope,items:items,requestTombstones:requestTombstones,ignored:ignored,warnings:warnings}
 }
 async function fingerprint(file){try{var b=await file.arrayBuffer(),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}catch(e){return [file.name,file.size,file.lastModified].join('|')}}
 async function prepareImport(file){
@@ -867,6 +869,7 @@ function renderImportPreview(){
  pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=x.profile==='request_snapshot'?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.custodyCategory||inferCustodyCategory(x.profile,pendingImport.file.name,x.sheet))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
  var warns=[];pendingImport.sheets.forEach(function(x){(x.warnings||[]).forEach(function(w){warns.push(esc(x.sheet)+' — '+esc(w))})});if(warns.length)html+='<div class="notice warn" style="margin-top:10px"><strong>تنبيهات الاستيراد:</strong><br>'+warns.join('<br>')+'</div>';
  var composites=[];pendingImport.sheets.forEach(function(x){(x.items||[]).forEach(function(it){if(it.kind==='request'&&it.requestKind==='مركب')composites.push(esc(it.supervisor)+' — '+money(it.amount)+' — '+(it.componentDrafts||[]).map(function(c){return esc(c.componentType)+' '+money(c.amount)}).join(' + '))})});if(composites.length)html+='<div class="notice" style="margin-top:10px"><strong>طلبات مركبة تم تحليلها تلقائياً:</strong><br>'+composites.join('<br>')+'</div>';
+ var tombstoneCount=pendingImport.sheets.reduce(function(s,x){return s+(x.requestTombstones||[]).length},0);if(tombstoneCount)html+='<div class="notice warn" style="margin-top:10px"><strong>صفوف طلبات صفرية:</strong> تم رصد '+tombstoneCount.toLocaleString('ar-SA')+' صفاً كحالة Snapshot. عند اختيار «لقطة محدثة كاملة» تستخدم هذه الصفوف لتحييد الطلبات المفتوحة المطابقة فقط، ولا تمس أي طلب سبق تمويله.</div>';
  var summaries=[];pendingImport.sheets.forEach(function(x){(x.sourceSummary||[]).forEach(function(z){summaries.push(esc(x.sheet)+' — '+esc(z.label))})});if(summaries.length)html+='<div class="notice" style="margin-top:10px"><strong>ملخصات مصدرية تم رصدها ولن تعامل كصفوف مصروف:</strong><br>'+summaries.slice(0,12).join('<br>')+'</div>';
  var synth=pendingImport.sheets.filter(function(x){return x.profile==='coverage_list'&&x.control&&x.control.status==='مطابق'&&x.control.reportedFunding!==null});if(synth.length)html+='<div class="notice warn" style="margin-top:10px"><strong>تمويل مجمع من ملخص المصدر:</strong> في «اللقطة الكاملة» يضاف مبلغ العهدة المرجعي كسجل تمويل غير موزع حتى تتوفر تفاصيل التغذيات الفردية. '+synth.map(function(x){return esc(x.sheet)+': '+money(x.control.reportedFunding)}).join(' | ')+'</div>';
  var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(a,x){return a+x.items.length},0),blocked=ds.fileDuplicate&&!isSuperAdmin();
@@ -879,6 +882,18 @@ window.commitPreparedImport=function(){
  if(ds.fileDuplicate){if(!isSuperAdmin()){toast('تم منع إعادة استيراد الملف المطابق');return}overrideReason=prompt('هذا الملف مطابق لملف سبق استيراده. اكتب سبب التجاوز لتسجيله في سجل التدقيق:','');if(!overrideReason||String(overrideReason).trim().length<5){toast('يجب تسجيل سبب واضح للتجاوز');return}}
  var added=0,dupes=0,conflicts=0,superseded=0,reqAdded=0,reqDupes=0,reqConflicts=0;
  pendingImport.sheets.forEach(function(sh){if(sh.profile==='unknown')return;
+   if(mode==='snapshot'&&sh.profile==='request_snapshot'&&(sh.requestTombstones||[]).length){
+     state.requests.forEach(function(r){
+       if(r.snapshotStatus==='superseded'||r.status==='مرفوض'||requestFundedAmount(r)>0)return;
+       var hit=(sh.requestTombstones||[]).some(function(z){
+         return cleanArabic(normalizeHolderName(r.supervisor,''))===cleanArabic(normalizeHolderName(z.supervisor,''))&&
+           cleanArabic(r.region||'')===cleanArabic(z.region||'')&&
+           cleanArabic(r.custodyCategory||inferCustodyCategory('request_snapshot',r.purpose,''))===cleanArabic(z.custodyCategory||'')&&
+           cleanArabic(r.purpose||'')===cleanArabic(z.purpose||'');
+       });
+       if(hit){r.snapshotStatus='superseded';r.status='مستبدل';r.financeNotes=(r.financeNotes?r.financeNotes+' | ':'')+'تم تحييد الطلب من لقطة أحدث بقيمة صفر قبل تنفيذ التمويل.';superseded++}
+     })
+   }
    if(mode==='snapshot'&&sh.profile!=='request_snapshot'){
      state.transactions.forEach(function(t){if(sameSnapshotAccount(t,sh)){t.snapshotStatus='superseded';superseded++}})
    }
