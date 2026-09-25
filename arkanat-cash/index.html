@@ -409,7 +409,7 @@ window.fundComponentChanged=function(){
  var id=document.getElementById('fundComponent').value,c=requestComponentsFor(document.getElementById('fundRequestId').value).find(function(x){return x.id===id});
  if(!c)return;var rem=componentRemaining(c);document.getElementById('fundComponentRemaining').value=rem.toFixed(2);document.getElementById('fundAmount').value=rem?rem.toFixed(2):''
 }
-function requestStatusClass(st){return st==='ممول'?'ok':st==='معتمد'||st==='ممول جزئياً'?'info':st==='مرفوض'?'bad':'warn'}
+function requestStatusClass(st){return st==='ممول'?'ok':st==='معتمد'||String(st||'').indexOf('ممول جزئياً')===0?'info':st==='مرفوض'?'bad':'warn'}
 function requestComponentsFor(id){return (state.requestComponents||[]).filter(function(x){return x.requestId===id})}
 function requestComponentsHtml(r){
  var a=requestComponentsFor(r.id);if(!a.length)return '';
