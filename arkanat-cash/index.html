@@ -46,7 +46,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
     <div id="authMessage" class="authmsg"></div>
   </div>
 </div>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.5.2</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.5.3</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav">
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
@@ -237,13 +237,13 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة مشتركة مستقلة منطقياً v1.5.2 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
+<div class="footer">نسخة مشتركة مستقلة منطقياً v1.5.3 — لا ترتبط تشغيلياً بـ Guard Control. البيانات تحفظ في قاعدة العهد المشتركة وفق صلاحيات المستخدم.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.2',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.5.2';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.3',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.5.3';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -378,6 +378,29 @@ document.getElementById('ledgerTable').innerHTML=rowTable(a.slice().reverse())
 function requestFundedAmount(r){
  return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.requestId===r.id&&t.type==='تغذية عهدة'}).reduce(function(a,t){return a+num(t.amount)},0)
 }
+function reconcileImportedFundingToRequest(t){
+ if(!t||t.type!=='تغذية عهدة'||num(t.amount)<=0)return null;
+ var holder=cleanArabic(normalizeHolderName(t.custodyHolder||t.supervisor,'')),cat=cleanArabic(t.custodyCategory||inferCustodyCategory('cash_ledger',t.description,'')),dt=t.date||t.dateRaw||'';
+ var candidates=state.requests.filter(function(r){
+   if(r.status==='مرفوض'||requestFundedAmount(r)>0)return false;
+   var rh=cleanArabic(normalizeHolderName(r.supervisor,'')),rc=cleanArabic(r.custodyCategory||inferCustodyCategory('request_snapshot',r.purpose,''));
+   return rh===holder&&rc===cat&&(r.date||r.dateRaw||'')===dt&&num(r.amount)+0.001>=num(t.amount)
+ });
+ if(candidates.length!==1)return null;
+ var r=candidates[0],after=requestFundedAmount(r)+num(t.amount);
+ t.requestId=r.id;
+ r.snapshotStatus='current';
+ r.status=after+0.001>=num(r.amount)?'ممول':'ممول جزئياً — المتبقي مستبدل';
+ r.financeNotes=(r.financeNotes?r.financeNotes+' | ':'')+'أعيدت مطابقة الطلب تلقائياً مع تغذية دفترية لاحقة؛ هذا يثبت الاستلام في دفتر العهدة ولا يعد إثبات تنفيذ بنكي مستقلاً.';
+ (state.qualityIssues||[]).forEach(function(q){
+   if(q.entityType==='Request'&&q.entityId===r.id&&['THIRD_PARTY_BANK_ACCOUNT','BANK_BENEFICIARY_MISSING','BANK_ACCOUNT_MISSING'].indexOf(q.issueCode)>=0){
+     q.status='مفتوح';q.resolvedAt='';q.resolutionNote='أعيد فتح الاستثناء لأن مصدراً لاحقاً أثبت تمويل الطلب دفترياً؛ يلزم استكمال دليل الحساب والتنفيذ البنكي.'
+   }
+ });
+ captureQualityIssuesForRequest(r);
+ audit('مطابقة تمويل دفتري لاحق','Request',r.id,(r.supervisor||'')+' | '+money(t.amount)+' | '+dt+' | '+(after>=num(r.amount)?'ممول':'ممول جزئياً'));
+ return r
+}
 function requestComponentFundedAmount(c){
  return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.requestComponentId===c.id&&t.type==='تغذية عهدة'}).reduce(function(a,t){return a+num(t.amount)},0)
 }
@@ -463,7 +486,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.5.2',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.5.3',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -917,7 +940,7 @@ window.commitPreparedImport=function(){
    sh.items.forEach(function(it){
      it.scopeKey=sh.scopeKey;it.snapshotStatus='current';
      if(it.kind==='request'){it.custodyCategory=it.custodyCategory||inferCustodyCategory('request_snapshot',it.purpose,sh.sheet);it.accountKey=it.accountKey||makeAccountKey(it.region,it.supervisor,it.custodyCategory);it.recordFingerprint=requestKey(it);var rk=it.recordFingerprint,rc=requestConflictKey(it);if(requestKeys[rk]){reqDupes++;return}if(requestConflicts[rc]){reqConflicts++;return}var drafts=(it.componentDrafts||[]).slice();delete it.componentDrafts;delete it.componentWarning;captureQualityIssuesForRequest(it);state.requests.push(it);drafts.forEach(function(draft,idx){state.requestComponents.push({id:'CMP-'+it.id+'-'+String(idx+1).padStart(2,'0'),requestId:it.id,componentType:draft.componentType||'مكوّن طلب',amount:num(draft.amount),accountKey:it.accountKey,treatment:draft.treatment||'',durationDays:draft.durationDays||null,description:draft.description||'',sourceNote:draft.sourceNote||it.sourceMessage||'',notes:'تم التعرف عليه تلقائياً من ملاحظة ملف الطلب',status:draft.status||'جديد',sourceReference:it.sourceReference||'',createdAt:new Date().toISOString()})});requestKeys[rk]=1;requestConflicts[rc]=1;reqAdded++;return}
-     it.custodyCategory=it.custodyCategory||sh.custodyCategory||inferCustodyCategory(sh.profile,pendingImport.file.name,sh.sheet);it.accountKey=it.accountKey||makeAccountKey(it.region,it.custodyHolder||it.supervisor,it.custodyCategory);it.recordFingerprint=eventKey(it);var k=it.recordFingerprint,ck=eventConflictKey(it);if(existingKeys[k]){dupes++;return}if(conflictKeys[ck]&&mode==='delta'){conflicts++;return}state.transactions.push(it);captureQualityIssuesForTransaction(it,sh.period||{});existingKeys[k]=1;conflictKeys[ck]=1;added++
+     it.custodyCategory=it.custodyCategory||sh.custodyCategory||inferCustodyCategory(sh.profile,pendingImport.file.name,sh.sheet);it.accountKey=it.accountKey||makeAccountKey(it.region,it.custodyHolder||it.supervisor,it.custodyCategory);it.recordFingerprint=eventKey(it);var k=it.recordFingerprint,ck=eventConflictKey(it);if(existingKeys[k]){dupes++;return}if(conflictKeys[ck]&&mode==='delta'){conflicts++;return}reconcileImportedFundingToRequest(it);state.transactions.push(it);captureQualityIssuesForTransaction(it,sh.period||{});existingKeys[k]=1;conflictKeys[ck]=1;added++
    })
  });
  var importId=id('SRC');state.imports.push({id:importId,fileName:pendingImport.file.name,fingerprint:pendingImport.fingerprint,importedAt:new Date().toISOString(),mode:mode,sheets:pendingImport.sheets.map(function(x){return {sheet:x.sheet,profile:x.profile,holder:x.holder,region:x.region,custodyCategory:x.custodyCategory,period:x.period,scopeKey:x.scopeKey,count:x.items.length,sourceSummary:x.sourceSummary||[],control:x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile)}}),addedTransactions:added,addedRequests:reqAdded,superseded:superseded,duplicatesSkipped:dupes+reqDupes,conflictsSkipped:conflicts+reqConflicts,overrideReason:overrideReason||''});
@@ -983,7 +1006,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.2',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.3',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
