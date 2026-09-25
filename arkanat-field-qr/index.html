@@ -87,9 +87,9 @@ function scanView(){
   }
   f.onsubmit=e=>{e.preventDefault();submitPresence()};preflightPermission();setTimeout(async()=>{await flush();show()},1600);window.addEventListener('online',async()=>{await flush();show()})
 }
-if('serviceWorker'in navigator){const registerFieldWorker=()=>navigator.serviceWorker.register('./sw.js?v=549',{scope:'./',updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',registerFieldWorker,{once:true});else registerFieldWorker()}
+if('serviceWorker'in navigator){const registerFieldWorker=()=>navigator.serviceWorker.register('./sw.js?v=550',{scope:'./',updateViaCache:'none'}).then(r=>r.update().catch(()=>{})).catch(()=>{});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',registerFieldWorker,{once:true});else registerFieldWorker()}
 if(OPS)opsView();else if(TOKEN)scanView();else if(SHARE)app.innerHTML='<div class="spin"></div>';else app.innerHTML='<h2>الرابط غير مكتمل</h2><p class="sub">استخدم رابط العمليات أو امسح QR معتمداً.</p>';
 </script>
-<script defer src="./reprint.js?v=549"></script>
+<script defer src="./reprint.js?v=550"></script>
 </body>
 </html>
