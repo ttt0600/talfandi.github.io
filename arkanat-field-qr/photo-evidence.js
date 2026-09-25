@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
-if(window.__ARK_FIELD_PHOTO_EVIDENCE_V2)return;
+if(window.__ARK_FIELD_PHOTO_EVIDENCE_V3)return;
+window.__ARK_FIELD_PHOTO_EVIDENCE_V3=true;
 window.__ARK_FIELD_PHOTO_EVIDENCE_V2=true;
 window.__ARK_FIELD_PHOTO_EVIDENCE_V1=true;
 
@@ -41,6 +42,7 @@ function livePhotoBox(eventId){const b=document.getElementById('photoEvidenceBox
 function clearPickerTimer(){if(pickerCancelTimer){clearTimeout(pickerCancelTimer);pickerCancelTimer=0}}
 function clearPickerOpenGuard(){if(pickerOpenGuardTimer){clearTimeout(pickerOpenGuardTimer);pickerOpenGuardTimer=0}}
 function isAndroid(){return /Android/i.test(navigator.userAgent||'')}
+function isSamsungInternet(){return /SamsungBrowser\//i.test(navigator.userAgent||'')}
 function prepareAndroidFileInput(input){
   if(!input||!isAndroid())return;
   input.classList.remove('hidden');
@@ -142,14 +144,15 @@ function openPhotoPicker(input,take,out,eventId){
   clearPickerTimer();clearPickerOpenGuard();
   try{input.value=''}catch(_){}
   prepareAndroidFileInput(input);
-  const useClickFallback=isAndroid()&&input.dataset.arkPickerFallback==='click';
-  if(isAndroid()){try{input.setAttribute('capture','environment')}catch(_){}}
+  const android=isAndroid(),useSystemFallback=android&&input.dataset.arkPickerFallback==='system';
+  if(android){try{if(useSystemFallback)input.removeAttribute('capture');else input.setAttribute('capture','environment')}catch(_){}}
   pickerActive=true;pickerInput=input;pickerEventId=String(eventId||'');pickerExternalSeen=false;
   if(take)take.disabled=true;
-  if(out)out.innerHTML='<span class="sub">الكاميرا مفتوحة. التقط الصورة ثم اختر «استخدام الصورة» للعودة وإكمال التسجيل.</span>';
+  if(out)out.innerHTML=useSystemFallback?'<span class="sub">اختر «الكاميرا» من نافذة الصور ثم التقط صورة الموقع لإكمال التسجيل.</span>':'<span class="sub">الكاميرا مفتوحة. التقط الصورة ثم اختر «استخدام الصورة» للعودة وإكمال التسجيل.</span>';
   let launched=false;
   try{
-    if(isAndroid()&&!useClickFallback&&typeof input.showPicker==='function'){input.showPicker();launched=true}
+    if(android){input.click();launched=true}
+    else if(typeof input.showPicker==='function'){input.showPicker();launched=true}
     else{input.click();launched=true}
   }catch(e){
     try{input.click();launched=true}catch(_){}
@@ -165,10 +168,11 @@ function openPhotoPicker(input,take,out,eventId){
       if(input.files&&input.files.length)return;
       let focused=true;try{focused=document.hasFocus()}catch(_){}
       if(document.visibilityState==='visible'&&focused){
-        input.dataset.arkPickerFallback='click';
+        input.dataset.arkPickerFallback='system';
+        try{input.removeAttribute('capture')}catch(_){}
         resetPickerState();
         if(take)take.disabled=false;
-        if(out&&document.body.contains(out))out.innerHTML='<span class="warn">لم تستجب الكاميرا بالطريقة الأولى. اضغط «التقاط صورة للموقع» مرة أخرى وسيستخدم النظام طريقة فتح متوافقة بديلة مع إبقاء التصوير بالكاميرا.</span>';
+        if(out&&document.body.contains(out))out.innerHTML='<span class="warn">لم تفتح الكاميرا بالطريقة المباشرة على هذا الجهاز. اضغط «التقاط صورة للموقع» مرة أخرى ثم اختر «الكاميرا» من النافذة التي تظهر.</span>';
       }
     },PICKER_OPEN_GUARD_MS)
   }
@@ -220,8 +224,8 @@ function renderPhotoStep(eventId,force=false){
         out.querySelector('#fieldPhotoApprove').onclick=async()=>{const approve=out.querySelector('#fieldPhotoApprove'),retake=out.querySelector('#fieldPhotoRetake');approve.disabled=true;retake.disabled=true;photoProcessing=true;out.insertAdjacentHTML('beforeend','<div id="fieldPhotoUploading"><div class="spin"></div><div class="center">جارٍ حفظ الصورة وإكمال التسجيل…</div></div>');const row={event_id:eventId,checkpoint_token:getToken(),blob:made.blob,width_px:made.width,height_px:made.height,captured_client_ts:captured,queued_at:Date.now()};try{await uploadRow(row);URL.revokeObjectURL(u);photoProcessing=false;completeRegistration('تم حفظ صورة الإثبات وربطها بالمسحة.')}catch(e){photoProcessing=false;if(e&&e.permanent){URL.revokeObjectURL(u);out.innerHTML='<p class="bad">'+h(e.message||'تعذر قبول الصورة.')+'</p><p class="warn">التسجيل ما زال غير مكتمل حتى حفظ صورة صالحة.</p><div class="actions"><button id="fieldPhotoRetryCapture" type="button">إعادة التصوير</button></div>';const rb=out.querySelector('#fieldPhotoRetryCapture');rb.onclick=()=>openPhotoPicker(input,take,out,eventId);return}let queued=false;try{await dbPut(row);queued=true}catch(_){}URL.revokeObjectURL(u);if(queued)completeRegistration('تم التقاط صورة الإثبات وحفظها على الجهاز، وستُرفع تلقائياً عند توفر الاتصال.',true);else out.innerHTML='<p class="bad">تعذر حفظ الصورة حالياً.</p><p class="warn">التسجيل غير مكتمل؛ أعد المحاولة قبل إغلاق الصفحة.</p>'}};
       }catch(e){processing=false;photoProcessing=false;out.innerHTML='<p class="bad">'+h(e.message||'تعذر تجهيز الصورة.')+'</p><p class="warn">التسجيل غير مكتمل حتى حفظ الصورة.</p>';take.disabled=false}
     };
-    input.onchange=()=>{clearPickerTimer();clearPickerOpenGuard();const file=input.files&&input.files[0];try{input.setAttribute('capture','environment');delete input.dataset.arkPickerFallback}catch(_){}if(file){const stableFile=file;resetPickerState();processFile(stableFile)}else markPickerCancelled(input,take,out)};
-    input.oncancel=()=>{try{input.setAttribute('capture','environment');delete input.dataset.arkPickerFallback}catch(_){};markPickerCancelled(input,take,out)};
+    input.onchange=()=>{clearPickerTimer();clearPickerOpenGuard();const file=input.files&&input.files[0];if(file){try{input.setAttribute('capture','environment');delete input.dataset.arkPickerFallback}catch(_){}const stableFile=file;resetPickerState();processFile(stableFile)}else markPickerCancelled(input,take,out)};
+    input.oncancel=()=>{if(input.dataset.arkPickerFallback!=='system'){try{input.setAttribute('capture','environment')}catch(_){}}markPickerCancelled(input,take,out)};
   };mount();
 }
 
