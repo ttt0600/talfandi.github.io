@@ -1,5 +1,5 @@
-const CACHE='arkanat-field-qr-v5-49-20260919';
-const V='549';
+const CACHE='arkanat-field-qr-v5-50-20260925-photo-compat';
+const V='550';
 const CORE=[
   './index.html',
   './reprint.js?v='+V,
