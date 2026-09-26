@@ -46,38 +46,34 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
     <div id="authMessage" class="authmsg"></div>
   </div>
 </div>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.5.5</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.5.6</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav">
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
-<button class="navbtn" data-view="ledger"><span>≣</span>سجل الحركات</button>
-<button class="navbtn" data-view="requests"><span>＋</span>طلبات العهد</button>
+<button class="navbtn" data-view="accounts"><span>◎</span>العهد</button>
+<button class="navbtn" data-view="ledger"><span>≣</span>المصروفات</button>
 <button class="navbtn" data-view="advances"><span>◫</span>السلف</button>
-<button class="navbtn" data-view="entry"><span>₿</span>إضافة حركة</button>
-<button class="navbtn" data-view="review"><span>✓</span>مراجعة المالية</button>
 <button class="navbtn" data-view="settlement"><span>Σ</span>التصفية</button>
-<button class="navbtn" data-view="exceptions"><span>!</span>الاستثناءات</button>
-<button class="navbtn" data-view="audit"><span>⌁</span>سجل التدقيق</button>
-<button class="navbtn" id="adminNav" data-view="users" style="display:none"><span>♛</span>إدارة المستخدمين</button>
-<button class="navbtn" data-view="accounts"><span>◎</span>حسابات العهد</button>
-<button class="navbtn" data-view="evidence"><span>▣</span>المستندات المؤيدة</button>
-<button class="navbtn" data-view="io"><span>⇄</span>استيراد وتصدير</button>
+<button class="navbtn" data-view="requests"><span>＋</span>طلبات العهد</button>
+<button class="navbtn" data-view="entry"><span>＋</span>إضافة حركة</button>
+<button class="navbtn" data-view="io"><span>⇄</span>استيراد ملف</button>
+<button class="navbtn" id="adminNav" data-view="users" style="display:none"><span>♛</span>المستخدمون</button>
 </aside>
 <main>
 <section id="dash" class="view active">
-<div class="titlebar"><div><h2>لوحة التحكم</h2><div class="subtitle">ملخص نقدي لحظي مبني على الحركات المسجلة في هذه البوابة فقط</div></div><div class="actions"><button class="btn primary" onclick="go('entry')">إضافة حركة</button><button class="btn" onclick="go('requests')">طلب عهدة</button></div></div>
+<div class="titlebar"><div><h2>لوحة التحكم</h2><div class="subtitle">من استلم العهدة، كم صُرف، أين صُرف، وكم بقي</div></div><div class="actions"><button class="btn primary" onclick="go('entry')">إضافة حركة</button><button class="btn" onclick="go('io')">استيراد ملف</button></div></div>
 <div class="kpis" id="kpis"></div>
 <div class="grid2">
-<div class="card"><h3>آخر الحركات</h3><div id="recent"></div></div>
-<div class="card"><h3>صندوق المراجعة</h3><div id="reviewMini"></div></div>
+<div class="card"><h3>آخر المصروفات والحركات</h3><div id="recent"></div></div>
+<div class="card"><h3>أين صُرف المال؟</h3><div id="spendSummary"></div></div>
 </div>
-<div class="card"><h3>الأرصدة حسب المسؤول/المشرف</h3><div id="balances"></div></div>
+<div class="card"><h3>العهد الحالية</h3><div class="subtitle" style="margin-bottom:10px">اضغط على «عرض» لرؤية تفاصيل حركة حامل العهدة.</div><div id="balances"></div></div>
 </section>
 
 <section id="ledger" class="view">
-<div class="titlebar"><div><h2>سجل الحركات</h2><div class="subtitle">كل تغذية أو صرف أو تحويل أو إعادة تحفظ كحركة مستقلة</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
+<div class="titlebar"><div><h2>المصروفات والحركات</h2><div class="subtitle">من صرف، أين صُرف، لماذا صُرف، ولمن صُرف</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
 <div class="card"><div class="formgrid">
-<div class="field"><label>بحث</label><input id="ledgerSearch" placeholder="اسم، موقع، بيان..." oninput="renderLedger()"></div>
+<div class="field"><label>بحث</label><input id="ledgerSearch" placeholder="اسم، مشرف، موقع، سبب..." oninput="renderLedger()"></div>
 <div class="field"><label>نوع الحركة</label><select id="ledgerType" onchange="renderLedger()"><option value="">الكل</option><option>تغذية عهدة</option><option>تغطية</option><option>مصروف تشغيلي</option><option>تحويل داخلي</option><option>إعادة للشركة</option><option>دفعة تحت التسوية</option><option>دفع نقدي لفرد</option></select></div>
 <div class="field"><label>الحالة</label><select id="ledgerStatus" onchange="renderLedger()"><option value="">الكل</option><option>مسجل</option><option>يحتاج مراجعة</option><option>معتمد</option><option>ملغى</option></select></div>
 </div></div>
@@ -185,7 +181,7 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 
 <section id="settlement" class="view">
-<div class="titlebar"><div><h2>التصفية</h2><div class="subtitle">حساب الموارد والمصروفات والرصيد لكل مشرف/حامل عهدة</div></div></div>
+<div class="titlebar"><div><h2>التصفية</h2><div class="subtitle">المبلغ المستلم − المصروف − ما تم تحويله = المبلغ المتبقي</div></div></div>
 <div class="card"><div class="formgrid">
 <div class="field"><label>المشرف/حامل العهدة</label><input id="settleHolder" placeholder="اتركه فارغاً لعرض الجميع" oninput="renderSettlement()"></div>
 <div class="field"><label>من تاريخ</label><input id="settleFrom" type="date" onchange="renderSettlement()"></div>
@@ -231,11 +227,15 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 
 <section id="accounts" class="view">
-<div class="titlebar"><div><h2>حسابات العهد</h2><div class="subtitle">فصل محفظة النقد عن نوع المصروف مع إظهار العهد الرئيسية والفرعية</div></div></div>
+<div class="titlebar"><div><h2>العهد</h2><div class="subtitle">من استلم العهدة، كم استلم، كم صرف، وما المتبقي لديه</div></div><div class="actions"><button class="btn" onclick="go('settlement')">فتح التصفية</button></div></div>
 <div class="kpis" id="accountKpis"></div>
+<div class="card"><div class="formgrid">
+<div class="field"><label>بحث عن حامل عهدة</label><input id="accountSearch" placeholder="اسم المشرف أو المنطقة..." oninput="renderAccounts()"></div>
+<div class="field"><label>المنطقة</label><input id="accountRegion" placeholder="مثال: الوسطى" oninput="renderAccounts()"></div>
+</div></div>
 <div class="card"><div id="accountsTable"></div></div>
-<div class="card"><h3>الأرصدة الشهرية المنظمة</h3><div id="periodBalancesTable"></div></div>
-<div class="card"><h3>آخر التسويات الشهرية</h3><div id="settlementControlsTable"></div></div>
+<div id="periodBalancesTable" style="display:none"></div>
+<div id="settlementControlsTable" style="display:none"></div>
 </section>
 
 <section id="evidence" class="view">
@@ -265,13 +265,13 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.5.5 — لا تكتب تلقائياً في 07.09 أو ARK-OPS-FIN-019 أو أنظمة الرواتب أو Guard Control. البيانات تحفظ في قاعدة البوابة المشتركة وفق صلاحيات المستخدم.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.5.6 — الهدف: معرفة من استلم العهدة، أين صُرفت، ولماذا، وكم بقي. لا تكتب البوابة تلقائياً في الأنظمة الحاكمة.</div>
 <div id="toast" class="toast"></div>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.5.5',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.5.5';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.5.6',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.5.6';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -387,23 +387,52 @@ var map={},d=[];
 state.transactions.forEach(function(t){if(t.status==='ملغى'||t.type==='تغذية عهدة')return;var k=[t.dateRaw||t.date,num(t.amount),t.absent,t.cover,t.supervisor,t.site,t.description].map(function(x){return String(x||'').trim()}).join('|');if(map[k])d.push([map[k],t]);else map[k]=t});
 return d}
 function renderKpis(){
-var c=calc(),review=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.status==='يحتاج مراجعة'}).length+state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&['جديد','يحتاج استكمال','معتمد','ممول جزئياً'].indexOf(r.status)>=0}).length,docs=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.periodExpense!==false&&(t.expenseCategory==='وقود'||t.expenseCategory==='مصروف تشغيلي')&&!t.documentRef&&!evidenceCount(t.id)}).length;
-var data=[['إجمالي الموارد',money(c.incoming),'الرصيد الافتتاحي والتغذيات'],['المصروفات المسجلة',money(c.expenses),'التغطيات والمصروفات'],['الرصيد الدفتري',money(c.balance),'قبل التسوية النهائية'],['بانتظار المراجعة',review.toLocaleString('ar-SA'),'طلبات وحركات'],['مستندات ناقصة',docs.toLocaleString('ar-SA'),'للمصروفات غير التغطية']];
-document.getElementById('kpis').innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
+ var c0=calc(),activeTx=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'}),holders={};
+ activeTx.forEach(function(t){var h=t.custodyHolder||t.supervisor;if(h)holders[h]=1});
+ var data=[
+  ['المبلغ المستلم',money(c0.incoming),'أرصدة وتغذيات العهد'],
+  ['المبلغ المصروف',money(c0.expenses),'مصروفات فعلية مسجلة'],
+  ['المتبقي',money(c0.balance),'الرصيد الموجود تحت العهد'],
+  ['أمناء العهد',Object.keys(holders).length.toLocaleString('ar-SA'),'أشخاص لديهم حركات حالية'],
+  ['عدد الحركات',activeTx.length.toLocaleString('ar-SA'),'في اللقطات الحالية فقط']
+ ];
+ document.getElementById('kpis').innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
+}
+function renderSpendSummary(){
+ var m={},total=0;state.transactions.forEach(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t))return;
+  var k=t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory)||t.type||'أخرى',v=num(t.amount);
+  m[k]=(m[k]||0)+v;total+=v
+ });
+ var a=Object.keys(m).map(function(k){return {k:k,v:m[k]}}).sort(function(x,y){return y.v-x.v}).slice(0,7),el=document.getElementById('spendSummary');
+ if(!el)return;if(!a.length){el.innerHTML='<div class="empty">لا توجد مصروفات.</div>';return}
+ el.innerHTML='<div class="inbox">'+a.map(function(x){var pct=total?Math.round(x.v/total*100):0;return '<div class="item"><div><strong>'+esc(x.k)+'</strong><small>'+pct+'٪ من المصروف</small></div><strong class="money">'+money(x.v)+'</strong></div>'}).join('')+'</div>'
 }
 function evidenceCount(txId){return (state.evidence||[]).filter(function(e){return e.transactionId===txId}).length}
 function rowTable(list){
 if(!list.length)return '<div class="empty">لا توجد حركات مسجلة.</div>';
-return '<div class="tablewrap"><table class="tbl"><thead><tr><th>الرقم</th><th>التاريخ</th><th>النوع</th><th>محفظة العهدة</th><th>تصنيف المصروف</th><th>المبلغ</th><th>حامل العهدة</th><th>المشرف التشغيلي</th><th>الموقع</th><th>البيان</th><th>المستندات</th><th>الحالة</th></tr></thead><tbody>'+list.map(function(t){var ec=evidenceCount(t.id);return '<tr><td>'+esc(t.legacyNo||t.id)+'</td><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(t.type)+'</td><td>'+esc(t.custodyCategory||'عام')+'</td><td>'+esc(t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory))+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.custodyHolder||t.supervisor||'-')+'</td><td>'+esc(t.supervisor||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.description||t.reason||'-')+'</td><td>'+(ec?'<span class="badge ok">'+ec+'</span>':'-')+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'}).join('')+'</tbody></table></div>'
+return '<div class="tablewrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>حامل العهدة / من صرف</th><th>نوع الحركة</th><th>المبلغ</th><th>الموقع</th><th>لمن / من</th><th>السبب / البيان</th><th>الحالة</th></tr></thead><tbody>'+list.map(function(t){
+ var who=t.custodyHolder||t.supervisor||'-',person=t.cover||t.absent||t.beneficiary||t.transferTo||'-',why=t.reason||t.description||'-';
+ return '<tr><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(who)+'</td><td>'+esc(t.type)+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(person)+'</td><td>'+esc(why)+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'
+}).join('')+'</tbody></table></div>'
 }
 function renderRecent(){document.getElementById('recent').innerHTML=rowTable(state.transactions.slice().reverse().slice(0,7))}
 function renderReviewMini(){var n=state.requests.filter(function(r){return r.status==='جديد'||r.status==='يحتاج استكمال'}).length+state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'}).length;document.getElementById('reviewMini').innerHTML=n?'<div class="notice warn">يوجد <strong>'+n+'</strong> عنصر يحتاج مراجعة مالية.</div><button class="btn" onclick="go(\'review\')">فتح صندوق المراجعة</button>':'<div class="notice">لا توجد عناصر معلقة حالياً.</div>'}
 function renderBalances(){
-var m={};state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;var holder=t.custodyHolder||t.supervisor||'غير محدد',cat=t.custodyCategory||'عام',k=(t.accountKey||[t.region||'',holder,cat].join('|'));if(!m[k])m[k]={holder:holder,category:cat,region:t.region||'',balance:0};m[k].balance+=txnEffect(t)});
-var a=Object.keys(m).map(function(k){return m[k]}).sort(function(x,y){return y.balance-x.balance});
-if(!a.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد بيانات.</div>';return}
-document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>نوع العهدة</th><th>المنطقة</th><th>الرصيد الدفتري</th></tr></thead><tbody>'+a.map(function(x){return '<tr><td>'+esc(x.holder)+'</td><td>'+esc(x.category)+'</td><td>'+esc(x.region||'-')+'</td><td class="money">'+money(x.balance)+'</td></tr>'}).join('')+'</tbody></table></div>'
+ var m={};state.transactions.forEach(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;
+  var holder=t.custodyHolder||t.supervisor||'غير محدد',cat=t.custodyCategory||'عام',k=t.accountKey||[t.region||'',holder,cat].join('|');
+  if(!m[k])m[k]={holder:holder,category:cat,region:t.region||'',received:0,spent:0,transferred:0,balance:0,last:''};
+  if(t.type==='رصيد افتتاحي'||t.type==='تغذية عهدة'||t.type==='تحويل وارد')m[k].received+=t.type==='رصيد افتتاحي'?num(t.amount)*(t.openingSign===-1?-1:1):num(t.amount);
+  if(isExpense(t)||t.type==='دفعة تحت التسوية'||t.type==='دفع نقدي لفرد')m[k].spent+=num(t.amount);
+  if(t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة')m[k].transferred+=num(t.amount);
+  m[k].balance+=txnEffect(t);if(String(t.date||'')>m[k].last)m[k].last=t.date
+ });
+ var a=Object.keys(m).map(function(k){return m[k]}).filter(function(x){return Math.abs(x.received)+Math.abs(x.spent)+Math.abs(x.transferred)+Math.abs(x.balance)>0.001}).sort(function(x,y){return y.balance-x.balance});
+ if(!a.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد بيانات.</div>';return}
+ document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع العهدة</th><th>استلم</th><th>صرف</th><th>حوّل لآخرين</th><th>المتبقي</th><th></th></tr></thead><tbody>'+a.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.category)+'</td><td class="money">'+money(x.received)+'</td><td class="money">'+money(x.spent)+'</td><td class="money">'+money(x.transferred)+'</td><td class="money"><strong>'+money(x.balance)+'</strong></td><td><button class="btn" onclick="openHolderSettlement(\''+esc(x.holder).replaceAll("'", "\\'")+'\')">عرض</button></td></tr>'}).join('')+'</tbody></table></div>'
 }
+window.openHolderSettlement=function(h){go('settlement');var e=document.getElementById('settleHolder');if(e){e.value=h;renderSettlement()}}
 window.renderLedger=function(){
 var q=(document.getElementById('ledgerSearch').value||'').trim().toLowerCase(),ty=document.getElementById('ledgerType').value,st=document.getElementById('ledgerStatus').value;
 var a=state.transactions.filter(function(t){var s=JSON.stringify(t).toLowerCase();return (!q||s.indexOf(q)>=0)&&(!ty||t.type===ty)&&(!st||t.status===st)});
@@ -478,7 +507,7 @@ var exp=a.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0);
 var advances=a.filter(function(t){return t.type==='دفعة تحت التسوية'||t.expenseCategory==='سلف وذمم'}).reduce(function(s,t){return s+num(t.amount)},0);
 var out=a.filter(function(t){return t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة'}).reduce(function(s,t){return s+num(t.amount)},0);
 var bal=a.reduce(function(s,t){return s+txnEffect(t)},0);
-document.getElementById('settlementResult').innerHTML='<div class="kpis"><div class="kpi"><div class="lab">الموارد</div><div class="val">'+money(inc)+'</div></div><div class="kpi"><div class="lab">مصروف فترة</div><div class="val">'+money(exp)+'</div></div><div class="kpi"><div class="lab">سلف/ذمم</div><div class="val">'+money(advances)+'</div></div><div class="kpi"><div class="lab">تحويل/إعادة</div><div class="val">'+money(out)+'</div></div><div class="kpi"><div class="lab">الرصيد</div><div class="val">'+money(bal)+'</div></div><div class="kpi"><div class="lab">عدد الحركات</div><div class="val">'+a.length.toLocaleString('ar-SA')+'</div></div></div>'+rowTable(a.slice().reverse())+'<div class="card" style="margin-top:14px"><h3>ملخص المصروفات حسب الموقع</h3><div class="subtitle" style="margin-bottom:10px">يستخدم في جرد نهاية الشهر ومراجعة التغطيات ومرشحات الاسترداد. لا ينشئ خصماً على الرواتب تلقائياً.</div>'+siteSummaryHtml(a)+'</div>'
+document.getElementById('settlementResult').innerHTML='<div class="kpis"><div class="kpi"><div class="lab">المبلغ المستلم</div><div class="val">'+money(inc)+'</div></div><div class="kpi"><div class="lab">المبلغ المصروف</div><div class="val">'+money(exp)+'</div></div><div class="kpi"><div class="lab">سلف/مبالغ تحت التسوية</div><div class="val">'+money(advances)+'</div></div><div class="kpi"><div class="lab">محوّل/معاد</div><div class="val">'+money(out)+'</div></div><div class="kpi"><div class="lab">المتبقي</div><div class="val">'+money(bal)+'</div></div><div class="kpi"><div class="lab">عدد الحركات</div><div class="val">'+a.length.toLocaleString('ar-SA')+'</div></div></div>'+rowTable(a.slice().reverse())+'<div class="card" style="margin-top:14px"><h3>ملخص المصروفات حسب الموقع</h3><div class="subtitle" style="margin-bottom:10px">يستخدم في جرد نهاية الشهر ومراجعة التغطيات ومرشحات الاسترداد. لا ينشئ خصماً على الرواتب تلقائياً.</div>'+siteSummaryHtml(a)+'</div>'
 }
 function coverageAmountPatterns(){
  var groups={};state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.type==='تغطية'}).forEach(function(t){var k=cleanArabic(t.region)+'|'+cleanArabic(t.supervisor);if(!groups[k])groups[k]=[];groups[k].push(t)});
@@ -520,7 +549,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.5.5',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.5.6',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -609,14 +638,28 @@ function ensureRequestComponents(r){
  suggestedRequestComponents(r).forEach(function(x,i){state.requestComponents.push({id:'CMP-'+r.id+'-'+(i+1),requestId:r.id,componentType:x.componentType,amount:x.amount,accountKey:r.accountKey||'',notes:x.notes||'',status:x.status||'مخطط',sourceReference:r.sourceReference||'',createdAt:new Date().toISOString()})})
 }
 function renderAccounts(){
- var el=document.getElementById('accountsTable'),kp=document.getElementById('accountKpis'),sc=document.getElementById('settlementControlsTable'),pb=document.getElementById('periodBalancesTable');if(!el)return;ensureAccountsFromState();
- var a=(state.accounts||[]).slice().sort(function(x,y){return (x.region+'|'+x.holderName+'|'+x.custodyCategory).localeCompare(y.region+'|'+y.holderName+'|'+y.custodyCategory,'ar')});
- var total=a.reduce(function(s,x){return s+accountBalance(x.accountKey)},0),children=a.filter(function(x){return x.accountRole==='فرعية'}).length,main=a.filter(function(x){return x.accountRole==='رئيسية مجمعة'}).length;
- if(kp)kp.innerHTML=[['الحسابات النشطة',a.filter(function(x){return x.status!=='مغلق'}).length.toLocaleString('ar-SA'),'محافظ نقدية مستقلة'],['عهد رئيسية',main.toLocaleString('ar-SA'),'محافظ مجمعة'],['عهد فرعية',children.toLocaleString('ar-SA'),'أرصدة لدى مشرفين'],['إجمالي النقد الدفتري',money(total),'بعد التحويلات الداخلية']].map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('');
- el.innerHTML=a.length?'<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع المحفظة</th><th>الدور</th><th>الحساب الأب</th><th>الرصيد الدفتري</th><th>آخر حركة</th><th>الحالة</th></tr></thead><tbody>'+a.map(function(x){return '<tr><td>'+esc(x.holderName||'-')+'</td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.custodyCategory||'-')+'</td><td><span class="badge '+(x.accountRole==='رئيسية مجمعة'?'info':x.accountRole==='فرعية'?'warn':'')+'">'+esc(x.accountRole||'مستقلة')+'</span></td><td>'+esc(x.parentAccountKey||'-')+'</td><td class="money">'+money(accountBalance(x.accountKey))+'</td><td>'+esc(x.lastActivityDate||'-')+'</td><td>'+esc(x.status||'نشط')+'</td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">لا توجد حسابات عهد.</div>';
- var balances=(state.periodBalances||[]).slice().sort(function(x,y){return String(y.periodMonth||'').localeCompare(String(x.periodMonth||''))||String(x.accountKey||'').localeCompare(String(y.accountKey||''),'ar')});
- if(pb)pb.innerHTML=balances.length?'<div class="tablewrap"><table class="tbl"><thead><tr><th>الفترة</th><th>حساب العهدة</th><th>افتتاحي</th><th>تمويل</th><th>مصروف معترف</th><th>خروج غير مصروف</th><th>تحويلات داخلية</th><th>إقفال</th><th>الحالة</th></tr></thead><tbody>'+balances.slice(0,80).map(function(x){return '<tr><td>'+esc((x.periodMonth||'').slice(0,7))+'</td><td>'+esc(x.accountKey||'-')+'</td><td class="money">'+money(x.openingBalance)+'</td><td class="money">'+money(x.funding)+'</td><td class="money">'+money(x.recognizedExpense)+'</td><td class="money">'+money(x.nonExpenseOutflow)+'</td><td class="money">'+money(x.internalTransfers)+'</td><td class="money">'+money(x.closingBalance)+'</td><td><span class="badge '+(String(x.status||'').indexOf('استثناء')>=0?'warn':'ok')+'">'+esc(x.status||'-')+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">لا توجد أرصدة شهرية منظمة بعد.</div>';
- var ctr=(state.settlementControls||[]).slice().reverse();if(sc)sc.innerHTML=ctr.length?'<div class="tablewrap"><table class="tbl"><thead><tr><th>الفترة</th><th>الحساب</th><th>الرصيد المرحل</th><th>تمويل</th><th>تدفق نقدي خارج</th><th>تحويلات داخلية</th><th>إقفال رئيسي</th><th>إجمالي النقد المحتفظ</th><th>الفرق</th><th>الحالة</th></tr></thead><tbody>'+ctr.slice(0,24).map(function(x){return '<tr><td>'+esc((x.periodStart||'').slice(0,7))+'</td><td>'+esc(x.accountKey||'-')+'</td><td class="money">'+money(x.sourceOpening)+'</td><td class="money">'+money(x.sourceFunding)+'</td><td class="money">'+money(x.sourceCashOutflow)+'</td><td class="money">'+money(x.sourceInternalTransfers)+'</td><td class="money">'+money(x.sourceClosing)+'</td><td class="money">'+money(x.derivedTotalHeld)+'</td><td class="money">'+money(x.reconciliationDiff)+'</td><td><span class="badge '+(Math.abs(num(x.reconciliationDiff))<0.01?'ok':'warn')+'">'+esc(x.status||'-')+'</span></td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">لا توجد تسويات شهرية منظمة بعد.</div>'
+ var el=document.getElementById('accountsTable'),kp=document.getElementById('accountKpis');if(!el)return;
+ var q=((document.getElementById('accountSearch')||{}).value||'').trim().toLowerCase(),rg=((document.getElementById('accountRegion')||{}).value||'').trim().toLowerCase(),m={};
+ state.transactions.forEach(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;
+  var holder=t.custodyHolder||t.supervisor||'غير محدد',cat=t.custodyCategory||'عام',key=t.accountKey||[t.region||'',holder,cat].join('|');
+  if(!m[key])m[key]={holder:holder,region:t.region||'',category:cat,received:0,spent:0,transferred:0,balance:0,last:''};
+  if(t.type==='رصيد افتتاحي'||t.type==='تغذية عهدة'||t.type==='تحويل وارد')m[key].received+=t.type==='رصيد افتتاحي'?num(t.amount)*(t.openingSign===-1?-1:1):num(t.amount);
+  if(isExpense(t)||t.type==='دفعة تحت التسوية'||t.type==='دفع نقدي لفرد')m[key].spent+=num(t.amount);
+  if(t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة')m[key].transferred+=num(t.amount);
+  m[key].balance+=txnEffect(t);if(String(t.date||'')>m[key].last)m[key].last=t.date
+ });
+ var a=Object.keys(m).map(function(k){return m[k]}).filter(function(x){
+  var hay=(x.holder+' '+x.region+' '+x.category).toLowerCase();return (!q||hay.indexOf(q)>=0)&&(!rg||String(x.region||'').toLowerCase().indexOf(rg)>=0)
+ }).sort(function(x,y){return y.balance-x.balance});
+ var totalReceived=a.reduce(function(s,x){return s+x.received},0),totalSpent=a.reduce(function(s,x){return s+x.spent},0),totalBalance=a.reduce(function(s,x){return s+x.balance},0);
+ if(kp)kp.innerHTML=[
+  ['عدد أمناء العهد',a.length.toLocaleString('ar-SA'),'حسب البيانات الحالية'],
+  ['إجمالي المستلم',money(totalReceived),'أرصدة وتغذيات'],
+  ['إجمالي المصروف',money(totalSpent),'مصروفات وسلف/دفعات'],
+  ['إجمالي المتبقي',money(totalBalance),'الرصيد تحت العهد']
+ ].map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('');
+ el.innerHTML=a.length?'<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع العهدة</th><th>المبلغ المستلم</th><th>المصروف</th><th>المحوّل لآخرين</th><th>المتبقي</th><th>آخر حركة</th><th></th></tr></thead><tbody>'+a.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.category)+'</td><td class="money">'+money(x.received)+'</td><td class="money">'+money(x.spent)+'</td><td class="money">'+money(x.transferred)+'</td><td class="money"><strong>'+money(x.balance)+'</strong></td><td>'+esc(x.last||'-')+'</td><td><button class="btn" onclick="openHolderSettlement(\''+esc(x.holder).replaceAll("'", "\\'")+'\')">تفاصيل</button></td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">لا توجد عهد مطابقة.</div>'
 }
 function renderEvidence(){
   var el=document.getElementById('evidenceTable');if(!el)return;var a=(state.evidence||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد مستندات مؤيدة مرتبطة بالحركات حتى الآن.</div>';return}
@@ -652,7 +695,7 @@ window.exportAdvancesXlsx=function(){
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cur),'السلف الحالية');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hist),'السجل التاريخي');XLSX.writeFile(wb,'Arkanat_Employee_Advances.xlsx')
 }
 
-function renderAll(){renderOperator();renderStorageMode();renderKpis();renderRecent();renderReviewMini();renderBalances();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
+function renderAll(){renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderBalances();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
 
 document.getElementById('advanceForm').addEventListener('submit',function(e){
  e.preventDefault();if(!canWritePortal()){toast('لا توجد صلاحية لإضافة السلف');return}
@@ -1079,7 +1122,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.5',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.6',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
