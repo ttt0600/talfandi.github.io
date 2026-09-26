@@ -1128,7 +1128,7 @@ async function prepareImport(file){
  pendingImport={file:file,workbook:wb,fingerprint:fp,sheets:sheets,preparedAt:new Date().toISOString()};
  renderImportPreview()
 }
-function profileLabel(p){return {coverage_list:'كشف تغطيات/صرف أفراد',cash_ledger:'دفتر أستاذ مدين/دائن',expense_ledger:'دفتر وقود/مصروفات',request_snapshot:'طلبات عهدة',unknown:'غير معروف'}[p]||p}
+function profileLabel(p){return {coverage_list:'كشف تغطيات/صرف أفراد',cash_ledger:'دفتر أستاذ مدين/دائن',expense_ledger:'دفتر وقود/مصروفات',simple_expense_list:'قائمة مصروفات مبسطة',request_snapshot:'طلبات عهدة',unknown:'غير معروف'}[p]||p}
 function domId(x){return String(x||'').replace(/[^a-zA-Z0-9\u0600-\u06FF]/g,'_')}
 function guessHeaderRow(rows){var best=0,score=-1;for(var i=0;i<Math.min(rows.length,20);i++){var sc=(rows[i]||[]).filter(function(v){return v!==null&&v!==''&&v!==undefined}).length;if(sc>score){score=sc;best=i}}return best}
 window.setManualHeader=function(sheet,rowNo){var sh=pendingImport&&pendingImport.sheets.find(function(x){return x.sheet===sheet});if(!sh)return;var i=Math.max(0,Number(rowNo)-1);sh.headerIndex=i;sh.headers=sh.rows[i]||[];sh.map={};renderImportPreview()}
