@@ -121,6 +121,7 @@
     return {
       id:x.id, transaction_id:x.transactionId||null, evidence_type:x.evidenceType||"مستند مؤيد",
       file_name:x.fileName||null, drive_file_id:x.driveFileId||null, file_url:x.fileUrl||null,
+      storage_path:x.storagePath||null, mime_type:x.mimeType||null, file_size:x.fileSize==null?null:Number(x.fileSize),
       page_number:x.pageNumber==null?null:Number(x.pageNumber), invoice_number:x.invoiceNumber||null,
       evidence_date:x.evidenceDate||null, amount:x.amount==null?null:n(x.amount),
       verification_status:x.verificationStatus||"غير مراجع", notes:x.notes||null,
@@ -131,6 +132,7 @@
     return {
       id:x.id, transactionId:x.transaction_id||"", evidenceType:x.evidence_type||"",
       fileName:x.file_name||"", driveFileId:x.drive_file_id||"", fileUrl:x.file_url||"",
+      storagePath:x.storage_path||"", mimeType:x.mime_type||"", fileSize:x.file_size==null?null:Number(x.file_size),
       pageNumber:x.page_number==null?null:Number(x.page_number), invoiceNumber:x.invoice_number||"",
       evidenceDate:x.evidence_date||"", amount:x.amount==null?null:n(x.amount),
       verificationStatus:x.verification_status||"", notes:x.notes||"",
@@ -362,6 +364,38 @@
     for(const rows of chunk(employeeAdvances,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_employee_advances").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(advanceHistory,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_employee_advance_history").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length,qualityIssues:qualityIssues.length,employeeAdvances:employeeAdvances.length,advanceHistory:advanceHistory.length};
+  };
+
+  api.uploadEvidenceFile = async function(transactionId,file){
+    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    if(!file) throw new Error("لم يتم اختيار ملف");
+    const allowed=["application/pdf","image/jpeg","image/png","image/webp","image/heic","image/heif"];
+    if(file.type && !allowed.includes(file.type)) throw new Error("نوع الملف غير مدعوم. استخدم PDF أو صورة.");
+    if(file.size>20*1024*1024) throw new Error("حجم الملف يتجاوز 20 ميجابايت");
+    const safe=String(file.name||"attachment").replace(/[^\p{L}\p{N}._-]+/gu,"-").slice(-120);
+    const uid=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+"-"+Math.random().toString(36).slice(2);
+    const path=String(transactionId||"unlinked").replace(/[^a-zA-Z0-9._-]+/g,"-")+"/"+Date.now()+"-"+uid+"-"+safe;
+    const {error}=await api.client.storage.from("cash-evidence").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type||undefined});
+    if(error) throw error;
+    return {storagePath:path,fileName:file.name||safe,mimeType:file.type||"",fileSize:file.size||0};
+  };
+
+  api.getEvidenceUrl = async function(evidence){
+    if(!evidence) throw new Error("المستند غير موجود");
+    if(evidence.storagePath){
+      const {data,error}=await api.client.storage.from("cash-evidence").createSignedUrl(evidence.storagePath,3600);
+      if(error) throw error;
+      return data&&data.signedUrl?data.signedUrl:"";
+    }
+    return evidence.fileUrl||"";
+  };
+
+  api.deleteEvidenceFile = async function(evidence){
+    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    if(!evidence||!evidence.storagePath) return true;
+    const {error}=await api.client.storage.from("cash-evidence").remove([evidence.storagePath]);
+    if(error) throw error;
+    return true;
   };
 
   api.adminUsers = async function(action,payload={}){
