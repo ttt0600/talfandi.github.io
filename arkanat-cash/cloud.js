@@ -212,6 +212,50 @@
       resolutionNote:x.resolution_note||""
     };
   }
+  function employeeAdvanceToDb(x,email){
+    return {
+      id:x.id, employee_name:x.employeeName||"", employee_ref:x.employeeRef||null, department:x.department||null,
+      record_date:x.recordDate||null, source_month:x.sourceMonth||null, advance_amount:n(x.advanceAmount),
+      previous_balance:x.previousBalance==null?null:n(x.previousBalance), outstanding_balance:x.outstandingBalance==null?null:n(x.outstandingBalance),
+      monthly_installment:x.monthlyInstallment==null?null:n(x.monthlyInstallment), payroll_action_month:x.payrollActionMonth||null,
+      status:x.status||"قائم", status_code:x.statusCode||null, source_amount_raw:x.sourceAmountRaw||null,
+      source_id:x.sourceId||null, source_file:x.sourceFile||null, source_sheet:x.sourceSheet||null,
+      source_row:x.sourceRow==null?null:Number(x.sourceRow), notes:x.notes||null,
+      created_at:x.createdAt||new Date().toISOString(), updated_at:new Date().toISOString(), created_by_email:x.createdByEmail||email||null
+    };
+  }
+  function employeeAdvanceFromDb(x){
+    return {
+      id:x.id,employeeName:x.employee_name||"",employeeRef:x.employee_ref||"",department:x.department||"",
+      recordDate:x.record_date||"",sourceMonth:x.source_month||"",advanceAmount:n(x.advance_amount),
+      previousBalance:x.previous_balance==null?null:n(x.previous_balance),outstandingBalance:x.outstanding_balance==null?null:n(x.outstanding_balance),
+      monthlyInstallment:x.monthly_installment==null?null:n(x.monthly_installment),payrollActionMonth:x.payroll_action_month||"",
+      status:x.status||"قائم",statusCode:x.status_code||"",sourceAmountRaw:x.source_amount_raw||"",
+      sourceId:x.source_id||"",sourceFile:x.source_file||"",sourceSheet:x.source_sheet||"",sourceRow:x.source_row||"",
+      notes:x.notes||"",createdAt:x.created_at||"",createdByEmail:x.created_by_email||""
+    };
+  }
+  function employeeAdvanceHistoryToDb(x,email){
+    return {
+      id:x.id,period_month:x.periodMonth,source_row:x.sourceRow==null?null:Number(x.sourceRow),employee_name:x.employeeName||"",
+      employee_ref:x.employeeRef||null,department:x.department||null,amount:x.amount==null?null:n(x.amount),amount_raw:x.amountRaw||null,
+      previous_balance:x.previousBalance==null?null:n(x.previousBalance),source_total:x.sourceTotal==null?null:n(x.sourceTotal),
+      derived_exposure:x.derivedExposure==null?null:n(x.derivedExposure),monthly_installment:x.monthlyInstallment==null?null:n(x.monthlyInstallment),
+      payroll_action_month:x.payrollActionMonth||null,classification:x.classification||null,notes:x.notes||null,extra_notes:x.extraNotes||null,
+      source_id:x.sourceId||null,source_file:x.sourceFile||null,created_at:x.createdAt||new Date().toISOString(),created_by_email:x.createdByEmail||email||null
+    };
+  }
+  function employeeAdvanceHistoryFromDb(x){
+    return {
+      id:x.id,periodMonth:x.period_month||"",sourceRow:x.source_row||"",employeeName:x.employee_name||"",employeeRef:x.employee_ref||"",
+      department:x.department||"",amount:x.amount==null?null:n(x.amount),amountRaw:x.amount_raw||"",previousBalance:x.previous_balance==null?null:n(x.previous_balance),
+      sourceTotal:x.source_total==null?null:n(x.source_total),derivedExposure:x.derived_exposure==null?null:n(x.derived_exposure),
+      monthlyInstallment:x.monthly_installment==null?null:n(x.monthly_installment),payrollActionMonth:x.payroll_action_month||"",
+      classification:x.classification||"",notes:x.notes||"",extraNotes:x.extra_notes||"",sourceId:x.source_id||"",sourceFile:x.source_file||"",
+      createdAt:x.created_at||"",createdByEmail:x.created_by_email||""
+    };
+  }
+
 
   api.init = async function(){
     if(api.mode!=="supabase") return {mode:"local",ready:false};
@@ -263,7 +307,7 @@
 
   api.loadState = async function(){
     if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
-    const [rq,tx,im,au,ev,ac,sc,rc,pb,qi]=await Promise.all([
+    const [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
       api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_imports").select("*").order("created_at",{ascending:true}),
@@ -273,9 +317,11 @@
       api.client.from("cash_settlement_controls").select("*").order("period_start",{ascending:true}),
       api.client.from("cash_request_components").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_account_period_balances").select("*").order("period_month",{ascending:true}),
-      api.client.from("cash_data_quality_issues").select("*").order("created_at",{ascending:true})
+      api.client.from("cash_data_quality_issues").select("*").order("created_at",{ascending:true}),
+      api.client.from("cash_employee_advances").select("*").order("source_row",{ascending:true}),
+      api.client.from("cash_employee_advance_history").select("*").order("period_month",{ascending:true}).order("source_row",{ascending:true})
     ]);
-    for(const x of [rq,tx,im,au,ev,ac,sc,rc,pb,qi]) if(x.error) throw x.error;
+    for(const x of [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]) if(x.error) throw x.error;
     return {
       requests:(rq.data||[]).map(requestFromDb),
       transactions:(tx.data||[]).map(txnFromDb),
@@ -286,7 +332,9 @@
       settlementControls:(sc.data||[]).map(settlementFromDb),
       requestComponents:(rc.data||[]).map(requestComponentFromDb),
       periodBalances:(pb.data||[]).map(periodBalanceFromDb),
-      qualityIssues:(qi.data||[]).map(qualityIssueFromDb)
+      qualityIssues:(qi.data||[]).map(qualityIssueFromDb),
+      employeeAdvances:(ea.data||[]).map(employeeAdvanceFromDb),
+      advanceHistory:(eh.data||[]).map(employeeAdvanceHistoryFromDb)
     };
   };
 
@@ -301,6 +349,8 @@
     const accounts=(state.accounts||[]).map(accountToDb).filter(x=>x.account_key);
     const requestComponents=(state.requestComponents||[]).map(x=>requestComponentToDb(x,email));
     const qualityIssues=(state.qualityIssues||[]).map(x=>qualityIssueToDb(x,email));
+    const employeeAdvances=(state.employeeAdvances||[]).map(x=>employeeAdvanceToDb(x,email));
+    const advanceHistory=(state.advanceHistory||[]).map(x=>employeeAdvanceHistoryToDb(x,email));
     for(const rows of chunk(requests,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_requests").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(transactions,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transactions").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(imports,100)){ if(!rows.length) continue; const {error}=await api.client.from("cash_imports").upsert(rows,{onConflict:"id"}); if(error) throw error; }
@@ -309,7 +359,9 @@
     for(const rows of chunk(accounts,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_custody_accounts").upsert(rows,{onConflict:"account_key"}); if(error) throw error; }
     for(const rows of chunk(requestComponents,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_request_components").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(qualityIssues,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_data_quality_issues").upsert(rows,{onConflict:"id"}); if(error) throw error; }
-    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length,qualityIssues:qualityIssues.length};
+    for(const rows of chunk(employeeAdvances,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_employee_advances").upsert(rows,{onConflict:"id"}); if(error) throw error; }
+    for(const rows of chunk(advanceHistory,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_employee_advance_history").upsert(rows,{onConflict:"id"}); if(error) throw error; }
+    return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length,qualityIssues:qualityIssues.length,employeeAdvances:employeeAdvances.length,advanceHistory:advanceHistory.length};
   };
 
   api.adminUsers = async function(action,payload={}){
