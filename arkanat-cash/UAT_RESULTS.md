@@ -181,3 +181,16 @@
 | صلاحية الرفع | finance / finance_manager / super_admin فقط | PASS |
 | القراءة | جميع مستخدمي البوابة المصرح لهم | PASS |
 | JavaScript | index.html وcloud.js بدون أخطاء Syntax | PASS |
+
+
+## تحقق تجربة طلب العهدة والجوال — 26 سبتمبر 2026
+
+| السيناريو | النتيجة | الحالة |
+|---|---|---|
+| حفظ طلب بدون IBAN | يحفظ بحالة «جديد» | PASS |
+| اسم صاحب الحساب غير موجود | لا يمنع حفظ الطلب | PASS |
+| تأكيد الحفظ | رسالة واضحة باسم صاحب الطلب والمبلغ | PASS |
+| ظهور الطلب | يظهر فوراً ضمن الطلبات الحالية | PASS |
+| التمويل | لا تنشأ حركة مالية بمجرد حفظ الطلب | PASS |
+| iPhone / touch layout | Main content full width + drawer navigation | PASS |
+| JavaScript | index.html بدون أخطاء Syntax | PASS |
