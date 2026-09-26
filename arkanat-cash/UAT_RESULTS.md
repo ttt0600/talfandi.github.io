@@ -167,3 +167,17 @@
 | التصفية | تسميات مبسطة للمستلم والمصروف والمحول والمتبقي | PASS |
 | استقلالية البوابة | لا كتابة تلقائية إلى الأنظمة الحاكمة | PASS |
 | JavaScript | لا توجد أخطاء Syntax بعد التعديل | PASS |
+
+
+## تحقق رفع المستندات — 26 سبتمبر 2026
+
+| السيناريو | النتيجة | الحالة |
+|---|---|---|
+| تخزين خاص للمرفقات | cash-evidence private bucket | PASS |
+| حد حجم الملف | 20MB | PASS |
+| الأنواع المدعومة | PDF/JPEG/PNG/WEBP/HEIC/HEIF | PASS |
+| ربط المرفق بالحركة | transaction_id محفوظ في cash_transaction_evidence | PASS |
+| فتح الملف | Signed URL للمستخدم المصرح | PASS |
+| صلاحية الرفع | finance / finance_manager / super_admin فقط | PASS |
+| القراءة | جميع مستخدمي البوابة المصرح لهم | PASS |
+| JavaScript | index.html وcloud.js بدون أخطاء Syntax | PASS |
