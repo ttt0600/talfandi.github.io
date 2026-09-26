@@ -1,6 +1,6 @@
 (function(){
   const cfg = window.ARKANAT_CASH_CONFIG || {mode:"local"};
-  const api = { ready:false, mode:cfg.mode||"local", client:null, session:null, access:null };
+  const api = { ready:false, mode:cfg.mode||"local", client:null, session:null, access:null, openAccess:!!cfg.openAccessMode };
 
   function loadScript(src){
     return new Promise((resolve,reject)=>{
@@ -273,7 +273,7 @@
       api.session=session||null;
       window.dispatchEvent(new CustomEvent("cash-cloud-auth",{detail:{session:api.session}}));
     });
-    return {mode:"supabase",ready:true,session:api.session};
+    return {mode:"supabase",ready:true,session:api.session,openAccess:api.openAccess};
   };
 
   api.signInWithPassword = async function(email,password){
@@ -299,8 +299,12 @@
   };
 
   api.checkAccess = async function(){
+    if(api.openAccess){
+      api.access={email:"",role:"finance",display_name:"استخدام مشترك",enabled:true,user_id:"open-access",must_change_password:false,managed_by_cash_portal:false};
+      return api.access;
+    }
     if(!api.client || !api.session) return null;
-    const email=(api.session.user&&api.session.user.email)||"";
+    const email=(api.session&&api.session.user&&api.session.user.email)||"";
     const {data,error}=await api.client.from("cash_portal_access").select("email,role,display_name,enabled,user_id,must_change_password,managed_by_cash_portal").eq("email",email).maybeSingle();
     if(error) throw error;
     api.access=data||null;
@@ -308,7 +312,7 @@
   };
 
   api.loadState = async function(){
-    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
       api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
       api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
@@ -341,8 +345,8 @@
   };
 
   api.syncState = async function(state){
-    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
-    const email=(api.session.user&&api.session.user.email)||"";
+    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    const email=(api.session&&api.session.user&&api.session.user.email)||"";
     const requests=(state.requests||[]).map(x=>requestToDb(x,email));
     const transactions=(state.transactions||[]).map(x=>txnToDb(x,email));
     const imports=(state.imports||[]).map(x=>importToDb(x,email));
@@ -367,7 +371,7 @@
   };
 
   api.uploadEvidenceFile = async function(transactionId,file){
-    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
     if(!file) throw new Error("لم يتم اختيار ملف");
     const allowed=["application/pdf","image/jpeg","image/png","image/webp","image/heic","image/heif"];
     if(file.type && !allowed.includes(file.type)) throw new Error("نوع الملف غير مدعوم. استخدم PDF أو صورة.");
@@ -391,7 +395,7 @@
   };
 
   api.deleteEvidenceFile = async function(evidence){
-    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
     if(!evidence||!evidence.storagePath) return true;
     const {error}=await api.client.storage.from("cash-evidence").remove([evidence.storagePath]);
     if(error) throw error;
@@ -399,7 +403,7 @@
   };
 
   api.adminUsers = async function(action,payload={}){
-    if(!api.client || !api.session) throw new Error("يجب تسجيل الدخول");
+    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const res=await fetch(cfg.supabaseUrl+"/functions/v1/cash-user-admin",{
       method:"POST",
       headers:{
@@ -420,7 +424,7 @@
   };
 
   api.isRemoteEmpty = async function(){
-    if(!api.client || !api.session) return true;
+    if(!api.client || (!api.session && !api.openAccess)) return true;
     const [r,t]=await Promise.all([
       api.client.from("cash_requests").select("id",{count:"exact",head:true}),
       api.client.from("cash_transactions").select("id",{count:"exact",head:true})
