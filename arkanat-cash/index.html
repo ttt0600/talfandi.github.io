@@ -12,7 +12,7 @@
 button,input,select,textarea{font:inherit}button{cursor:pointer}
 header{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:14px 18px;border-bottom:3px solid var(--gold)}
 .head{max-width:1400px;margin:auto;display:flex;gap:14px;align-items:center;justify-content:space-between}.brand{display:flex;gap:12px;align-items:center}.mark{width:44px;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.25);display:grid;place-items:center;color:var(--gold);font-weight:800}.brand h1{font-size:18px;margin:0}.brand small{opacity:.78}.pill{background:rgba(255,255,255,.1);padding:8px 11px;border-radius:999px;font-size:12px}
-.layout{max-width:1400px;margin:auto;display:grid;grid-template-columns:220px 1fr;gap:18px;padding:18px}.side{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:16px;padding:10px;height:max-content;position:sticky;top:84px}.navbtn{width:100%;border:0;background:transparent;padding:11px 12px;border-radius:10px;text-align:right;color:var(--text);margin:2px 0}.navbtn:hover,.navbtn.active{background:#eef3f6;color:var(--navy);font-weight:700}.navbtn span{opacity:.7;margin-left:8px}
+.layout{max-width:1600px;margin:auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;padding:18px}.side{background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:16px;padding:12px;height:calc(100vh - 104px);position:sticky;top:84px;overflow:auto}.sidehead{display:flex;align-items:center;justify-content:space-between;padding:6px 8px 12px;border-bottom:1px solid var(--line);margin-bottom:8px}.sidehead strong{font-size:14px;color:var(--navy)}.sideclose{display:none;border:0;background:#f1f5f7;width:34px;height:34px;border-radius:9px;font-size:18px}.navgroup{margin-top:12px}.navgroup-title{font-size:11px;color:var(--muted);font-weight:700;padding:6px 10px}.navbtn{width:100%;border:0;background:transparent;padding:11px 12px;border-radius:10px;text-align:right;color:var(--text);margin:2px 0;display:flex;align-items:center;gap:9px}.navbtn:hover,.navbtn.active{background:#eef3f6;color:var(--navy);font-weight:700}.navbtn span{opacity:.7;margin:0}.breadcrumbbar{display:flex;align-items:center;gap:7px;min-height:38px;margin-bottom:12px;color:var(--muted);font-size:12px}.breadcrumbbar .home{color:var(--navy);font-weight:700;cursor:pointer}.breadcrumbbar .sep{opacity:.55}.breadcrumbbar .current{color:var(--text);font-weight:700}.menutoggle{display:none;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;width:42px;height:42px;border-radius:11px;font-size:22px;align-items:center;justify-content:center}.menuoverlay{display:none}
 main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}.titlebar h2{margin:0;font-size:22px}.subtitle{color:var(--muted);font-size:13px}
 .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow)}.kpi .lab{font-size:12px;color:var(--muted)}.kpi .val{font-size:24px;font-weight:800;margin-top:6px}.kpi .sub{font-size:11px;color:var(--muted);margin-top:4px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}.card h3{margin:0 0 12px;font-size:16px}
@@ -26,8 +26,8 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 .footer{max-width:1400px;margin:0 auto 22px;padding:0 18px;color:var(--muted);font-size:11px}
 .toast{position:fixed;left:18px;bottom:18px;background:#162734;color:#fff;padding:11px 14px;border-radius:10px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s;z-index:50}.toast.show{opacity:1;transform:none}
 .authgate{position:fixed;inset:0;z-index:100;background:rgba(15,36,56,.92);display:none;align-items:center;justify-content:center;padding:18px}.authgate.show{display:flex}.authbox{width:min(460px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 70px rgba(0,0,0,.25)}.authbox h2{margin:0 0 8px;color:var(--navy)}.authbox p{color:var(--muted);font-size:13px;line-height:1.7}.authmsg{margin-top:10px;font-size:12px;color:var(--bad)}.cloudok{color:#bfe9d4}.cloudwarn{color:#ffe0a6}
-@media(max-width:1050px){.layout{grid-template-columns:1fr}.side{position:static;display:flex;overflow:auto;gap:4px}.navbtn{width:auto;white-space:nowrap}.kpis{grid-template-columns:repeat(2,1fr)}.formgrid,.grid3{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){.layout{padding:10px}.head{align-items:flex-start}.pill{display:none}.kpis,.grid2,.grid3,.formgrid{grid-template-columns:1fr}.titlebar{align-items:flex-start;flex-direction:column}.kpi .val{font-size:21px}}
+@media(max-width:1050px){.layout{display:block;padding:14px}.side{position:fixed;z-index:110;top:0;right:0;bottom:0;width:min(86vw,310px);height:100vh;border-radius:0 0 0 18px;transform:translateX(105%);transition:transform .22s ease;overflow:auto;padding:14px;box-shadow:0 18px 60px rgba(15,36,56,.28)}.side.open{transform:translateX(0)}.sideclose{display:grid;place-items:center}.menutoggle{display:flex}.menuoverlay{position:fixed;inset:0;z-index:100;background:rgba(15,36,56,.42);display:block;opacity:0;pointer-events:none;transition:.2s}.menuoverlay.show{opacity:1;pointer-events:auto}.navbtn{width:100%;white-space:normal}.kpis{grid-template-columns:repeat(2,1fr)}.formgrid,.grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.layout{padding:10px}.head{align-items:center}.head>.actions .pill{display:none}.brand h1{font-size:16px}.brand small{font-size:10px}.mark{width:40px;height:40px}.kpis,.grid2,.grid3,.formgrid{grid-template-columns:1fr}.titlebar{align-items:flex-start;flex-direction:column}.kpi .val{font-size:21px}.breadcrumbbar{margin-bottom:8px}}
 </style>
 <script src="./config.js"></script>
 <script src="./cloud.js"></script>
@@ -47,20 +47,31 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.5.9</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.6.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
-<aside class="side" id="nav">
+<aside class="side" id="nav" aria-label="القائمة الرئيسية">
+<div class="sidehead"><strong>التنقل</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
+<div class="navgroup"><div class="navgroup-title">الرئيسية</div>
 <button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
+</div>
+<div class="navgroup"><div class="navgroup-title">إدارة العهد</div>
 <button class="navbtn" data-view="accounts"><span>◎</span>العهد</button>
 <button class="navbtn" data-view="ledger"><span>≣</span>المصروفات</button>
 <button class="navbtn" data-view="advances"><span>◫</span>السلف</button>
 <button class="navbtn" data-view="settlement"><span>Σ</span>التصفية</button>
+</div>
+<div class="navgroup"><div class="navgroup-title">الإدخال</div>
 <button class="navbtn" data-view="requests"><span>＋</span>طلبات العهد</button>
 <button class="navbtn" data-view="entry"><span>＋</span>إضافة حركة</button>
 <button class="navbtn" data-view="io"><span>⇄</span>استيراد ملف</button>
-<button class="navbtn" id="adminNav" data-view="users" style="display:none"><span>♛</span>المستخدمون</button>
+</div>
+<div class="navgroup" id="adminNavGroup" style="display:none"><div class="navgroup-title">الإدارة</div>
+<button class="navbtn" id="adminNav" data-view="users"><span>♛</span>المستخدمون</button>
+</div>
 </aside>
+<div id="menuOverlay" class="menuoverlay" onclick="closeSideMenu()"></div>
 <main>
+<div class="breadcrumbbar" id="breadcrumb"><span class="home" onclick="go('dash')">بوابة العهد</span><span class="sep">‹</span><span class="current">لوحة التحكم</span></div>
 <section id="dash" class="view active">
 <div class="titlebar"><div><h2>لوحة التحكم</h2><div class="subtitle">من استلم العهدة، كم صُرف، أين صُرف، وكم بقي</div></div><div class="actions"><button class="btn primary" onclick="go('entry')">إضافة حركة</button><button class="btn" onclick="go('io')">استيراد ملف</button></div></div>
 <div class="kpis" id="kpis"></div>
@@ -266,14 +277,14 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.5.9 — وضع التجربة العامة مؤقت، بدون تسجيل دخول وبدون وصول إلى بيانات الإنتاج. يمكن إعادة المصادقة بتغيير إعداد واحد.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.6.0 — وضع التجربة العامة مؤقت، بدون تسجيل دخول وبدون وصول إلى بيانات الإنتاج. يمكن إعادة المصادقة بتغيير إعداد واحد.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.5.9',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.5.9';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.6.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.6.0';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -309,7 +320,7 @@ function roleLabel(r){return ({super_admin:'Super Admin',finance_manager:'مدي
 function isSuperAdmin(){return !!(portalAccess&&portalAccess.role==='super_admin'&&portalAccess.enabled)}
 function canWritePortal(){return !!(portalAccess&&portalAccess.enabled&&['super_admin','finance_manager','finance'].indexOf(portalAccess.role)>=0)}
 function renderRoleUi(){
- var cfg=window.ARKANAT_CASH_CONFIG||{},role=document.getElementById('userRole'),nav=document.getElementById('adminNav'),readOnly=!!portalAccess&&!canWritePortal();if(role)role.textContent=cfg.openAccessMode?'استخدام مشترك':roleLabel(portalAccess&&portalAccess.role);if(nav)nav.style.display=(!cfg.openAccessMode&&isSuperAdmin())?'flex':'none';
+ var cfg=window.ARKANAT_CASH_CONFIG||{},role=document.getElementById('userRole'),nav=document.getElementById('adminNav'),readOnly=!!portalAccess&&!canWritePortal();if(role)role.textContent=cfg.openAccessMode?'استخدام مشترك':roleLabel(portalAccess&&portalAccess.role);var adminGroup=document.getElementById('adminNavGroup'),showAdmin=!cfg.openAccessMode&&isSuperAdmin();if(nav)nav.style.display=showAdmin?'flex':'none';if(adminGroup)adminGroup.style.display=showAdmin?'block':'none';
  document.querySelectorAll('#requestForm input,#requestForm select,#requestForm textarea,#requestForm button,#advanceForm input,#advanceForm select,#advanceForm textarea,#advanceForm button,#txnForm input,#txnForm select,#txnForm textarea,#txnForm button,#fundingForm input,#fundingForm select,#fundingForm textarea,#fundingForm button,#review button,[data-write-action]').forEach(function(b){b.disabled=readOnly});
  var fi=document.getElementById('fileInput'),im=document.getElementById('importMode'),ji=document.getElementById('jsonInput');if(fi)fi.disabled=readOnly;if(im)im.disabled=readOnly;if(ji)ji.disabled=readOnly;
 }
@@ -320,8 +331,19 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){return
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
 function same(a,b){return String(a||'').trim().replace(/\s+/g,' ')===String(b||'').trim().replace(/\s+/g,' ')}
 
-window.go=function(v){document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});document.querySelectorAll('.navbtn').forEach(function(x){x.classList.toggle('active',x.dataset.view===v)});document.getElementById(v).classList.add('active');window.scrollTo({top:0,behavior:'smooth'})}
+var viewLabels={dash:'لوحة التحكم',accounts:'العهد',ledger:'المصروفات',advances:'السلف',settlement:'التصفية',requests:'طلبات العهد',entry:'إضافة حركة',io:'استيراد ملف',users:'المستخدمون',review:'مراجعة المالية',exceptions:'الاستثناءات',audit:'سجل التدقيق',evidence:'المستندات'};
+function setBreadcrumb(v){var el=document.getElementById('breadcrumb'),label=viewLabels[v]||'الصفحة';if(el)el.innerHTML='<span class="home" onclick="go(\'dash\')">بوابة العهد</span><span class="sep">‹</span><span class="current">'+esc(label)+'</span>'}
+window.openSideMenu=function(){var s=document.getElementById('nav'),o=document.getElementById('menuOverlay');if(s)s.classList.add('open');if(o)o.classList.add('show');document.body.style.overflow='hidden'}
+window.closeSideMenu=function(){var s=document.getElementById('nav'),o=document.getElementById('menuOverlay');if(s)s.classList.remove('open');if(o)o.classList.remove('show');document.body.style.overflow=''}
+window.toggleSideMenu=function(){var s=document.getElementById('nav');if(s&&s.classList.contains('open'))closeSideMenu();else openSideMenu()}
+window.go=function(v){
+ var target=document.getElementById(v);if(!target)return;
+ document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
+ document.querySelectorAll('.navbtn').forEach(function(x){x.classList.toggle('active',x.dataset.view===v)});
+ target.classList.add('active');setBreadcrumb(v);closeSideMenu();window.scrollTo({top:0,behavior:'smooth'})
+}
 document.getElementById('nav').addEventListener('click',function(e){var b=e.target.closest('.navbtn');if(b)go(b.dataset.view)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSideMenu()});
 
 function txnEffect(t){
 if(t.status==='ملغى'||t.snapshotStatus==='superseded')return 0;
@@ -583,7 +605,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.5.9',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.6.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -1174,7 +1196,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.5.9',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.6.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
