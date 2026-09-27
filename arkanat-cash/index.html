@@ -946,14 +946,26 @@ function dateStatusForPeriod(ds,ctx){
 }
 function dateGuess(v,ctx){
  var raw=v==null?'':String(v);
- if(v instanceof Date&&!isNaN(v)){var ds0=v.toISOString().slice(0,10);return {date:ds0,raw:raw||v.toLocaleDateString('en-GB'),status:dateStatusForPeriod(ds0,ctx)}}
- if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var d=XLSX.SSF.parse_date_code(v);if(d){var ds=String(d.y).padStart(4,'0')+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');return {date:ds,raw:String(v),status:dateStatusForPeriod(ds,ctx)}}}
- var s0=String(v==null?'':v).trim(); if(!s0)return {date:'',raw:'',status:'needs_review'};
- var iso=s0.match(/^(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(iso){var yy=+iso[1],mm=+iso[2],dd=+iso[3],ds1=yy+'-'+String(mm).padStart(2,'0')+'-'+String(dd).padStart(2,'0');return {date:ds1,raw:s0,status:(mm>12||dd>31)?'needs_review':dateStatusForPeriod(ds1,ctx)}}
- var m=s0.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2,4}))?$/);
- if(m){var a=+m[1],b=+m[2],y=m[3]?+m[3]:(ctx&&ctx.year)||new Date().getFullYear();if(y<100)y+=2000;
-   var day=a,mon=b;if(ctx&&ctx.month&&a===ctx.month&&b<=31){mon=a;day=b}
-   if(mon<=12&&day<=31){var ds2=String(y).padStart(4,'0')+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');return {date:ds2,raw:s0,status:dateStatusForPeriod(ds2,ctx)}}
+ function pack(ds,rawText){
+   if(!ds)return {date:'',raw:rawText||'',status:'needs_review'};
+   var m=String(ds).match(/^(\d{4})-(\d{2})-(\d{2})$/),y=m?+m[1]:0,mo=m?+m[2]:0,da=m?+m[3]:0;
+   if(!m||mo<1||mo>12||da<1||da>31||y<2020||y>2035)return {date:'',raw:rawText||'',status:'needs_review'};
+   var dt=new Date(ds+'T00:00:00'),today=new Date();today.setHours(0,0,0,0);var tomorrow=new Date(today.getTime()+86400000);
+   if(isNaN(dt)||dt>tomorrow)return {date:'',raw:rawText||'',status:'needs_review'};
+   if(ctx&&ctx.year&&y!==+ctx.year){
+     var allowPrevDec=(+ctx.month===1&&y===+ctx.year-1&&mo===12);
+     if(!allowPrevDec)return {date:'',raw:rawText||'',status:'needs_review'};
+   }
+   return {date:ds,raw:rawText||'',status:dateStatusForPeriod(ds,ctx)}
+ }
+ if(v instanceof Date&&!isNaN(v)){var ds0=v.toISOString().slice(0,10);return pack(ds0,raw||v.toLocaleDateString('en-GB'))}
+ if(typeof v==='number'&&window.XLSX&&XLSX.SSF){var d=XLSX.SSF.parse_date_code(v);if(d){var ds=String(d.y).padStart(4,'0')+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');return pack(ds,String(v))}}
+ var s0=String(v==null?'':v).trim();if(!s0)return {date:'',raw:'',status:'needs_review'};
+ var iso=s0.match(/^(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+ if(iso){var ds1=iso[1]+'-'+String(+iso[2]).padStart(2,'0')+'-'+String(+iso[3]).padStart(2,'0');return pack(ds1,s0)}
+ var m2=s0.match(/^(\d{1,2})[-\/.](\d{1,2})(?:[-\/.](\d{2,4}))?$/);
+ if(m2){var a=+m2[1],b=+m2[2],y2=m2[3]?+m2[3]:(ctx&&ctx.year)||new Date().getFullYear();if(y2<100)y2+=2000;var day=a,mon=b;if(ctx&&ctx.month&&a===+ctx.month&&b<=31){mon=a;day=b}
+   if(mon<=12&&day<=31){var ds2=String(y2).padStart(4,'0')+'-'+String(mon).padStart(2,'0')+'-'+String(day).padStart(2,'0');return pack(ds2,s0)}
  }
  return {date:'',raw:s0,status:'needs_review'}
 }
@@ -1121,6 +1133,8 @@ function parseSheet(wb,sheetName,fileName){
  }
  items.forEach(function(t){if(t.kind==='txn'){if(!t.custodyCategory)t.custodyCategory=category;if(!t.custodyHolder)t.custodyHolder=holder;if(!t.accountKey)t.accountKey=makeAccountKey(region,t.custodyHolder||t.supervisor,t.custodyCategory);if(!t.expenseCategory)t.expenseCategory=inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory);if(t.periodExpense==null)t.periodExpense=isExpense(t);t.recordFingerprint=eventKey(t);if(exceptionFor(t).length)t.status='يحتاج مراجعة'}else if(t.kind==='request'){t.recordFingerprint=requestKey(t)}});
  var scope=scopeKey(profile,region,holder,ctx,sheetName,category),control=controlFromSource(items,summary,profile);
+ if(profile==='request_snapshot'&&requestTombstones.length)warnings.push('تم تحييد '+requestTombstones.length+' صف طلب بقيمة صفر؛ لم تُنشأ كطلبات جديدة.');
+ var invalidDates=items.filter(function(x){return x.dateStatus==='needs_review'&&!x.date}).length;if(invalidDates)warnings.push('تم حجب '+invalidDates+' تاريخ غير صالح/شاذ مع الاحتفاظ بالقيمة الأصلية للمراجعة.');
  return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,custodyCategory:category,period:ctx,fileDate:fileDate,sourceSummary:summary,control:control,scopeKey:scope,items:items,requestTombstones:requestTombstones,ignored:ignored,warnings:warnings}
 }
 async function fingerprint(file){try{var b=await file.arrayBuffer(),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}catch(e){return [file.name,file.size,file.lastModified].join('|')}}
