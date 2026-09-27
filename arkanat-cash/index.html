@@ -30,6 +30,22 @@ main{min-width:0}.view{display:none}.view.active{display:block}.titlebar{display
 @media(max-width:640px){.layout{padding:10px}.head{align-items:center}.head>.actions .pill{display:none}.brand h1{font-size:16px}.brand small{font-size:10px}.mark{width:40px;height:40px}.kpis,.grid2,.grid3,.formgrid{grid-template-columns:1fr}.titlebar{align-items:flex-start;flex-direction:column}.kpi .val{font-size:21px}.breadcrumbbar{margin-bottom:8px}}
 @media (hover:none) and (pointer:coarse){
 html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width:100%;padding-inline:0}.layout{display:block!important;width:100%!important;max-width:100%!important;padding:10px!important}.layout main{width:100%!important;max-width:100%!important;min-width:0!important}.card,.titlebar,.breadcrumbbar,.kpis,.grid2,.grid3,.formgrid{max-width:100%}.tablewrap{width:100%;max-width:100%;overflow:auto}.side{position:fixed!important;z-index:110!important;top:0!important;right:0!important;bottom:0!important;width:min(86vw,310px)!important;height:100vh!important;transform:translateX(105%)}.side.open{transform:translateX(0)}.menutoggle{display:flex!important}}
+
+.sheetbox{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
+.sheetbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;background:#f7fafb;border-bottom:1px solid var(--line)}
+.sheetbar strong{color:var(--navy);font-size:13px}.sheetbar small{color:var(--muted)}
+.sheet-scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+.sheet-grid{border-collapse:separate;border-spacing:0;width:100%;min-width:1040px;font-size:12px}
+.sheet-grid th{background:#eef3f6;color:var(--navy);font-weight:800;white-space:nowrap;padding:9px 8px;border-left:1px solid #dfe7eb;border-bottom:1px solid #d5e0e5;text-align:right}
+.sheet-grid td{padding:0;border-left:1px solid #e3eaee;border-bottom:1px solid #e3eaee;background:#fff;vertical-align:middle}
+.sheet-grid td>input,.sheet-grid td>select{width:100%;min-width:92px;height:40px;border:0;border-radius:0;background:#fff;padding:6px 8px;font:inherit;color:var(--text);outline:none}
+.sheet-grid td>input:focus,.sheet-grid td>select:focus{background:#fffceb;box-shadow:inset 0 0 0 2px #d6ab55}
+.sheet-grid .moneycell{min-width:105px}.sheet-grid .namecell{min-width:150px}.sheet-grid .textcell{min-width:190px}.sheet-grid .sitecell{min-width:145px}
+.sheet-grid .readonly{padding:9px 8px;background:#f7fafb;font-weight:700;white-space:nowrap}
+.sheet-save{display:flex;align-items:center;justify-content:center;padding:4px 7px}
+.simple-note{padding:10px 12px;background:#fff9e8;border:1px solid #f0dfad;border-radius:12px;color:#6d5a23;font-size:12px;margin-bottom:12px}
+.home-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:640px){.sheet-grid{min-width:980px}.sheetbar{align-items:flex-start;flex-direction:column}.home-actions{width:100%}.home-actions .btn{flex:1}}
 </style>
 <script src="./config.js?v=1.6.4"></script>
 <script src="./cloud.js?v=1.6.4"></script>
@@ -52,20 +68,13 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 <header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.6.4</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
-<div class="sidehead"><strong>التنقل</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
-<div class="navgroup"><div class="navgroup-title">الرئيسية</div>
-<button class="navbtn active" data-view="dash"><span>◈</span>لوحة التحكم</button>
-</div>
-<div class="navgroup"><div class="navgroup-title">إدارة العهد</div>
-<button class="navbtn" data-view="accounts"><span>◎</span>العهد</button>
-<button class="navbtn" data-view="ledger"><span>≣</span>المصروفات</button>
-<button class="navbtn" data-view="advances"><span>◫</span>السلف</button>
-<button class="navbtn" data-view="settlement"><span>Σ</span>التصفية</button>
-</div>
-<div class="navgroup"><div class="navgroup-title">الإدخال</div>
+<div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
+<div class="navgroup">
+<button class="navbtn active" data-view="dash"><span>◈</span>الرئيسية</button>
+<button class="navbtn" data-view="ledger"><span>▦</span>دفتر العهد</button>
 <button class="navbtn" data-view="requests"><span>＋</span>طلبات العهد</button>
-<button class="navbtn" data-view="entry"><span>＋</span>إضافة حركة</button>
-<button class="navbtn" data-view="io"><span>⇄</span>استيراد ملف</button>
+<button class="navbtn" data-view="advances"><span>◫</span>السلف</button>
+<button class="navbtn" data-view="io"><span>⇄</span>استيراد Excel</button>
 </div>
 <div class="navgroup" id="adminNavGroup" style="display:none"><div class="navgroup-title">الإدارة</div>
 <button class="navbtn" id="adminNav" data-view="users"><span>♛</span>المستخدمون</button>
@@ -75,59 +84,81 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 <main>
 <div class="breadcrumbbar" id="breadcrumb"><span class="home" onclick="go('dash')">بوابة العهد</span><span class="sep">‹</span><span class="current">لوحة التحكم</span></div>
 <section id="dash" class="view active">
-<div class="titlebar"><div><h2>لوحة التحكم</h2><div class="subtitle">من استلم العهدة، كم صُرف، أين صُرف، وكم بقي</div></div><div class="actions"><button class="btn primary" onclick="go('entry')">إضافة حركة</button><button class="btn" onclick="go('io')">استيراد ملف</button></div></div>
+<div class="titlebar"><div><h2>الرئيسية</h2><div class="subtitle">ملخص واضح للعهد: كم سُلّم للمشرفين، كم صُرف، وكم بقي</div></div>
+<div class="home-actions"><button class="btn primary" onclick="go('ledger')">إدخال في دفتر العهد</button><button class="btn" onclick="go('requests')">طلب عهدة</button><button class="btn" onclick="go('io')">استيراد Excel</button></div></div>
 <div class="kpis" id="kpis"></div>
 <div class="grid2">
-<div class="card"><h3>آخر المصروفات والحركات</h3><div id="recent"></div></div>
-<div class="card"><h3>أين صُرف المال؟</h3><div id="spendSummary"></div></div>
+<div class="card"><h3>أين صُرفت العهد؟</h3><div id="spendSummary"></div></div>
+<div class="card"><h3>آخر الحركات</h3><div id="recent"></div></div>
 </div>
-<div class="card"><h3>العهد الحالية</h3><div class="subtitle" style="margin-bottom:10px">اضغط على «عرض» لرؤية تفاصيل حركة حامل العهدة.</div><div id="balances"></div></div>
+<div class="card"><h3>المتبقي مع المشرفين</h3><div class="subtitle" style="margin-bottom:10px">هذه هي الأرصدة الحالية حسب ما هو مسجل في دفاتر العهد.</div><div id="balances"></div></div>
 </section>
 
 <section id="ledger" class="view">
-<div class="titlebar"><div><h2>المصروفات والحركات</h2><div class="subtitle">من صرف، أين صُرف، لماذا صُرف، ولمن صُرف</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
+<div class="titlebar"><div><h2>دفتر العهد</h2><div class="subtitle">أدخل الصف بنفس طريقة ملف Excel: مدين أو دائن، ثم تفاصيل الحركة</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
+<div class="simple-note"><strong>طريقة الاستخدام:</strong> إذا استلم المشرف عهدة اكتب المبلغ في «مدين / وارد». إذا صرف مبلغاً اكتب المبلغ في «دائن / منصرف». الرصيد يحسب تلقائياً.</div>
+
+<div class="sheetbox">
+<div class="sheetbar"><div><strong>إضافة صف جديد</strong><br><small>مثل دفتر الأستاذ المستخدم حالياً</small></div><div id="quickLedgerBalance" class="badge info">الرصيد الحالي: 0.00 ر.س.</div></div>
+<div class="sheet-scroll">
+<form id="quickLedgerForm">
+<table class="sheet-grid"><thead><tr>
+<th>المشرف</th><th>التاريخ</th><th>مدين / وارد</th><th>دائن / منصرف</th><th>الحارس الأساسي / البيان</th><th>الحارس البديل</th><th>الموقع</th><th>الحالة / السبب</th><th>ملاحظات</th><th>الرصيد بعد الحركة</th><th></th>
+</tr></thead><tbody><tr>
+<td class="namecell"><input name="supervisor" id="quickHolder" list="holderList" required oninput="updateQuickBalance()"><datalist id="holderList"></datalist></td>
+<td><input name="date" type="date" required></td>
+<td class="moneycell"><input name="debit" type="number" min="0" step="0.01" inputmode="decimal" oninput="updateQuickBalance()"></td>
+<td class="moneycell"><input name="credit" type="number" min="0" step="0.01" inputmode="decimal" oninput="updateQuickBalance()"></td>
+<td class="textcell"><input name="main" placeholder="اسم الحارس أو بيان المصروف"></td>
+<td class="namecell"><input name="cover" placeholder="إن وجد"></td>
+<td class="sitecell"><input name="site"></td>
+<td class="textcell"><input name="reason" placeholder="غياب / مستأذن / وقود / صيانة..."></td>
+<td class="textcell"><input name="notes"></td>
+<td class="readonly" id="quickAfterBalance">0.00 ر.س.</td>
+<td class="sheet-save"><button class="btn primary" type="submit">حفظ</button></td>
+</tr></tbody></table>
+</form>
+</div>
+<details style="padding:10px 12px;border-top:1px solid var(--line)"><summary style="cursor:pointer;font-weight:700;color:var(--navy)">تفاصيل إضافية للمركبات والفواتير</summary>
+<div class="formgrid" style="margin-top:10px">
+<div class="field"><label>رقم الفاتورة / السند</label><input id="quickDocumentRef"></div>
+<div class="field"><label>رقم السيارة / اللوحة</label><input id="quickVehicle"></div>
+</div></details>
+</div>
+
 <div class="card"><div class="formgrid">
-<div class="field"><label>بحث</label><input id="ledgerSearch" placeholder="اسم، مشرف، موقع، سبب..." oninput="renderLedger()"></div>
-<div class="field"><label>نوع الحركة</label><select id="ledgerType" onchange="renderLedger()"><option value="">الكل</option><option>تغذية عهدة</option><option>تغطية</option><option>مصروف تشغيلي</option><option>تحويل داخلي</option><option>إعادة للشركة</option><option>دفعة تحت التسوية</option><option>دفع نقدي لفرد</option></select></div>
-<div class="field"><label>الحالة</label><select id="ledgerStatus" onchange="renderLedger()"><option value="">الكل</option><option>مسجل</option><option>يحتاج مراجعة</option><option>معتمد</option><option>ملغى</option></select></div>
+<div class="field"><label>المشرف</label><select id="ledgerHolder" onchange="renderLedger()"><option value="">كل المشرفين</option></select></div>
+<div class="field"><label>بحث</label><input id="ledgerSearch" placeholder="حارس، موقع، بيان..." oninput="renderLedger()"></div>
+<div class="field"><label>الشهر</label><input id="ledgerMonth" type="month" onchange="renderLedger()"></div>
 </div></div>
 <div id="ledgerTable"></div>
 </section>
 
 <section id="requests" class="view">
-<div class="titlebar"><div><h2>طلبات العهد</h2><div class="subtitle">سجل الطلب أولاً؛ بيانات الحساب والمستندات يمكن استكمالها لاحقاً عند الحاجة</div></div></div>
-<div class="grid2">
-<div class="card"><h3>طلب جديد</h3>
-<form id="requestForm" class="formgrid">
-<div class="field"><label>التاريخ</label><input name="date" type="date" required></div>
-<div class="field"><label>المشرف / مستلم العهدة</label><input name="supervisor" required></div>
-<div class="field"><label>القيمة</label><input name="amount" type="number" min="0.01" step="0.01" required></div>
-<div class="field"><label>نوع الطلب</label><select name="custodyCategory" required>
-<option value="تغطيات">تغطيات</option>
-<option value="وقود">وقود / مركبات</option>
-<option value="تشغيل عام">مصروفات تشغيلية</option>
-<option value="عام">عام / أخرى</option>
-</select></div>
-<div class="field wide"><label>البيان</label><input name="purpose" placeholder="مثال: عهدة لتغطية مواقع جدة / عهدة وقود" required></div>
-<div class="field"><label>المنطقة / المدينة</label><input name="region" placeholder="مثال: جدة أو الطائف"></div>
-<div class="field"><label>المواقع المشمولة</label><input name="site" placeholder="موقع واحد أو عدة مواقع"></div>
-<div class="field"><label>رقم IBAN</label><input name="iban" dir="ltr" placeholder="اختياري عند تسجيل الطلب"></div>
-<div class="field"><label>اسم الحساب</label><input name="beneficiary" placeholder="كما هو في ملف طلب العهدة"></div>
-<div class="field wide"><label>ملاحظات</label><textarea name="notes" placeholder="أي ملاحظة واردة في ملف الطلب"></textarea></div>
-<div class="wide">
-<details style="margin-top:2px">
-<summary style="cursor:pointer;font-weight:700;color:var(--navy)">بيانات المصدر — اختياري</summary>
-<div class="formgrid" style="margin-top:12px">
-<div class="field"><label>قناة ورود الطلب</label><select name="sourceChannel"><option value="مباشر">مباشر</option><option value="واتساب">واتساب</option><option value="اتصال">اتصال</option><option value="بريد إلكتروني">بريد إلكتروني</option><option value="أخرى">أخرى</option></select></div>
-<div class="field"><label>مرجع الرسالة/المجموعة</label><input name="sourceReference"></div>
-<div class="field wide"><label>نص الطلب الأصلي</label><textarea name="sourceMessage"></textarea></div>
+<div class="titlebar"><div><h2>طلبات العهد</h2><div class="subtitle">نفس أعمدة ملف «طلب عهدة»: القيمة، البيان، المشرف، الآيبان، اسم الحساب والملاحظات</div></div></div>
+<div class="sheetbox">
+<div class="sheetbar"><div><strong>إضافة طلب</strong><br><small>صف واحد فقط، مثل Excel</small></div><div><label style="font-size:11px;color:var(--muted)">تاريخ الطلب</label><input id="requestPageDate" type="date" style="height:34px;border:1px solid var(--line);border-radius:8px;padding:4px 8px"></div></div>
+<div class="sheet-scroll">
+<form id="requestForm">
+<table class="sheet-grid" style="min-width:980px"><thead><tr>
+<th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th><th></th>
+</tr></thead><tbody><tr>
+<td class="moneycell"><input name="amount" type="number" min="0.01" step="0.01" required></td>
+<td class="textcell"><input name="purpose" required placeholder="مثال: عهدة لتغطية مواقع جدة"></td>
+<td class="namecell"><input name="supervisor" required list="holderList"></td>
+<td class="textcell"><input name="iban" dir="ltr"></td>
+<td class="namecell"><input name="beneficiary"></td>
+<td class="textcell"><input name="notes"></td>
+<td class="sheet-save"><button class="btn primary" type="submit">حفظ</button></td>
+</tr></tbody></table>
+</form>
 </div>
-</details>
 </div>
-<div class="wide actions"><button class="btn primary" type="submit">حفظ طلب العهدة</button></div>
-</form></div>
-<div class="card"><h3>الطلبات الحالية</h3><div id="requestList"></div></div>
-</div>
+<div class="card"><div class="formgrid">
+<div class="field"><label>بحث</label><input id="requestSearch" placeholder="مشرف أو بيان..." oninput="renderRequests()"></div>
+<div class="field"><label>عرض</label><select id="requestView" onchange="renderRequests()"><option value="open">الطلبات الحالية</option><option value="all">كل الطلبات</option></select></div>
+</div></div>
+<div id="requestList"></div>
 </section>
 
 <section id="advances" class="view">
@@ -374,7 +405,7 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){return
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
 function same(a,b){return String(a||'').trim().replace(/\s+/g,' ')===String(b||'').trim().replace(/\s+/g,' ')}
 
-var viewLabels={dash:'لوحة التحكم',accounts:'العهد',ledger:'المصروفات',advances:'السلف',settlement:'التصفية',requests:'طلبات العهد',entry:'إضافة حركة',io:'استيراد ملف',users:'المستخدمون',review:'مراجعة المالية',exceptions:'الاستثناءات',audit:'سجل التدقيق',evidence:'المستندات'};
+var viewLabels={dash:'لوحة التحكم',accounts:'العهد',ledger:'دفتر العهد',advances:'السلف',settlement:'التصفية',requests:'طلبات العهد',entry:'إضافة حركة',io:'استيراد ملف',users:'المستخدمون',review:'مراجعة المالية',exceptions:'الاستثناءات',audit:'سجل التدقيق',evidence:'المستندات'};
 function setBreadcrumb(v){var el=document.getElementById('breadcrumb'),label=viewLabels[v]||'الصفحة';if(el)el.innerHTML='<span class="home" onclick="go(\'dash\')">بوابة العهد</span><span class="sep">‹</span><span class="current">'+esc(label)+'</span>'}
 window.openSideMenu=function(){var s=document.getElementById('nav'),o=document.getElementById('menuOverlay');if(s)s.classList.add('open');if(o)o.classList.add('show');document.body.style.overflow='hidden'}
 window.closeSideMenu=function(){var s=document.getElementById('nav'),o=document.getElementById('menuOverlay');if(s)s.classList.remove('open');if(o)o.classList.remove('show');document.body.style.overflow=''}
@@ -453,14 +484,14 @@ var map={},d=[];
 state.transactions.forEach(function(t){if(t.status==='ملغى'||t.type==='تغذية عهدة')return;var k=[t.dateRaw||t.date,num(t.amount),t.absent,t.cover,t.supervisor,t.site,t.description].map(function(x){return String(x||'').trim()}).join('|');if(map[k])d.push([map[k],t]);else map[k]=t});
 return d}
 function renderKpis(){
- var c0=calc(),activeTx=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'}),holders={};
- activeTx.forEach(function(t){var h=t.custodyHolder||t.supervisor;if(h)holders[h]=1});
+ var c0=calc(),active=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'}),holders={},openRequests=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'&&num(r.amount)>0});
+ active.forEach(function(t){var h=t.custodyHolder||t.supervisor;if(h)holders[h]=1});
  var data=[
-  ['المبلغ المستلم',money(c0.incoming),'أرصدة وتغذيات العهد'],
-  ['المبلغ المصروف',money(c0.expenses),'مصروفات فعلية مسجلة'],
-  ['المتبقي',money(c0.balance),'الرصيد الموجود تحت العهد'],
-  ['أمناء العهد',Object.keys(holders).length.toLocaleString('ar-SA'),'أشخاص لديهم حركات حالية'],
-  ['عدد الحركات',activeTx.length.toLocaleString('ar-SA'),'في اللقطات الحالية فقط']
+  ['العهد المسلّمة',money(c0.incoming),'إجمالي ما دخل دفاتر العهد'],
+  ['المصروف المسجل',money(c0.expenses),'ما تم صرفه على التغطيات والمصروفات'],
+  ['المتبقي مع المشرفين',money(c0.balance),'الرصيد الحالي حسب الدفاتر'],
+  ['مشرفون لديهم عهد',Object.keys(holders).length.toLocaleString('ar-SA'),'عدد المشرفين الظاهرين في الدفاتر'],
+  ['طلبات لم تُموّل',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد بقيمة أكبر من صفر']
  ];
  document.getElementById('kpis').innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
 }
@@ -529,10 +560,44 @@ function renderBalances(){
  document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع العهدة</th><th>استلم</th><th>صرف</th><th>حوّل لآخرين</th><th>المتبقي</th><th></th></tr></thead><tbody>'+a.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.category)+'</td><td class="money">'+money(x.received)+'</td><td class="money">'+money(x.spent)+'</td><td class="money">'+money(x.transferred)+'</td><td class="money"><strong>'+money(x.balance)+'</strong></td><td><button class="btn" onclick="openHolderSettlement(\''+esc(x.holder).replaceAll("'", "\\'")+'\')">عرض</button></td></tr>'}).join('')+'</tbody></table></div>'
 }
 window.openHolderSettlement=function(h){go('settlement');var e=document.getElementById('settleHolder');if(e){e.value=h;renderSettlement()}}
+function activeHolderTransactions(holder){
+ return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&(!holder||cleanArabic(t.custodyHolder||t.supervisor)===cleanArabic(holder))})
+}
+function holderBalance(holder){return activeHolderTransactions(holder).reduce(function(s,t){return s+txnEffect(t)},0)}
+function refreshHolderOptions(){
+ var names={};state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;var h=(t.custodyHolder||t.supervisor||'').trim();if(h)names[h]=1});
+ state.requests.forEach(function(r){if(r.snapshotStatus==='superseded')return;var h=(r.supervisor||'').trim();if(h)names[h]=1});
+ var a=Object.keys(names).sort(function(a,b){return a.localeCompare(b,'ar')});
+ var dl=document.getElementById('holderList');if(dl)dl.innerHTML=a.map(function(x){return '<option value="'+esc(x)+'"></option>'}).join('');
+ var sel=document.getElementById('ledgerHolder');if(sel){var old=sel.value;sel.innerHTML='<option value="">كل المشرفين</option>'+a.map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');if(a.indexOf(old)>=0)sel.value=old}
+}
+window.updateQuickBalance=function(){
+ var h=(document.getElementById('quickHolder')||{}).value||'',debit=num((document.querySelector('#quickLedgerForm [name="debit"]')||{}).value),credit=num((document.querySelector('#quickLedgerForm [name="credit"]')||{}).value),before=holderBalance(h),after=before+debit-credit;
+ var a=document.getElementById('quickLedgerBalance'),b=document.getElementById('quickAfterBalance');if(a)a.textContent='الرصيد الحالي: '+money(before);if(b)b.textContent=money(after)
+}
 window.renderLedger=function(){
-var q=(document.getElementById('ledgerSearch').value||'').trim().toLowerCase(),ty=document.getElementById('ledgerType').value,st=document.getElementById('ledgerStatus').value;
-var a=state.transactions.filter(function(t){var s=JSON.stringify(t).toLowerCase();return (!q||s.indexOf(q)>=0)&&(!ty||t.type===ty)&&(!st||t.status===st)});
-document.getElementById('ledgerTable').innerHTML=rowTable(a.slice().reverse())
+ refreshHolderOptions();
+ var q=((document.getElementById('ledgerSearch')||{}).value||'').trim().toLowerCase(),holder=(document.getElementById('ledgerHolder')||{}).value||'',month=(document.getElementById('ledgerMonth')||{}).value||'';
+ var a=state.transactions.filter(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى')return false;
+  if(holder&&cleanArabic(t.custodyHolder||t.supervisor)!==cleanArabic(holder))return false;
+  if(month&&String(t.date||'').slice(0,7)!==month)return false;
+  var s=[t.absent,t.cover,t.site,t.reason,t.description,t.notes,t.custodyHolder,t.supervisor,t.documentRef,t.vehicle].join(' ').toLowerCase();
+  return !q||s.indexOf(q)>=0
+ }).sort(function(x,y){return String(x.date||'').localeCompare(String(y.date||''))||String(x.createdAt||'').localeCompare(String(y.createdAt||''))});
+ var running={};
+ var rows=a.map(function(t){
+   var h=t.custodyHolder||t.supervisor||'غير محدد',key=cleanArabic(h),debit=0,credit=0;
+   if(t.type==='رصيد افتتاحي')debit=num(t.amount)*(t.openingSign===-1?-1:1);
+   else if(t.type==='تغذية عهدة'||t.type==='تحويل وارد')debit=num(t.amount);
+   else credit=num(t.amount);
+   running[key]=(running[key]||0)+debit-credit;
+   var bal=t.reportedBalance!=null&&t.reportedBalance!==''?num(t.reportedBalance):running[key];
+   var main=t.absent||t.description||t.beneficiary||'-';
+   return '<tr><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(h)+'</td><td class="money">'+(debit?money(debit):'-')+'</td><td class="money">'+(credit?money(credit):'-')+'</td><td>'+esc(main)+'</td><td>'+esc(t.cover||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.reason||'-')+'</td><td>'+esc(t.notes||'-')+'</td><td class="money"><strong>'+money(bal)+'</strong></td><td>'+evidenceButtons(t.id)+'</td></tr>'
+ });
+ document.getElementById('ledgerTable').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid"><thead><tr><th>التاريخ</th><th>المشرف</th><th>مدين / وارد</th><th>دائن / منصرف</th><th>الحارس الأساسي / البيان</th><th>الحارس البديل</th><th>الموقع</th><th>الحالة / السبب</th><th>ملاحظات</th><th>الرصيد</th><th>مرفقات</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد حركات مطابقة.</div>';
+ updateQuickBalance()
 }
 function requestFundedAmount(r){
  return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.requestId===r.id&&t.type==='تغذية عهدة'}).reduce(function(a,t){return a+num(t.amount)},0)
@@ -575,8 +640,14 @@ function requestComponentsHtml(r){
  return '<div style="margin-top:8px">'+a.map(function(x){return '<small><strong>'+esc(x.componentType||'مكوّن')+':</strong> '+money(x.amount)+(x.treatment?' · '+esc(x.treatment):'')+(x.durationDays?' · '+x.durationDays+' أيام':'')+(x.status?' · '+esc(x.status):'')+'</small>'}).join('')+'</div>'
 }
 function renderRequests(){
- var a=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'}).slice().reverse();
- document.getElementById('requestList').innerHTML=a.length?'<div class="inbox">'+a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded),kind=r.requestKind&&r.requestKind!=='بسيط'?' · '+esc(r.requestKind):'',days=r.requestedPeriodDays?' · '+r.requestedPeriodDays+' أيام':'';return '<div class="item"><div><strong>'+esc(r.supervisor)+' — '+money(r.amount)+'</strong><small>'+esc(r.date||'-')+' · '+esc(r.region||'-')+' · '+esc(r.custodyCategory||'عهدة')+' · '+esc(r.purpose||'-')+kind+days+'</small>'+(r.iban||r.beneficiary?'<small>'+(r.beneficiary?'الحساب: '+esc(r.beneficiary):'')+(r.iban?' · IBAN '+esc(r.iban):'')+'</small>':'')+'<small>'+(funded>0?'تم تمويل '+money(funded)+' · المتبقي '+money(rem):'لم يتم صرف/تمويل هذا الطلب بعد')+'</small>'+requestComponentsHtml(r)+'</div><span class="badge '+requestStatusClass(r.status)+'">'+esc(r.status||'جديد')+'</span></div>'}).join('')+'</div>':'<div class="empty">لا توجد طلبات.</div>'
+ var q=((document.getElementById('requestSearch')||{}).value||'').trim().toLowerCase(),mode=(document.getElementById('requestView')||{}).value||'open';
+ var a=state.requests.filter(function(r){
+  if(r.snapshotStatus==='superseded')return false;
+  if(mode==='open'&&(num(r.amount)<=0||r.status==='ممول'||r.status==='مرفوض'))return false;
+  var s=[r.supervisor,r.purpose,r.iban,r.beneficiary,r.notes].join(' ').toLowerCase();return !q||s.indexOf(q)>=0
+ }).slice().reverse();
+ var rows=a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded);return '<tr><td>'+esc(r.date||r.dateRaw||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td>'+esc(r.status||'جديد')+(funded>0?' · ممول '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
+ document.getElementById('requestList').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid" style="min-width:1050px"><thead><tr><th>التاريخ</th><th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th><th>الحالة</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد طلبات مطابقة.</div>'
 }
 function renderReview(){
  var rq=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'}),tx=state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'&&t.snapshotStatus!=='superseded'});
@@ -809,7 +880,7 @@ window.exportAdvancesXlsx=function(){
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cur),'السلف الحالية');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hist),'السجل التاريخي');XLSX.writeFile(wb,'Arkanat_Employee_Advances.xlsx')
 }
 
-function renderAll(){renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderBalances();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
+function renderAll(){var today=new Date().toISOString().slice(0,10),m=today.slice(0,7),rd=document.getElementById('requestPageDate'),ld=document.querySelector('#quickLedgerForm [name="date"]'),lm=document.getElementById('ledgerMonth');if(rd&&!rd.value)rd.value=today;if(ld&&!ld.value)ld.value=today;if(lm&&!lm.value)lm.value=m;renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderBalances();refreshHolderOptions();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
 
 document.getElementById('advanceForm').addEventListener('submit',function(e){
  e.preventDefault();if(!canWritePortal()){toast('لا توجد صلاحية لإضافة السلف');return}
@@ -820,7 +891,30 @@ document.getElementById('advanceForm').addEventListener('submit',function(e){
  state.employeeAdvances.push(x);state.advanceHistory.push({id:id('ADVH'),periodMonth:m,sourceRow:null,employeeName:x.employeeName,employeeRef:'',department:x.department,amount:amt,amountRaw:String(d.advanceAmount||''),previousBalance:0,sourceTotal:amt,derivedExposure:amt,monthlyInstallment:inst,payrollActionMonth:pay,classification:'سلفة مضافة من بوابة العهد النقدية',notes:x.notes,extraNotes:'',sourceId:'MANUAL_PORTAL',sourceFile:'',createdAt:new Date().toISOString()});
  audit('إضافة سلفة موظف','EmployeeAdvance',x.id,x.employeeName+' | '+money(amt));e.target.reset();save();toast('تم حفظ السلفة داخل البوابة المستقلة')
 });
-document.getElementById('requestForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries());d.id=id('REQ');d.amount=num(d.amount);d.custodyCategory=d.custodyCategory||inferCustodyCategory('request_snapshot',d.purpose,'');d.accountKey=makeAccountKey(d.region,d.supervisor,d.custodyCategory);d.recordFingerprint=requestKey(d);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال مباشر من البوابة';d.sourceChannel=d.sourceChannel||'مباشر';if(state.requests.some(function(r){return r.snapshotStatus!=='superseded'&&requestKey(r)===d.recordFingerprint})){toast('هذا الطلب موجود مسبقاً');return}captureQualityIssuesForRequest(d);state.requests.push(d);audit('إنشاء طلب عهدة','Request',d.id,d.supervisor+' | '+d.custodyCategory+' | '+money(d.amount)+' | '+(d.sourceChannel||''));e.target.reset();save();renderRequests();toast('تم حفظ طلب '+d.supervisor+' بمبلغ '+money(d.amount));setTimeout(function(){var x=document.getElementById('requestList');if(x)x.scrollIntoView({behavior:'smooth',block:'start'})},250)});
+document.getElementById('requestForm').addEventListener('submit',function(e){
+ e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),pageDate=(document.getElementById('requestPageDate')||{}).value||new Date().toISOString().slice(0,10);
+ d.id=id('REQ');d.date=pageDate;d.dateRaw=pageDate;d.amount=num(d.amount);d.custodyCategory=inferCustodyCategory('request_snapshot',d.purpose,'');d.region='';d.site='';d.accountKey=makeAccountKey('',d.supervisor,d.custodyCategory);d.recordFingerprint=requestKey(d);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال مباشر من البوابة';d.sourceChannel='مباشر';
+ if(state.requests.some(function(r){return r.snapshotStatus!=='superseded'&&requestKey(r)===d.recordFingerprint})){toast('هذا الطلب موجود مسبقاً');return}
+ captureQualityIssuesForRequest(d);state.requests.push(d);audit('إنشاء طلب عهدة','Request',d.id,d.supervisor+' | '+money(d.amount)+' | '+d.purpose);e.target.reset();save();refreshHolderOptions();renderRequests();toast('تم حفظ طلب '+d.supervisor+' بمبلغ '+money(d.amount))
+});
+document.getElementById('quickLedgerForm').addEventListener('submit',function(e){
+ e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),debit=num(d.debit),credit=num(d.credit),holder=(d.supervisor||'').trim();
+ if(!holder){toast('اكتب اسم المشرف');return}if((debit>0&&credit>0)||(!debit&&!credit)){toast('اكتب المبلغ في مدين أو دائن فقط');return}
+ var main=(d.main||'').trim(),reason=(d.reason||'').trim(),site=(d.site||'').trim(),cover=(d.cover||'').trim(),notes=(d.notes||'').trim(),t={id:id('TRX'),date:d.date,dateRaw:d.date,amount:debit||credit,region:'',custodyHolder:holder,supervisor:holder,site:site,notes:notes,status:'مسجل',source:'إدخال مباشر من دفتر العهد',sourceChannel:'مباشر',documentRef:(document.getElementById('quickDocumentRef')||{}).value||'',vehicle:(document.getElementById('quickVehicle')||{}).value||''};
+ if(debit>0){
+   if(textHas(main,['رصيد اول المده','رصيد أول المده','رصيد اول المدة','رصيد أول المدة'])){t.type='رصيد افتتاحي';t.openingSign=1;t.description=main||'رصيد أول المدة';t.expenseCategory='تمويل ورصيد';t.periodExpense=false}
+   else{t.type='تغذية عهدة';t.description=main||'عهدة محولة من الإدارة';t.expenseCategory='تمويل ورصيد';t.periodExpense=false}
+ }else{
+   var isCoverage=!!cover||textHas(reason,['غياب','مستأذن','مستأذنه','مستأذنة','راحه','راحة','off','نقص']);
+   if(isCoverage){t.type='تغطية';t.absent=main;t.cover=cover;t.reason=reason;t.description='تغطية';t.expenseCategory='تغطيات';t.periodExpense=true}
+   else if(textHas(main+' '+reason,['رصيد عهدة متبقي مع المشرف','رصيد عهده متبقي مع المشرف'])){t.type='عهدة فرعية مفتوحة';t.transferTo=(main+' '+reason).replace(/.*المشرف/,'').trim();t.description=main||reason;t.expenseCategory='تحويل عهدة';t.periodExpense=false}
+   else{t.type=classifyOut(main,cover,site,reason);t.description=main||reason||'مصروف';t.reason=reason;t.expenseCategory=inferExpenseCategory(t.type,t.description,'',reason,inferCustodyCategory('cash_ledger',t.description,site));t.periodExpense=t.type!=='دفعة تحت التسوية'}
+ }
+ t.custodyCategory=inferCustodyCategory('cash_ledger',t.description||t.reason||'',site);t.accountKey=makeAccountKey('',holder,t.custodyCategory);
+ var before=holderBalance(holder);t.reportedBalance=before+debit-credit;t.recordFingerprint=eventKey(t);
+ if(state.transactions.some(function(x){return x.snapshotStatus!=='superseded'&&eventKey(x)===t.recordFingerprint})){toast('هذه الحركة موجودة مسبقاً');return}
+ if(exceptionFor(t).length)t.status='يحتاج مراجعة';state.transactions.push(t);captureQualityIssuesForTransaction(t,{year:t.date?+t.date.slice(0,4):null,month:t.date?+t.date.slice(5,7):null});audit('إضافة صف في دفتر العهد','Transaction',t.id,holder+' | '+money(t.amount));e.target.reset();var doc=document.getElementById('quickDocumentRef'),veh=document.getElementById('quickVehicle');if(doc)doc.value='';if(veh)veh.value='';save();refreshHolderOptions();renderLedger();toast('تم حفظ الصف — الرصيد الجديد '+money(t.reportedBalance))
+});
 document.getElementById('fundingForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),r=state.requests.find(function(x){return x.id===d.requestId});if(!r)return;var amount=num(d.amount),already=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-already),comp=d.componentId?requestComponentsFor(r.id).find(function(x){return x.id===d.componentId}):null;if(amount<=0){toast('أدخل مبلغ تمويل صحيح');return}if(comp&&amount>componentRemaining(comp)+0.001){toast('المبلغ أكبر من المتبقي في مكوّن الطلب');return}if(amount>remaining+0.001&&!confirm('المبلغ أكبر من المتبقي في الطلب. هل تريد تسجيله كما هو؟'))return;var desc=comp?(comp.treatment||comp.componentType)+' — '+r.id:'تمويل طلب '+r.id;var tx={id:id('TRX'),requestId:r.id,requestComponentId:comp?comp.id:'',date:d.date,dateRaw:d.date,amount:amount,type:'تغذية عهدة',region:r.region||'',custodyHolder:r.supervisor||'',supervisor:r.supervisor||'',custodyCategory:r.custodyCategory||inferCustodyCategory('request_snapshot',r.purpose,''),accountKey:r.accountKey||makeAccountKey(r.region,r.supervisor,r.custodyCategory),periodExpense:false,expenseCategory:'تمويل ورصيد',site:r.site||'',description:desc,fundingMethod:d.method||'',fundingRef:d.reference||'',beneficiary:d.beneficiary||r.beneficiary||'',status:'معتمد',source:'تنفيذ طلب عهدة',sourceChannel:r.sourceChannel||'',sourceReference:r.sourceReference||'',sourceMessage:r.sourceMessage||'',notes:d.notes||'',createdAt:new Date().toISOString()};tx.recordFingerprint=eventKey(tx);state.transactions.push(tx);if(comp){var cf=requestComponentFundedAmount(comp);comp.status=cf+0.001>=num(comp.amount)?'ممول':'ممول جزئياً';comp.notes=(comp.notes?comp.notes+' | ':'')+'آخر تمويل: '+money(amount)+' بتاريخ '+d.date}var total=requestFundedAmount(r);r.status=total+0.001>=num(r.amount)?'ممول':'ممول جزئياً';r.fundedAt=r.status==='ممول'?new Date().toISOString():r.fundedAt;r.lastActionAt=new Date().toISOString();audit('تنفيذ تمويل طلب','Transaction',tx.id,r.id+' | '+r.supervisor+' | '+(comp?comp.componentType+' | ':'')+money(amount)+' | '+(d.method||''));save();closeFundingForm();toast(r.status==='ممول'?'تم تمويل الطلب بالكامل':'تم تسجيل تمويل جزئي')});
 document.getElementById('txnForm').addEventListener('submit',function(e){
  e.preventDefault();
