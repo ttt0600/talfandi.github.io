@@ -335,23 +335,32 @@ async function loadEmployee(id){
 function futureAssignment(){
  const a=S.employee,p=$('attendancePanel');if(!a||!p)return;
  const workDays=a.work_days_per_week??'غير محدد',dailyHours=a.daily_hours??'غير محدد';
+ const source=a.source_file_name
+  ?'<div class="notice" style="margin-top:14px"><b>مرجع التايم شيت:</b> '+esc(a.source_file_name)+' / '+esc(a.source_sheet||'')+(a.source_row?' / صف '+esc(a.source_row):'')+(a.source_hidden_row?' · صف مخفي تمت قراءته':'')+'</div>'
+  :'';
  p.innerHTML='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.employee_ref||'بدون رقم وظيفي')+'</div></div><button id="editAssignment" class="btn primary">تعديل خطة التكليف</button></div>'+
  '<div class="grid2" style="margin-top:14px">'+
  '<div class="field"><label>المشروع</label><div class="card" style="padding:10px">'+esc(a.project_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>الموقع</label><div class="card" style="padding:10px">'+esc(a.site_name||'غير محدد')+'</div></div>'+
+ '<div class="field"><label>نقطة العمل</label><div class="card" style="padding:10px">'+esc(a.work_point_name||'غير محددة')+'</div></div>'+
  '<div class="field"><label>المشرف</label><div class="card" style="padding:10px">'+esc(a.supervisor_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>نوع التكليف</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
  '<div class="field"><label>أيام العمل أسبوعياً</label><div class="card" style="padding:10px">'+esc(workDays)+'</div></div>'+
+ '<div class="field"><label>أيام الراحة الأسبوعية</label><div class="card" style="padding:10px">'+esc(a.weekly_off_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>ساعات العمل اليومية</label><div class="card" style="padding:10px">'+esc(dailyHours)+'</div></div>'+
  '<div class="field"><label>تصنيف الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
- '<div class="field"><label>تفصيل وقت الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
+ '<div class="field"><label>تفصيل الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
+ '<div class="field"><label>بداية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_start_text||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>نهاية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_end_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>بداية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
  '<div class="field"><label>نهاية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.end_date||S.ctx.cycle_end).slice(0,10))+'</div></div>'+
  '</div>'+
  (a.notes?'<div class="notice" style="margin-top:14px"><b>ملاحظات تشغيلية:</b> '+esc(a.notes)+'</div>':'')+
- '<div class="notice" style="margin-top:14px">هذه خطة مستقبلية فقط. عند بدء الدورة سيعمل التحضير اليومي على التكليفات المعتمدة في هذه الخطة.</div>';
+ source+
+ '<div class="notice" style="margin-top:14px">هذه خطة مستقبلية فقط. عند بدء الدورة سيعمل التحضير اليومي على التكليفات المعتمدة في هذه الخطة، بينما التغطيات اليومية والكاش تبقى أحداثاً منفصلة مرتبطة بالمنفذ الفعلي.</div>';
  $('editAssignment').onclick=()=>assignmentModal(a);
 }
+
 function dayClass(s){return s==='OFF'||s==='O'?'off':['A','W','R','S'].includes(s)?'abs':s==='CASH'?'cash':s?'filled':''}
 function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return;const ds=dates(S.ctx.cycle_start,S.ctx.cycle_end),m=Object.fromEntries((a.days||[]).map(x=>[String(x.date).slice(0,10),x]));let h='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.project_name||'')+' · '+esc(a.site_name||'')+'</div></div><button id="editAssignment" class="btn ghost">تعديل</button></div><div class="quick"><div class="field"><label>من</label><input id="qFrom" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_start+'"></div><div class="field"><label>إلى</label><input id="qTo" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_end+'"></div><div class="field"><label>الحالة</label><select id="qStatus">';['P','OFF','A','T','AL','SK','O'].forEach(c=>h+='<option value="'+c+'">'+STATUS[c]+'</option>');h+='</select></div><button id="qFill" class="btn secondary">تعبئة</button></div><div class="calendar" id="cal"></div>';p.innerHTML=h;ds.forEach(d=>{const e=m[d],b=document.createElement('button');b.className='day '+dayClass(e?.status);b.innerHTML='<div class="n">'+d.slice(8,10)+'/'+d.slice(5,7)+'</div><div class="st">'+(e?esc(STATUS[e.status]||e.status):'—')+'</div>';b.onclick=()=>dayModal({assignment_id:a.id,employee_ref:a.employee_ref,full_name:a.full_name,shift_code:a.shift_code,...e},d,()=>loadEmployee(a.id));$('cal').appendChild(b)});$('editAssignment').onclick=()=>assignmentModal(a);$('qFill').onclick=async()=>{const f=$('qFrom').value,t=$('qTo').value;if(!f||!t||f>t)return toast('تحققي من النطاق',true);const ds=dates(f,t),st=$('qStatus').value;if(!await confirmUI('تعبئة النطاق','سيتم تطبيق '+STATUS[st]+' على '+ds.length+' يوماً.','تطبيق'))return;try{await fast('bulkFill',{assignment_id:a.id,dates:ds,status:st,shift_code:a.shift_code||null},12000);await loadEmployee(a.id);if(ds.includes(work()))refreshDay(false);toast('تمت التعبئة')}catch(e){toast(e.message,true)}}}
 async function gaps(){
