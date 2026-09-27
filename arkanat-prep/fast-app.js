@@ -411,34 +411,60 @@ function assignmentModal(a=null){
  let sh='';SHIFTS.forEach(x=>sh+='<option value="'+x[0]+'" '+(a?.shift_code===x[0]?'selected':'')+'>'+x[1]+'</option>');
  modal(
  '<h3>'+(a?'تعديل التكليف':'إضافة موظف / تكليف')+'</h3>'+
- '<div class="notice">هذه الشاشة تحفظ بيانات التكليف التشغيلي المستخدمة في ملفات التايم شيت. الهوية والجوال والحساب البنكي وحالة التأمينات تبقى بيانات مرجعية خارج شاشة التحضير ولا يعاد إدخالها هنا.</div>'+
+ '<div class="notice"><b>متوافق مع ملفات التايم شيت التشغيلية:</b> تحفظ هنا فقط بيانات التكليف التي تتكرر فعلياً في ملفات المناطق. الهوية والجوال والبنك والآيبان والتأمينات والراتب تبقى بيانات مرجعية ولا يعاد إدخالها في التحضير.</div>'+
  '<div class="field" style="margin-top:10px"><label>بحث في قاعدة الموظفين</label><input id="empSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="empSug" class="suggestions hidden"></div></div>'+
- '<div class="grid2" style="margin-top:10px"><div class="field"><label>الرقم الوظيفي</label><input id="empRef" value="'+esc(a?.employee_ref||'')+'"></div><div class="field"><label>الاسم *</label><input id="empName" value="'+esc(a?.full_name||'')+'"></div></div>'+
+ '<div class="grid2" style="margin-top:10px"><div class="field"><label>الرقم الوظيفي</label><input id="empRef" value="'+esc(a?.employee_ref||'')+'" placeholder="EMP_ID"></div><div class="field"><label>الاسم *</label><input id="empName" value="'+esc(a?.full_name||'')+'"></div></div>'+
  '<div class="grid2" style="margin-top:10px"><div class="field"><label>المسمى الوظيفي</label><input id="jobTitle" value="'+esc(a?.job_title||'حارس أمن')+'" placeholder="مثال: حارس أمن"></div><div class="field"><label>الموقع *</label><select id="siteSel">'+opts+'</select></div></div>'+
+ '<div id="siteContextHint" class="sub" style="margin-top:6px"></div>'+
  '<div id="empSourceHint" class="sub" style="margin-top:6px"></div>'+
  '<div style="margin-top:12px;font-weight:900">بيانات التكليف المستخدمة في التايم شيت</div>'+
  '<div class="grid2" style="margin-top:8px">'+
-   '<div class="field"><label>المشرف</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف التشغيلي"></div>'+
-   '<div class="field"><label>نوع التكليف</label><select id="atype"><option value="PRIMARY">أساسي</option><option value="RELIEF_FIXED">بديل راحة ثابت</option><option value="TEMP_COVERAGE">تغطية مؤقتة</option><option value="NEW_HIRE">موظف جديد</option><option value="OTHER">أخرى</option></select></div>'+
+   '<div class="field"><label>المشرف التشغيلي</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف"></div>'+
+   '<div class="field"><label>نوع التكليف</label><select id="atype"><option value="PRIMARY">أساسي</option><option value="RELIEF_FIXED">بديل راحة ثابت</option><option value="TEMP_COVERAGE">تغطية مؤقتة بموظف فعلي</option><option value="NEW_HIRE">موظف جديد</option><option value="OTHER">أخرى</option></select></div>'+
+   '<div class="field"><label>نقطة / موقع العمل التفصيلي</label><input id="workPointName" value="'+esc(a?.work_point_name||'')+'" placeholder="اختياري — بوابة، مبنى، نقطة حراسة..."></div>'+
+   '<div class="field"><label>أيام الراحة الأسبوعية</label><input id="weeklyOffText" value="'+esc(a?.weekly_off_text||'')+'" placeholder="مثال: الجمعة أو الخميس والجمعة"></div>'+
    '<div class="field"><label>أيام العمل أسبوعياً'+(!a?' *':'')+'</label><input id="workDays" type="number" min="0" max="7" step="0.5" value="'+esc(a?.work_days_per_week??'')+'" placeholder="كما هو معتمد في التايم شيت"></div>'+
    '<div class="field"><label>ساعات العمل اليومية'+(!a?' *':'')+'</label><input id="dailyHours" type="number" min="1" max="24" step="0.5" value="'+esc(a?.daily_hours??'')+'" placeholder="مثال: 8 أو 12"></div>'+
    '<div class="field"><label>تصنيف الوردية</label><select id="shift">'+sh+'</select></div>'+
-   '<div class="field"><label>تفصيل وقت الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: 8ص–4م أو 8م–4ص"></div>'+
-   '<div class="field"><label>البداية</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div>'+
-   '<div class="field"><label>النهاية</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div>'+
+   '<div class="field"><label>تفصيل الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: صباح / مساء / بديل راحات"></div>'+
+   '<div class="field"><label>بداية الوردية</label><input id="shiftStartText" value="'+esc(a?.shift_start_text||'')+'" placeholder="مثال: 08:00 أو 8ص"></div>'+
+   '<div class="field"><label>نهاية الوردية</label><input id="shiftEndText" value="'+esc(a?.shift_end_text||'')+'" placeholder="مثال: 16:00 أو 4م"></div>'+
+   '<div class="field"><label>بداية التكليف / المباشرة</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div>'+
+   '<div class="field"><label>نهاية التكليف</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div>'+
  '</div>'+
+ '<div id="atypeHint" class="notice hidden" style="margin-top:10px"></div>'+
  '<div class="field" style="margin-top:10px"><label>ملاحظات تشغيلية</label><textarea id="assignmentNotes" rows="2" placeholder="مباشرة، نقل، استثناء تكليف، أو ملاحظة تشغيلية">'+esc(a?.notes||'')+'</textarea></div>'+
+ '<div class="sub" style="margin-top:8px">التغطية الكاش أو التغطية اليومية لا تنشأ كموظف باسم «التغطية»؛ تسجل من التحضير اليومي وتربط بالمنفذ الفعلي والمستفيد والتاريخ والمبلغ عند الحاجة.</div>'+
  '<div class="modal-actions"><button id="saveA" class="btn primary">حفظ التكليف</button><button id="cancelA" class="btn ghost">إلغاء</button></div>'
  );
  if(a)$('atype').value=a.assignment_type||'PRIMARY';
  let selectedEmployeeStatus='';
+ let selectedEvidence=a?{
+   source_file_name:a.source_file_name||null,source_sheet:a.source_sheet||null,
+   source_row:a.source_row||null,source_hidden_row:a.source_hidden_row??null
+ }:null;
  const inferTimesheetShift=(txt,hours)=>{
    const t=String(txt||'').toLowerCase(),h=Number(hours||0);
-   if(/اخر|آخر|ليل/.test(t))return h===12?'N12':'N8';
-   if(/مساء|عصر/.test(t))return h===12?'N12':'E8';
-   if(/صباح|نهار/.test(t))return h===12?'D12':'D8';
-   return '';
+   if(/اخر|آخر|ليل/.test(t))return h>=11?'N12':'N8';
+   if(/مساء|عصر/.test(t))return h>=11?'N12':'E8';
+   if(/صباح|نهار/.test(t))return h>=11?'D12':'D8';
+   return t?'OTHER':'';
  };
+ const showSiteContext=()=>{
+   const s=(S.ctx.sites||[]).find(x=>x.site_code===$('siteSel').value);
+   $('siteContextHint').textContent=s?'العميل: '+(s.client_name||'غير محدد')+' · المشروع: '+(s.project_name||'غير محدد')+' · الموقع: '+(s.site_name||''):'';
+ };
+ const showTypeHint=()=>{
+   const t=$('atype').value,h=$('atypeHint');
+   if(t==='TEMP_COVERAGE'){
+     h.textContent='التغطية المؤقتة هنا مخصصة لموظف فعلي يغطي فترة متعددة الأيام. يلزم رقم وظيفي وتاريخ بداية ونهاية. التغطية اليومية/الكاش تسجل من شاشة اليوم.';
+     h.classList.remove('hidden');
+   }else if(t==='RELIEF_FIXED'){
+     h.textContent='بديل الراحة الثابت تكليف فعلي متكرر كما يظهر في ملفات التايم شيت، وليس صفاً وهمياً باسم «التغطية».';
+     h.classList.remove('hidden');
+   }else h.classList.add('hidden');
+ };
+ $('siteSel').onchange=showSiteContext;$('atype').onchange=showTypeHint;showSiteContext();showTypeHint();
  let tm;
  $('empSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(async()=>{
    const q=$('empSearch').value.trim();
@@ -447,26 +473,40 @@ function assignmentModal(a=null){
      const d=await fast('searchEmployee',{q},8000),b=$('empSug');b.innerHTML='';
      (d.rows||[]).forEach(e=>{
        const x=document.createElement('div');x.className='suggestion';
-       x.innerHTML='<b>'+esc(e.full_name)+'</b><div class="sub">'+esc(e.employee_id)+(e.job_title?' · '+esc(e.job_title):'')+(e.default_site_name?' · '+esc(e.default_site_name):'')+'</div>';
+       const src=e.timesheet_source_file?' · مصدر تايم شيت متاح':'';
+       x.innerHTML='<b>'+esc(e.full_name)+'</b><div class="sub">'+esc(e.employee_id)+(e.job_title?' · '+esc(e.job_title):'')+(e.default_site_name?' · '+esc(e.default_site_name):'')+src+'</div>';
        x.onclick=()=>{
          $('empRef').value=e.employee_id||'';
          $('empName').value=e.full_name||'';
          $('jobTitle').value=e.job_title||'حارس أمن';
          if(e.site_ref&&[...$('siteSel').options].some(o=>o.value===e.site_ref))$('siteSel').value=e.site_ref;
          if(e.last_supervisor_name)$('supervisorName').value=e.last_supervisor_name;
+         if(e.last_work_point_name)$('workPointName').value=e.last_work_point_name;
+         if(e.last_weekly_off_text)$('weeklyOffText').value=e.last_weekly_off_text;
          if(e.last_work_days_per_week!==null&&e.last_work_days_per_week!==undefined&&e.last_work_days_per_week!=='')$('workDays').value=e.last_work_days_per_week;
          if(e.last_daily_hours!==null&&e.last_daily_hours!==undefined&&e.last_daily_hours!=='')$('dailyHours').value=e.last_daily_hours;
          const inferred=e.last_shift_code||inferTimesheetShift(e.last_shift_detail,e.last_daily_hours);
          if(inferred&&[...$('shift').options].some(o=>o.value===inferred))$('shift').value=inferred;
          if(e.last_shift_detail)$('shiftDetail').value=e.last_shift_detail;
+         if(e.last_shift_start_text)$('shiftStartText').value=e.last_shift_start_text;
+         if(e.last_shift_end_text)$('shiftEndText').value=e.last_shift_end_text;
          if(e.last_assignment_type&&[...$('atype').options].some(o=>o.value===e.last_assignment_type))$('atype').value=e.last_assignment_type;
          selectedEmployeeStatus=e.employee_status||'';
+         selectedEvidence=e.timesheet_source_file?{
+           source_file_id:e.timesheet_source_file_id||null,
+           source_file_name:e.timesheet_source_file||null,
+           source_sheet:e.timesheet_source_sheet||null,
+           source_row:e.timesheet_source_row||null,
+           source_hidden_row:e.timesheet_hidden_row??null,
+           source_group:e.timesheet_source_group||null,
+           evidence_quality:e.timesheet_evidence_quality||null
+         }:null;
          const source=e.timesheet_source_file
-           ?'المصدر التشغيلي: '+e.timesheet_source_file+' / '+(e.timesheet_source_sheet||'')+' / صف '+(e.timesheet_source_row||'')+(e.timesheet_hidden_row?' (صف مخفي وتمت قراءته)':'')
+           ?'المصدر التشغيلي: '+e.timesheet_source_file+' / '+(e.timesheet_source_sheet||'')+' / صف '+(e.timesheet_source_row||'')+(e.timesheet_hidden_row?' (صف مخفي وتمت قراءته)':'')+(e.source_has_material_hidden_columns?' · الملف يحتوي أعمدة مخفية تشغيلية تمت مراعاتها':'')
            :'بيانات التكليف المرجعية: '+[e.default_client_name,e.default_project_name,e.default_site_name].filter(Boolean).join(' — ');
          $('empSourceHint').textContent=(selectedEmployeeStatus?'حالة الموظف: '+selectedEmployeeStatus+' · ':'')+source;
          $('empSourceHint').style.color=/منتهي|مستبعد/.test(selectedEmployeeStatus)?'var(--bad)':'';
-         b.classList.add('hidden')
+         showSiteContext();showTypeHint();b.classList.add('hidden')
        };
        b.appendChild(x)
      });
@@ -481,27 +521,41 @@ function assignmentModal(a=null){
     full_name:$('empName').value.trim(),
     job_title:$('jobTitle').value.trim()||'حارس أمن',
     site_code:$('siteSel').value||null,
+    work_point_name:$('workPointName').value.trim()||null,
     supervisor_name:$('supervisorName').value.trim()||null,
+    weekly_off_text:$('weeklyOffText').value.trim()||null,
     work_days_per_week:$('workDays').value||null,
     daily_hours:$('dailyHours').value||null,
     shift_code:$('shift').value||null,
     shift_detail:$('shiftDetail').value.trim()||null,
+    shift_start_text:$('shiftStartText').value.trim()||null,
+    shift_end_text:$('shiftEndText').value.trim()||null,
     assignment_type:$('atype').value,
     start_date:$('startDate').value,
     end_date:$('endDate').value,
-    notes:$('assignmentNotes').value.trim()||null
+    notes:$('assignmentNotes').value.trim()||null,
+    source_file_name:selectedEvidence?.source_file_name||a?.source_file_name||null,
+    source_sheet:selectedEvidence?.source_sheet||a?.source_sheet||null,
+    source_row:selectedEvidence?.source_row||a?.source_row||null,
+    source_hidden_row:selectedEvidence?.source_hidden_row??a?.source_hidden_row??null,
+    source_snapshot:selectedEvidence||null
    };
    if(!p.full_name)return toast('اسم الموظف مطلوب',true);
+   if(/^(التغطية|تغطية|تغطيه|تغطية كاش|تغطيه كاش|بديل)$/i.test(p.full_name.replace(/\s+/g,' ').trim()))
+     return toast('لا ينشأ موظف باسم التغطية أو البديل. اختاري الموظف المنفذ الفعلي.',true);
    if(!p.site_code)return toast('اختيار الموقع مطلوب',true);
    if(!a&&/منتهي|مستبعد/.test(selectedEmployeeStatus)&&p.assignment_type!=='NEW_HIRE')
      return toast('حالة الموظف في قاعدة الموظفين '+selectedEmployeeStatus+'. لا ينشأ له تكليف جديد قبل معالجة حالته أو اختيار «موظف جديد» عند إعادة التعيين.',true);
    if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&(!p.work_days_per_week||!p.daily_hours))
-     return toast('أيام العمل وساعات العمل مطلوبة للتكليف الجديد لأنها حقول أساسية في التايم شيت التشغيلي.',true);
-   if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&!p.shift_code&&!p.shift_detail)
-     return toast('حددي الوردية أو اكتبي وقت الوردية للتكليف الجديد.',true);
+     return toast('أيام العمل وساعات العمل مطلوبة للتكليف الجديد لأنها حقول أساسية في ملفات التايم شيت.',true);
+   if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&!p.shift_code&&!p.shift_detail&&!p.shift_start_text)
+     return toast('حددي الوردية أو وقت بداية الوردية للتكليف الجديد.',true);
+   if(p.assignment_type==='TEMP_COVERAGE'&&!p.employee_ref)
+     return toast('التغطية المؤقتة يجب أن ترتبط بموظف فعلي ذي رقم وظيفي.',true);
    if(p.start_date&&p.end_date&&p.start_date>p.end_date)return toast('تاريخ البداية يجب أن يسبق تاريخ النهاية',true);
+   const btn=$('saveA');btn.disabled=true;
    try{await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم حفظ التكليف')}
-   catch(e){toast(e.message,true)}
+   catch(e){toast(e.message,true);btn.disabled=false}
  }
 }
 
