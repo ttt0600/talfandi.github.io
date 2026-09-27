@@ -431,6 +431,14 @@ function assignmentModal(a=null){
  '<div class="modal-actions"><button id="saveA" class="btn primary">حفظ التكليف</button><button id="cancelA" class="btn ghost">إلغاء</button></div>'
  );
  if(a)$('atype').value=a.assignment_type||'PRIMARY';
+ let selectedEmployeeStatus='';
+ const inferTimesheetShift=(txt,hours)=>{
+   const t=String(txt||'').toLowerCase(),h=Number(hours||0);
+   if(/اخر|آخر|ليل/.test(t))return h===12?'N12':'N8';
+   if(/مساء|عصر/.test(t))return h===12?'N12':'E8';
+   if(/صباح|نهار/.test(t))return h===12?'D12':'D8';
+   return '';
+ };
  let tm;
  $('empSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(async()=>{
    const q=$('empSearch').value.trim();
@@ -448,12 +456,16 @@ function assignmentModal(a=null){
          if(e.last_supervisor_name)$('supervisorName').value=e.last_supervisor_name;
          if(e.last_work_days_per_week!==null&&e.last_work_days_per_week!==undefined&&e.last_work_days_per_week!=='')$('workDays').value=e.last_work_days_per_week;
          if(e.last_daily_hours!==null&&e.last_daily_hours!==undefined&&e.last_daily_hours!=='')$('dailyHours').value=e.last_daily_hours;
-         if(e.last_shift_code&&[...$('shift').options].some(o=>o.value===e.last_shift_code))$('shift').value=e.last_shift_code;
+         const inferred=e.last_shift_code||inferTimesheetShift(e.last_shift_detail,e.last_daily_hours);
+         if(inferred&&[...$('shift').options].some(o=>o.value===inferred))$('shift').value=inferred;
          if(e.last_shift_detail)$('shiftDetail').value=e.last_shift_detail;
          if(e.last_assignment_type&&[...$('atype').options].some(o=>o.value===e.last_assignment_type))$('atype').value=e.last_assignment_type;
-         $('empSourceHint').textContent=(e.default_project_name||e.default_site_name)
-           ?'تم تحميل بيانات التكليف المرجعية: '+[e.default_client_name,e.default_project_name,e.default_site_name].filter(Boolean).join(' — ')
-           :'تم اختيار الموظف من قاعدة الموظفين؛ راجعي بيانات التكليف قبل الحفظ.';
+         selectedEmployeeStatus=e.employee_status||'';
+         const source=e.timesheet_source_file
+           ?'المصدر التشغيلي: '+e.timesheet_source_file+' / '+(e.timesheet_source_sheet||'')+' / صف '+(e.timesheet_source_row||'')+(e.timesheet_hidden_row?' (صف مخفي وتمت قراءته)':'')
+           :'بيانات التكليف المرجعية: '+[e.default_client_name,e.default_project_name,e.default_site_name].filter(Boolean).join(' — ');
+         $('empSourceHint').textContent=(selectedEmployeeStatus?'حالة الموظف: '+selectedEmployeeStatus+' · ':'')+source;
+         $('empSourceHint').style.color=/منتهي|مستبعد/.test(selectedEmployeeStatus)?'var(--bad)':'';
          b.classList.add('hidden')
        };
        b.appendChild(x)
@@ -481,6 +493,8 @@ function assignmentModal(a=null){
    };
    if(!p.full_name)return toast('اسم الموظف مطلوب',true);
    if(!p.site_code)return toast('اختيار الموقع مطلوب',true);
+   if(!a&&/منتهي|مستبعد/.test(selectedEmployeeStatus)&&p.assignment_type!=='NEW_HIRE')
+     return toast('حالة الموظف في قاعدة الموظفين '+selectedEmployeeStatus+'. لا ينشأ له تكليف جديد قبل معالجة حالته أو اختيار «موظف جديد» عند إعادة التعيين.',true);
    if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&(!p.work_days_per_week||!p.daily_hours))
      return toast('أيام العمل وساعات العمل مطلوبة للتكليف الجديد لأنها حقول أساسية في التايم شيت التشغيلي.',true);
    if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&!p.shift_code&&!p.shift_detail)
