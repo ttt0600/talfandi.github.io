@@ -390,7 +390,7 @@ function isSuperAdmin(){return !!(portalAccess&&portalAccess.role==='super_admin
 function canWritePortal(){return !!(portalAccess&&portalAccess.enabled&&['super_admin','finance_manager','finance'].indexOf(portalAccess.role)>=0)}
 function renderRoleUi(){
  var cfg=window.ARKANAT_CASH_CONFIG||{},role=document.getElementById('userRole'),nav=document.getElementById('adminNav'),readOnly=!!portalAccess&&!canWritePortal();if(role)role.textContent=cfg.openAccessMode?'استخدام مشترك':roleLabel(portalAccess&&portalAccess.role);var adminGroup=document.getElementById('adminNavGroup'),showAdmin=!cfg.openAccessMode&&isSuperAdmin();if(nav)nav.style.display=showAdmin?'flex':'none';if(adminGroup)adminGroup.style.display=showAdmin?'block':'none';
- document.querySelectorAll('#requestForm input,#requestForm select,#requestForm textarea,#requestForm button,#advanceForm input,#advanceForm select,#advanceForm textarea,#advanceForm button,#txnForm input,#txnForm select,#txnForm textarea,#txnForm button,#fundingForm input,#fundingForm select,#fundingForm textarea,#fundingForm button,#review button,[data-write-action]').forEach(function(b){b.disabled=readOnly});
+ document.querySelectorAll('#batchLedgerTable input,#requestBatchTable input,#batchHolder,#batchBookType,#batchDefaultDate,#requestPageDate,#advanceForm input,#advanceForm select,#advanceForm textarea,#advanceForm button,#txnForm input,#txnForm select,#txnForm textarea,#txnForm button,#fundingForm input,#fundingForm select,#fundingForm textarea,#fundingForm button,#review button,[data-write-action]').forEach(function(b){b.disabled=readOnly});
  var fi=document.getElementById('fileInput'),im=document.getElementById('importMode'),ji=document.getElementById('jsonInput');if(fi)fi.disabled=readOnly;if(im)im.disabled=readOnly;if(ji)ji.disabled=readOnly;
 }
 function id(prefix){return prefix+'-'+new Date().toISOString().replace(/\D/g,'').slice(0,14)+'-'+Math.random().toString(36).slice(2,6).toUpperCase()}
@@ -479,18 +479,20 @@ var map={},d=[];
 state.transactions.forEach(function(t){if(t.status==='ملغى'||t.type==='تغذية عهدة')return;var k=[t.dateRaw||t.date,num(t.amount),t.absent,t.cover,t.supervisor,t.site,t.description].map(function(x){return String(x||'').trim()}).join('|');if(map[k])d.push([map[k],t]);else map[k]=t});
 return d}
 function currentMonthKey(){return new Date().toISOString().slice(0,7)}
-function latestHolderBalances(){
- var m={};state.transactions.forEach(function(t){
-  if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;var h=(t.custodyHolder||t.supervisor||'').trim();if(!h)return;
+function latestHolderBalances(month){
+ var m={},limit=month?(month+'-31'):'9999-12-31';
+ state.transactions.forEach(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى'||String(t.date||'')>limit)return;var h=(t.custodyHolder||t.supervisor||'').trim();if(!h)return;
   var key=cleanArabic(h),ord=(t.date||'')+'|'+String(t.sourceRow||'').padStart(6,'0')+'|'+(t.createdAt||'');
-  if(!m[key])m[key]={holder:h,balance:null,ord:'',last:'',region:t.region||'',category:t.custodyCategory||''};
+  if(!m[key])m[key]={holder:h,balance:null,calc:0,ord:'',last:'',region:t.region||'',category:t.custodyCategory||''};
+  m[key].calc+=txnEffect(t);
   if(t.reportedBalance!=null&&t.reportedBalance!==''&&ord>=m[key].ord){m[key].balance=num(t.reportedBalance);m[key].ord=ord;m[key].last=t.date||t.dateRaw||'';m[key].region=t.region||m[key].region;m[key].category=t.custodyCategory||m[key].category}
  });
+ Object.keys(m).forEach(function(k){if(m[k].balance==null)m[k].balance=m[k].calc});
  return m
 }
-function dashboardMonth(){return (document.getElementById('homeMonth')||{}).value||currentMonthKey()}
 function renderKpis(){
- var month=dashboardMonth(),monthly=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===month}),balances=latestHolderBalances(),
+ var month=dashboardMonth(),monthly=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===month}),balances=latestHolderBalances(month),
  balanceSum=Object.keys(balances).reduce(function(s,k){return s+(balances[k].balance==null?0:balances[k].balance)},0),
  spent=monthly.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0),
  funded=monthly.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0),
@@ -522,7 +524,7 @@ function renderTopAnalytics(){
    var h=t.custodyHolder||t.supervisor||'غير محدد',s=t.site||'غير محدد',v=num(t.amount);holders[h]=(holders[h]||0)+v;sites[s]=(sites[s]||0)+v
  });
  function html(obj,clickable){
-   var a=Object.keys(obj).map(function(k){return {k:k,v:obj[k]}}).sort(function(a,b){return b.v-a.v}).slice(0,6);
+   var keys=Object.keys(obj),clean=keys.filter(function(k){return k&&k!=='غير محدد'}),use=clean.length?clean:keys,a=use.map(function(k){return {k:k,v:obj[k]}}).sort(function(a,b){return b.v-a.v}).slice(0,6);
    if(!a.length)return '<div class="empty">لا توجد بيانات في هذا الشهر.</div>';
    return '<div class="inbox">'+a.map(function(x){return '<div class="item" '+(clickable?'style="cursor:pointer" onclick="openHolderLedger(\''+esc(x.k).replaceAll("'","\\'")+'\')"':'')+'><div><strong>'+esc(x.k)+'</strong></div><strong class="money">'+money(x.v)+'</strong></div>'}).join('')+'</div>'
  }
@@ -566,10 +568,10 @@ return '<div class="tablewrap"><table class="tbl"><thead><tr><th>التاريخ<
  var dateLabel=t.dateStatus==='needs_review'?'⚠ تاريخ يحتاج مراجعة':(t.dateRaw||t.date||'-');return '<tr><td>'+esc(dateLabel)+'</td><td>'+esc(who)+'</td><td>'+esc(typeLabel)+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(person)+'</td><td>'+esc(why)+'</td><td class="money">'+(t.reportedBalance==null||t.reportedBalance===''?'-':money(t.reportedBalance))+'</td><td>'+evidenceButtons(t.id)+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'
 }).join('')+'</tbody></table></div>'
 }
-function renderRecent(){document.getElementById('recent').innerHTML=rowTable(state.transactions.slice().reverse().slice(0,7))}
+function renderRecent(){var m=dashboardMonth(),a=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===m}).slice().reverse().slice(0,7);document.getElementById('recent').innerHTML=rowTable(a)}
 function renderReviewMini(){var n=state.requests.filter(function(r){return r.status==='جديد'||r.status==='يحتاج استكمال'}).length+state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'}).length;document.getElementById('reviewMini').innerHTML=n?'<div class="notice warn">يوجد <strong>'+n+'</strong> عنصر يحتاج مراجعة مالية.</div><button class="btn" onclick="go(\'review\')">فتح صندوق المراجعة</button>':'<div class="notice">لا توجد عناصر معلقة حالياً.</div>'}
 function renderBalances(){
- var month=currentMonthKey(),latest=latestHolderBalances(),rows=Object.keys(latest).map(function(k){
+ var month=dashboardMonth(),latest=latestHolderBalances(month),rows=Object.keys(latest).map(function(k){
    var x=latest[k],spent=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&cleanArabic(t.custodyHolder||t.supervisor)===k&&String(t.date||'').slice(0,7)===month&&isExpense(t)}).reduce(function(s,t){return s+num(t.amount)},0),
    cnt=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&cleanArabic(t.custodyHolder||t.supervisor)===k&&String(t.date||'').slice(0,7)===month}).length;
    return {holder:x.holder,region:x.region,category:x.category,balance:x.balance,spent:spent,count:cnt,last:x.last}
