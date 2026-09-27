@@ -52,9 +52,17 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 .pastehint{font-size:11px;color:var(--muted)}.batch-grid tbody tr:nth-child(even) td{background:#fbfcfd}.batch-grid td.invalid{background:#fff0f0!important}
 .batch-grid .rownum{width:38px;min-width:38px;text-align:center;background:#f4f7f9;font-weight:700;color:var(--muted)}
 @media(max-width:640px){.batchcontrols{display:grid;grid-template-columns:1fr 1fr;width:100%}.batchcontrols .field:nth-child(2){grid-column:1/-1}.batchfooter .actions{width:100%}.batchfooter .actions .btn{flex:1}.batchsummary{width:100%}}
-.old-ledger-row{background:#f7f8f9;color:#66727d}.old-ledger-row td{opacity:.92}.history-badge{white-space:nowrap}</style>
-<script src="./config.js?v=1.8.1"></script>
-<script src="./cloud.js?v=1.8.1"></script>
+.old-ledger-row{background:#f7f8f9;color:#66727d}.old-ledger-row td{opacity:.92}.history-badge{white-space:nowrap}
+.quickstart{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.quickcard{border:1px solid var(--line);background:#fff;border-radius:16px;padding:18px;text-align:right;box-shadow:var(--shadow);display:grid;gap:6px;color:var(--text)}
+.quickcard:hover{border-color:#b9c9d3;transform:translateY(-1px)}.quickcard .qicon{font-size:24px;color:var(--gold)}.quickcard strong{font-size:16px;color:var(--navy)}.quickcard small{font-size:12px;color:var(--muted);line-height:1.6}
+.sheetbox.sheet-full{position:fixed;inset:8px;z-index:130;background:#fff;border-radius:14px;margin:0;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(15,36,56,.35)}
+.sheetbox.sheet-full .sheet-scroll{flex:1;max-height:none}.sheetbox.sheet-full .sheetbar,.sheetbox.sheet-full .batchfooter{flex:0 0 auto}
+body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
+@media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
+</style>
+<script src="./config.js?v=1.9.0"></script>
+<script src="./cloud.js?v=1.9.0"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -71,7 +79,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.8.1</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.9.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -90,29 +98,33 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 <main>
 <div class="breadcrumbbar" id="breadcrumb"><span class="home" onclick="go('dash')">بوابة العهد</span><span class="sep">‹</span><span class="current">لوحة التحكم</span></div>
 <section id="dash" class="view active">
-<div class="titlebar"><div><h2>الرئيسية</h2><div class="subtitle">الصورة المختصرة: كم استلم المشرفون، كم صُرف، أين صُرف، وكم بقي</div></div>
-<div class="home-actions"><button class="btn primary" onclick="go('ledger')">فتح دفتر مشرف</button><button class="btn" onclick="go('requests')">إضافة طلب عهدة</button><button class="btn" onclick="go('io')">استيراد Excel</button></div></div>
+<div class="titlebar"><div><h2>الرئيسية</h2><div class="subtitle">كل ما تحتاجه: إدخال مثل Excel، ثم متابعة المصروف والمتبقي بوضوح</div></div></div>
+<div class="quickstart">
+<button class="quickcard" onclick="go('ledger')"><span class="qicon">▦</span><strong>دفتر المشرف</strong><small>أدخل صفوف التصفية مثل ملف Excel</small></button>
+<button class="quickcard" onclick="go('requests')"><span class="qicon">＋</span><strong>طلبات العهد</strong><small>نفس أعمدة ملف طلب العهدة</small></button>
+<button class="quickcard" onclick="go('io')"><span class="qicon">⇄</span><strong>استيراد Excel</strong><small>ارفع الملف كما هو إذا لم ترد الإدخال اليدوي</small></button>
+</div>
 <div class="card" style="padding:12px;margin-bottom:12px"><div class="formgrid" style="grid-template-columns:minmax(160px,220px) 1fr">
-<div class="field"><label>عرض شهر</label><input id="homeMonth" type="month" onchange="renderHome()"></div>
-<div class="simple-note" style="margin:0"><strong>للموظف:</strong> استخدم «دفتر المشرف» للإدخال اليومي. <strong>للإدارة:</strong> هذه الصفحة للمتابعة فقط.</div>
+<div class="field"><label>الشهر المعروض</label><input id="homeMonth" type="month" onchange="renderHome()"></div>
+<div class="simple-note" style="margin:0"><strong>قاعدة بسيطة:</strong> الموظف يدخل البيانات بنفس طريقة الملف، والبوابة تحسب الرصيد والتحليلات تلقائياً.</div>
 </div></div>
 <div class="kpis" id="kpis"></div>
 <div class="grid2">
-<div class="card"><h3>أين صُرفت العهد؟</h3><div id="spendSummary"></div></div>
-<div class="card"><h3>أعلى المشرفين صرفاً</h3><div id="topHolders"></div></div>
+<div class="card"><h3>المصروف حسب النوع</h3><div id="spendSummary"></div></div>
+<div class="card"><h3>المصروف حسب المشرف</h3><div id="topHolders"></div></div>
 </div>
 <div class="grid2">
-<div class="card"><h3>أعلى المواقع صرفاً</h3><div id="topSites"></div></div>
+<div class="card"><h3>المصروف حسب الموقع</h3><div id="topSites"></div></div>
 <div class="card"><h3>آخر الحركات</h3><div id="recent"></div></div>
 </div>
 <div class="card"><h3>المتبقي مع المشرفين</h3><div class="subtitle" style="margin-bottom:10px">آخر رصيد مسجل لكل مشرف. اضغط «فتح الدفتر» لعرض التفاصيل.</div><div id="balances"></div></div>
 </section>
 
 <section id="ledger" class="view">
-<div class="titlebar"><div><h2>دفتر المشرف</h2><div class="subtitle">اختر المشرف مرة واحدة، ثم أدخل عدة صفوف مثل ملف Excel واحفظها دفعة واحدة</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
-<div class="simple-note"><strong>أسرع من Excel:</strong> اختر المشرف والتاريخ مرة واحدة. استخدم Tab للتنقل، Enter للنزول لنفس العمود، ويمكنك نسخ عدة خلايا من Excel ولصقها مباشرة في الجدول.</div>
+<div class="titlebar"><div><h2>دفتر المشرف</h2><div class="subtitle">نفس منطق ملف الأستاذ: مدين، دائن، رصيد، بيان، موقع وحالة</div></div><div class="actions"><button class="btn" onclick="toggleSheetFullscreen('ledgerSheetBox')">ملء الشاشة</button><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
+<div class="simple-note"><strong>بديل Excel فعلي:</strong> يمكنك نسخ صفوف الملف القديمة كاملة ولصقها هنا؛ النظام يتعرف على عمود الرصيد ويرتب الأعمدة تلقائياً.</div>
 
-<div class="sheetbox">
+<div class="sheetbox" id="ledgerSheetBox">
 <div class="sheetbar batchbar">
 <div class="batchcontrols">
 <div class="field compact"><label>نوع الدفتر</label><select id="batchBookType" onchange="resetLedgerBatch()"><option value="coverage">عهد وتغطيات</option><option value="vehicle">وقود ومركبات</option></select></div>
@@ -146,12 +158,12 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 </section>
 
 <section id="requests" class="view">
-<div class="titlebar"><div><h2>طلبات العهد</h2><div class="subtitle">جدول مطابق تقريباً لملف «طلب عهدة» ويمكن إدخال أكثر من طلب ثم حفظها دفعة واحدة</div></div></div>
-<div class="sheetbox">
+<div class="titlebar"><div><h2>طلبات العهد</h2><div class="subtitle">نفس ملف طلب العهدة: القيمة، البيان، المشرف، الآيبان، اسم الحساب، الملاحظات</div></div><div class="actions"><button class="btn" onclick="toggleSheetFullscreen('requestSheetBox')">ملء الشاشة</button></div></div>
+<div class="sheetbox" id="requestSheetBox">
 <div class="sheetbar batchbar"><div><strong>طلبات جديدة</strong><br><small>الصفوف ذات القيمة صفر أو الفارغة لن تحفظ كطلبات جديدة</small></div><div class="field compact"><label>تاريخ الطلبات</label><input id="requestPageDate" type="date"></div></div>
 <div class="sheet-scroll">
 <table class="sheet-grid batch-grid" id="requestBatchTable" style="min-width:980px"><thead><tr>
-<th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th>
+<th>#</th><th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th>
 </tr></thead><tbody id="requestBatchBody"></tbody></table>
 </div>
 <div class="batchfooter"><div class="pastehint">انسخ صفوفاً من ملف طلب العهدة في Excel والصقها هنا مباشرة.</div><div class="actions"><button class="btn" type="button" onclick="addRequestRows(5)">+ 5 صفوف</button><button class="btn" type="button" onclick="resetRequestBatch()">تفريغ الجدول</button><button class="btn primary" type="button" onclick="saveRequestBatch()">حفظ الطلبات المدخلة</button></div></div>
@@ -166,8 +178,18 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 <section id="advances" class="view">
 <div class="titlebar"><div><h2>السلف</h2><div class="subtitle">من استلم سلفة، كم قيمتها، وما المتبقي منها</div></div><div class="actions"><button class="btn" onclick="exportAdvancesXlsx()">تصدير السلف</button></div></div>
 <div class="simple-note"><strong>ملاحظة:</strong> تسجيل السلفة هنا لا يعني خصمها من الراتب تلقائياً.</div>
+<div class="sheetbox" id="advanceSheetBox">
+<div class="sheetbar batchbar"><div><strong>إدخال السلف مثل ملف Excel</strong><br><small>يمكن إدخال سلفة جديدة أو رصيد قائم بدون سلفة جديدة</small></div>
+<div class="actions"><div class="field compact"><label>الشهر</label><input id="advanceBatchMonth" type="month"></div><button class="btn" type="button" onclick="toggleSheetFullscreen('advanceSheetBox')">ملء الشاشة</button></div></div>
+<div class="sheet-scroll">
+<table class="sheet-grid batch-grid" id="advanceBatchTable" style="min-width:1100px"><thead><tr>
+<th>#</th><th>اسم الموظف</th><th>المبلغ</th><th>الموقع / الإدارة</th><th>ملاحظات</th><th>السلف السابقة</th><th>الإجمالي</th><th>ملاحظات إضافية</th>
+</tr></thead><tbody id="advanceBatchBody"></tbody></table>
+</div>
+<div class="batchfooter"><div class="pastehint">يمكن نسخ صفوف ملف السلف ولصقها مباشرة هنا.</div><div class="actions"><button class="btn" type="button" onclick="addAdvanceRows(5)">+ 5 صفوف</button><button class="btn" type="button" onclick="resetAdvanceBatch()">تفريغ الجدول</button><button class="btn primary" type="button" onclick="saveAdvanceBatch()">حفظ السلف المدخلة</button></div></div>
+</div>
 <div class="kpis" id="advanceKpis"></div>
-<div class="grid2">
+<div class="grid2 advance-single" style="display:none">
 <div class="card"><h3>إضافة سلفة</h3>
 <form id="advanceForm" class="formgrid">
 <div class="field"><label>التاريخ</label><input name="recordDate" type="date" required></div>
@@ -353,14 +375,14 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.8.1 — الإدخال اليومي أصبح على شكل دفتر مشرف متعدد الصفوف مع لصق مباشر من Excel وحفظ دفعة واحدة.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.9.0 — الإدخال اليومي أصبح على شكل دفتر مشرف متعدد الصفوف مع لصق مباشر من Excel وحفظ دفعة واحدة.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.8.1',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.8.1';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.9.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.9.0';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -505,10 +527,10 @@ function renderKpis(){
  funded=monthly.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0),
  openRequests=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'&&num(r.amount)>0});
  var data=[
-  ['تم تسليم المشرفين',money(funded),'عهد دخلت للمشرفين خلال الشهر'],
-  ['تم صرفه',money(spent),'مصروفات مسجلة خلال الشهر'],
-  ['المتبقي المسجل',money(balanceSum),'آخر رصيد ظاهر لكل مشرف'],
-  ['طلبات لم تُسلّم',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد لم تدخل بعد في دفتر المشرف']
+  ['العهد التي استلمها المشرفون',money(funded),'مبالغ دخلت دفاتر المشرفين خلال الشهر'],
+  ['المصروف',money(spent),'ما تم صرفه خلال الشهر'],
+  ['المتبقي مع المشرفين',money(balanceSum),'حسب آخر رصيد مسجل لكل مشرف'],
+  ['طلبات بانتظار التسليم',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد لم تظهر كعهدة مستلمة بعد']
  ];
  var el=document.getElementById('kpis');if(el)el.innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
 }
@@ -745,7 +767,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.8.1',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.9.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -885,10 +907,10 @@ function renderAdvances(){
  var out=a.reduce(function(s,x){return s+num(x.outstandingBalance)},0),newAmt=a.reduce(function(s,x){return s+num(x.advanceAmount)},0),
      pay=a.filter(function(x){return x.statusCode==='PAYROLL_CANDIDATE'}),inst=a.filter(function(x){return num(x.monthlyInstallment)>0});
  var k=document.getElementById('advanceKpis');if(k)k.innerHTML=[
-  ['الرصيد/التعرض الحالي',money(out),'الموقف المسجل في البوابة'],
+  ['الرصيد القائم',money(out),'إجمالي ما يظهر كسلف قائمة'],
   ['السلف الجديدة الظاهرة',money(newAmt),'وفق بيانات السجل الحالي'],
   ['حالات التقسيط',inst.length,'لها قسط شهري'],
-  ['مرشح تسوية راتب',pay.length,money(pay.reduce(function(s,x){return s+num(x.advanceAmount)},0))],
+  ['مذكور للخصم من الراتب',pay.length,money(pay.reduce(function(s,x){return s+num(x.advanceAmount)},0))],
   ['السجل التاريخي',h.length,'حركة شهرية']
  ].map(function(x){return '<div class="kpi"><div class="lab">'+esc(x[0])+'</div><div class="val">'+esc(x[1])+'</div><div class="sub">'+esc(x[2])+'</div></div>'}).join('');
  var s=document.getElementById('advanceSummary');if(s)s.innerHTML='<div class="inbox"><div class="item"><strong>عدد الحالات الحالية:</strong> '+a.length+'</div><div class="item"><strong>الفترة التاريخية:</strong> '+(h.length?'مارس — سبتمبر 2026':'لا توجد بيانات')+'</div><div class="item"><strong>قاعدة العمل:</strong> لا تنتقل أي حالة إلى الرواتب أو الأنظمة الحاكمة تلقائياً.</div></div>';
@@ -956,7 +978,8 @@ window.updateLedgerBatchBalances=function(){
  document.querySelectorAll('#batchLedgerBody tr').forEach(function(row){
    var debit=num((row.querySelector('[name="debit"]')||{}).value),credit=num((row.querySelector('[name="credit"]')||{}).value);
    if(debit||credit)bal+=debit-credit;
-   var cell=row.querySelector('.batch-balance');if(cell)cell.textContent=(debit||credit)?money(bal):'—'
+   var cell=row.querySelector('.batch-balance'),src=row.dataset.sourceBalance!==undefined&&row.dataset.sourceBalance!==''?num(row.dataset.sourceBalance):null;
+   if(cell){cell.textContent=(debit||credit)?money(bal):'—';cell.classList.toggle('source-mismatch',src!=null&&Math.abs(src-bal)>0.01);cell.title=src!=null?'الرصيد في الملف: '+money(src):''}
  })
 }
 function buildLedgerTransaction(row,holder,running,bookType){
@@ -976,8 +999,11 @@ function buildLedgerTransaction(row,holder,running,bookType){
    else{t.type=classifyOut(main,cover,site,reason);t.description=main||reason||'مصروف';t.reason=reason;t.expenseCategory=inferExpenseCategory(t.type,t.description,'',reason,inferCustodyCategory('cash_ledger',t.description,site));t.periodExpense=t.type!=='دفعة تحت التسوية'}
  }
  t.custodyCategory=inferCustodyCategory(bookType==='vehicle'?'expense_ledger':'cash_ledger',t.description||t.reason||'',site);t.accountKey=makeAccountKey('',holder,t.custodyCategory);
- t.reportedBalance=running+debit-credit;t.recordFingerprint=eventKey(t);if(exceptionFor(t).length)t.status='يحتاج مراجعة';
- return {tx:t,balance:t.reportedBalance}
+ var calcBal=running+debit-credit,srcBal=row.dataset.sourceBalance!==undefined&&row.dataset.sourceBalance!==''?num(row.dataset.sourceBalance):null;
+ t.reportedBalance=srcBal==null?calcBal:srcBal;
+ if(srcBal!=null&&Math.abs(srcBal-calcBal)>0.01){t.status='يحتاج مراجعة';t.notes=(t.notes?t.notes+' | ':'')+'الرصيد في الملف '+money(srcBal)+' يختلف عن الرصيد المحسوب '+money(calcBal);t.balanceMismatch=true}
+ t.recordFingerprint=eventKey(t);if(exceptionFor(t).length)t.status='يحتاج مراجعة';
+ return {tx:t,balance:calcBal}
 }
 window.saveLedgerBatch=function(){
  var holder=((document.getElementById('batchHolder')||{}).value||'').trim();if(!holder){toast('اختر المشرف أولاً');return}
@@ -1005,19 +1031,63 @@ window.saveRequestBatch=function(){
  if(!saved){toast(zeros?'لا توجد طلبات بقيمة أكبر من صفر للحفظ':'لا توجد طلبات مكتملة للحفظ');return}
  audit('إضافة طلبات عهد دفعة واحدة','RequestBatch',id('REQBATCH'),saved+' طلب بتاريخ '+date);save();refreshHolderOptions();renderRequests();resetRequestBatch();toast('تم حفظ '+saved+' طلب'+(zeros?' · تم تجاهل '+zeros+' صف بقيمة صفر':'')+(dupes?' · '+dupes+' مكرر':''))
 }
+function advanceRowHtml(i){return '<tr data-row="'+i+'"><td class="rownum">'+(i+1)+'</td><td class="namecell"><input data-grid="advance" data-col="0" name="employeeName"></td><td class="moneycell"><input data-grid="advance" data-col="1" name="amount" type="text" inputmode="decimal"></td><td class="sitecell"><input data-grid="advance" data-col="2" name="department"></td><td class="textcell"><input data-grid="advance" data-col="3" name="notes"></td><td class="moneycell"><input data-grid="advance" data-col="4" name="previousBalance" type="text" inputmode="decimal"></td><td class="moneycell"><input data-grid="advance" data-col="5" name="total" type="text" inputmode="decimal"></td><td class="textcell"><input data-grid="advance" data-col="6" name="extraNotes"></td></tr>'}
+window.resetAdvanceBatch=function(){var b=document.getElementById('advanceBatchBody');if(!b)return;b.innerHTML='';for(var i=0;i<6;i++)b.insertAdjacentHTML('beforeend',advanceRowHtml(i))}
+window.addAdvanceRows=function(n){var b=document.getElementById('advanceBatchBody');if(!b)return;var s=b.querySelectorAll('tr').length;for(var i=0;i<n;i++)b.insertAdjacentHTML('beforeend',advanceRowHtml(s+i))}
+function advanceNumber(v){v=String(v||'').trim().replace(/,/g,'');var m=v.match(/(\d+(?:\.\d+)?)\s*الف/);if(m)return Number(m[1])*1000;var n=Number(v);return Number.isFinite(n)?n:null}
+window.saveAdvanceBatch=function(){
+ var month=(document.getElementById('advanceBatchMonth')||{}).value||batchToday().slice(0,7),period=month+'-01',rows=[].slice.call(document.querySelectorAll('#advanceBatchBody tr')),saved=0;
+ rows.forEach(function(row){
+   var g=function(n){return ((row.querySelector('[name="'+n+'"]')||{}).value||'').trim()},name=g('employeeName');if(!name)return;
+   var amt=advanceNumber(g('amount')),prev=advanceNumber(g('previousBalance')),total=advanceNumber(g('total')),notes=g('notes'),extra=g('extraNotes'),dept=g('department');
+   if(amt==null&&prev==null&&total==null&&!notes&&!extra&&!dept)return;
+   var outstanding=total!=null?total:(amt!=null?amt:(prev||0)),instMatch=(notes+' '+extra).replace(/,/g,'').match(/الق(?:سط|شط)\s*الشهري\s*(\d+(?:\.\d+)?)/),inst=instMatch?Number(instMatch[1]):null,
+       payMatch=(notes+' '+extra).match(/راتب\s*شهر\s*(\d{1,2})(?:\s*\/\s*(20\d{2}))?/),pay=payMatch?(payMatch[2]||month.slice(0,4))+'-'+String(+payMatch[1]).padStart(2,'0')+'-01':'',
+       key=cleanArabic(name)+'|'+month,existing=(state.employeeAdvances||[]).find(function(x){return cleanArabic(x.employeeName)===cleanArabic(name)&&String(x.sourceMonth||'').slice(0,7)===month&&String(x.sourceId||'').indexOf('MANUAL-ADV-')===0}),
+       status=pay?'مذكور للخصم من الراتب — غير منفذ':(inst?'قائم — أقساط':'قائم'),code=pay?'PAYROLL_CANDIDATE':(inst?'OPEN_INSTALLMENT':'OPEN_CURRENT');
+   var x=existing||{id:id('ADV'),createdAt:new Date().toISOString()};
+   Object.assign(x,{employeeName:name,employeeRef:'',department:dept,recordDate:period,sourceMonth:period,advanceAmount:amt||0,previousBalance:prev,outstandingBalance:outstanding,monthlyInstallment:inst,payrollActionMonth:pay,status:status,statusCode:code,sourceAmountRaw:g('amount'),sourceId:'MANUAL-ADV-'+month,sourceFile:'',sourceSheet:'',sourceRow:null,notes:[notes,extra].filter(Boolean).join(' | ')});
+   if(!existing)state.employeeAdvances.push(x);
+   state.advanceHistory.push({id:id('ADVH'),periodMonth:period,sourceRow:null,employeeName:name,employeeRef:'',department:dept,amount:amt,amountRaw:g('amount'),previousBalance:prev,sourceTotal:total,derivedExposure:outstanding,monthlyInstallment:inst,payrollActionMonth:pay,classification:amt?'سلفة/تحديث شهر '+month:'رصيد سلفة قائم',notes:notes,extraNotes:extra,sourceId:'MANUAL-ADV-'+month,sourceFile:'',createdAt:new Date().toISOString()});saved++
+ });
+ if(!saved){toast('لا توجد صفوف سلف مكتملة للحفظ');return}
+ audit('إضافة/تحديث سلف شهرية','EmployeeAdvanceBatch',id('ADVBATCH'),saved+' صف | '+month);save();renderAdvances();resetAdvanceBatch();toast('تم حفظ '+saved+' صف في سجل السلف')
+}
+
+window.toggleSheetFullscreen=function(id){
+ var box=document.getElementById(id);if(!box)return;
+ var on=!box.classList.contains('sheet-full');
+ document.querySelectorAll('.sheetbox.sheet-full').forEach(function(x){x.classList.remove('sheet-full')});
+ box.classList.toggle('sheet-full',on);document.body.classList.toggle('sheet-open',on)
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){document.querySelectorAll('.sheetbox.sheet-full').forEach(function(x){x.classList.remove('sheet-full')});document.body.classList.remove('sheet-open')}});
+
 function gridPaste(e){
  var input=e.target.closest('input[data-grid]');if(!input)return;var text=e.clipboardData&&e.clipboardData.getData('text');if(!text||text.indexOf('\t')<0&&text.indexOf('\n')<0)return;
- var grid=input.dataset.grid,table=grid==='ledger'?document.getElementById('batchLedgerTable'):document.getElementById('requestBatchTable'),body=grid==='ledger'?document.getElementById('batchLedgerBody'):document.getElementById('requestBatchBody');if(!table||!body)return;
- e.preventDefault();var startRow=input.closest('tr'),rows=[].slice.call(body.querySelectorAll('tr')),ri=rows.indexOf(startRow),ci=+input.dataset.col,data=text.replace(/\r/g,'').split('\n').filter(function(x,i,a){return x!==''||i<a.length-1}).map(function(x){return x.split('\t')});
- var need=ri+data.length-rows.length;if(need>0){if(grid==='ledger')addLedgerBatchRows(need);else addRequestRows(need);rows=[].slice.call(body.querySelectorAll('tr'))}
- data.forEach(function(vals,r){var ins=[].slice.call(rows[ri+r].querySelectorAll('input[data-grid]'));vals.forEach(function(v,j){var x=ins[ci+j];if(!x)return;if(x.type==='date')v=normalizePastedDate(v);x.value=v})});
+ var grid=input.dataset.grid,table=grid==='ledger'?document.getElementById('batchLedgerTable'):grid==='request'?document.getElementById('requestBatchTable'):document.getElementById('advanceBatchTable'),
+     body=grid==='ledger'?document.getElementById('batchLedgerBody'):grid==='request'?document.getElementById('requestBatchBody'):document.getElementById('advanceBatchBody');
+ if(!table||!body)return;
+ e.preventDefault();var startRow=input.closest('tr'),rows=[].slice.call(body.querySelectorAll('tr')),ri=rows.indexOf(startRow),ci=+input.dataset.col,
+ data=text.replace(/\r/g,'').split('\n').filter(function(x,i,a){return x!==''||i<a.length-1}).map(function(x){return x.split('\t')});
+ var need=ri+data.length-rows.length;if(need>0){if(grid==='ledger')addLedgerBatchRows(need);else if(grid==='request')addRequestRows(need);else addAdvanceRows(need);rows=[].slice.call(body.querySelectorAll('tr'))}
+ data.forEach(function(vals,r){
+   var row=rows[ri+r],ins=[].slice.call(row.querySelectorAll('input[data-grid]')),v=vals.slice();
+   if(grid==='ledger'&&ci===0){
+     var book=(document.getElementById('batchBookType')||{}).value||'coverage';
+     if(book==='coverage'&&v.length>=9){row.dataset.sourceBalance=v[3]||'';v=[v[0],v[1],v[2],v[4],v[5],v[6],v[7],v[8]]}
+     else if(book==='vehicle'&&v.length>=9){row.dataset.sourceBalance=v[4]||'';v=[v[0],v[3],v[2],v[1],v[5],v[6],v[7],v[8]]}
+   }
+   if(grid==='request'&&ci===0&&v.length>=7&&/^\s*\d+\s*$/.test(v[0]||''))v=v.slice(1,7);
+   if(grid==='advance'&&ci===0&&v.length>7&&/^\s*\d+\s*$/.test(v[0]||''))v=v.slice(1,8);
+   v.forEach(function(val,j){var x=ins[ci+j];if(!x)return;if(x.type==='date')val=normalizePastedDate(val);x.value=val})
+ });
  if(grid==='ledger')updateLedgerBatchBalances()
 }
 document.addEventListener('paste',gridPaste);
 document.addEventListener('keydown',function(e){
- var x=e.target;if(e.key!=='Enter'||!x.matches('input[data-grid]'))return;e.preventDefault();var body=x.closest('tbody'),rows=[].slice.call(body.querySelectorAll('tr')),row=x.closest('tr'),ri=rows.indexOf(row),ci=+x.dataset.col;if(ri===rows.length-1){if(x.dataset.grid==='ledger')addLedgerBatchRows(1);else addRequestRows(1);rows=[].slice.call(body.querySelectorAll('tr'))}var next=[].slice.call(rows[ri+1].querySelectorAll('input[data-grid]'))[ci];if(next)next.focus()
+ var x=e.target;if(e.key!=='Enter'||!x.matches('input[data-grid]'))return;e.preventDefault();var body=x.closest('tbody'),rows=[].slice.call(body.querySelectorAll('tr')),row=x.closest('tr'),ri=rows.indexOf(row),ci=+x.dataset.col;if(ri===rows.length-1){if(x.dataset.grid==='ledger')addLedgerBatchRows(1);else if(x.dataset.grid==='request')addRequestRows(1);else addAdvanceRows(1);rows=[].slice.call(body.querySelectorAll('tr'))}var next=[].slice.call(rows[ri+1].querySelectorAll('input[data-grid]'))[ci];if(next)next.focus()
 });
-function renderAll(){var today=batchToday(),m=today.slice(0,7),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=m;if(hm&&!hm.value)hm.value=m;renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
+function renderAll(){var today=batchToday(),m=today.slice(0,7),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth'),am=document.getElementById('advanceBatchMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=m;if(hm&&!hm.value)hm.value=m;if(am&&!am.value)am.value=m;renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();resetAdvanceBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
 
 document.getElementById('advanceForm').addEventListener('submit',function(e){
  e.preventDefault();if(!canWritePortal()){toast('لا توجد صلاحية لإضافة السلف');return}
@@ -1524,7 +1594,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.8.1',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.9.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
