@@ -483,21 +483,32 @@ function duplicates(){
 var map={},d=[];
 state.transactions.forEach(function(t){if(t.status==='ملغى'||t.type==='تغذية عهدة')return;var k=[t.dateRaw||t.date,num(t.amount),t.absent,t.cover,t.supervisor,t.site,t.description].map(function(x){return String(x||'').trim()}).join('|');if(map[k])d.push([map[k],t]);else map[k]=t});
 return d}
+function currentMonthKey(){return new Date().toISOString().slice(0,7)}
+function latestHolderBalances(){
+ var m={};state.transactions.forEach(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;var h=(t.custodyHolder||t.supervisor||'').trim();if(!h)return;
+  var key=cleanArabic(h),ord=(t.date||'')+'|'+String(t.sourceRow||'').padStart(6,'0')+'|'+(t.createdAt||'');
+  if(!m[key])m[key]={holder:h,balance:null,ord:'',last:'',region:t.region||'',category:t.custodyCategory||''};
+  if(t.reportedBalance!=null&&t.reportedBalance!==''&&ord>=m[key].ord){m[key].balance=num(t.reportedBalance);m[key].ord=ord;m[key].last=t.date||t.dateRaw||'';m[key].region=t.region||m[key].region;m[key].category=t.custodyCategory||m[key].category}
+ });
+ return m
+}
 function renderKpis(){
- var c0=calc(),active=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'}),holders={},openRequests=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'&&num(r.amount)>0});
- active.forEach(function(t){var h=t.custodyHolder||t.supervisor;if(h)holders[h]=1});
+ var month=currentMonthKey(),monthly=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===month}),balances=latestHolderBalances(),balanceSum=Object.keys(balances).reduce(function(s,k){return s+(balances[k].balance==null?0:balances[k].balance)},0),
+ spent=monthly.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0),funded=monthly.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0),
+ openRequests=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'&&num(r.amount)>0});
  var data=[
-  ['العهد المسلّمة',money(c0.incoming),'إجمالي ما دخل دفاتر العهد'],
-  ['المصروف المسجل',money(c0.expenses),'ما تم صرفه على التغطيات والمصروفات'],
-  ['المتبقي مع المشرفين',money(c0.balance),'الرصيد الحالي حسب الدفاتر'],
-  ['مشرفون لديهم عهد',Object.keys(holders).length.toLocaleString('ar-SA'),'عدد المشرفين الظاهرين في الدفاتر'],
+  ['العهد المسلّمة هذا الشهر',money(funded),'المبالغ التي دخلت عهد المشرفين'],
+  ['المصروف هذا الشهر',money(spent),'التغطيات والمصروفات المسجلة'],
+  ['المتبقي حسب آخر رصيد',money(balanceSum),'مجموع آخر رصيد ظاهر لكل مشرف'],
+  ['المشرفون في الدفاتر',Object.keys(balances).length.toLocaleString('ar-SA'),'مشرفون لديهم رصيد أو حركة مسجلة'],
   ['طلبات لم تُموّل',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد بقيمة أكبر من صفر']
  ];
  document.getElementById('kpis').innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
 }
 function renderSpendSummary(){
- var m={},total=0;state.transactions.forEach(function(t){
-  if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t))return;
+ var m={},total=0,month=currentMonthKey();state.transactions.forEach(function(t){
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t)||String(t.date||'').slice(0,7)!==month)return;
   var k=t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory)||t.type||'أخرى',v=num(t.amount);
   m[k]=(m[k]||0)+v;total+=v
  });
@@ -546,35 +557,16 @@ return '<div class="tablewrap"><table class="tbl"><thead><tr><th>التاريخ<
 function renderRecent(){document.getElementById('recent').innerHTML=rowTable(state.transactions.slice().reverse().slice(0,7))}
 function renderReviewMini(){var n=state.requests.filter(function(r){return r.status==='جديد'||r.status==='يحتاج استكمال'}).length+state.transactions.filter(function(t){return t.status==='يحتاج مراجعة'}).length;document.getElementById('reviewMini').innerHTML=n?'<div class="notice warn">يوجد <strong>'+n+'</strong> عنصر يحتاج مراجعة مالية.</div><button class="btn" onclick="go(\'review\')">فتح صندوق المراجعة</button>':'<div class="notice">لا توجد عناصر معلقة حالياً.</div>'}
 function renderBalances(){
- var m={};state.transactions.forEach(function(t){
-  if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;
-  var holder=t.custodyHolder||t.supervisor||'غير محدد',cat=t.custodyCategory||'عام',k=t.accountKey||[t.region||'',holder,cat].join('|');
-  if(!m[k])m[k]={holder:holder,category:cat,region:t.region||'',received:0,spent:0,transferred:0,balance:0,last:''};
-  if(t.type==='رصيد افتتاحي'||t.type==='تغذية عهدة'||t.type==='تحويل وارد')m[k].received+=t.type==='رصيد افتتاحي'?num(t.amount)*(t.openingSign===-1?-1:1):num(t.amount);
-  if(isExpense(t)||t.type==='دفعة تحت التسوية'||t.type==='دفع نقدي لفرد')m[k].spent+=num(t.amount);
-  if(t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة')m[k].transferred+=num(t.amount);
-  m[k].balance+=txnEffect(t);if(t.dateStatus!=='needs_review'&&String(t.date||'')>m[k].last)m[k].last=t.date
- });
- var a=Object.keys(m).map(function(k){return m[k]}).filter(function(x){return Math.abs(x.received)+Math.abs(x.spent)+Math.abs(x.transferred)+Math.abs(x.balance)>0.001}).sort(function(x,y){return y.balance-x.balance});
- if(!a.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد بيانات.</div>';return}
- document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع العهدة</th><th>استلم</th><th>صرف</th><th>حوّل لآخرين</th><th>المتبقي</th><th></th></tr></thead><tbody>'+a.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.category)+'</td><td class="money">'+money(x.received)+'</td><td class="money">'+money(x.spent)+'</td><td class="money">'+money(x.transferred)+'</td><td class="money"><strong>'+money(x.balance)+'</strong></td><td><button class="btn" onclick="openHolderSettlement(\''+esc(x.holder).replaceAll("'", "\\'")+'\')">عرض</button></td></tr>'}).join('')+'</tbody></table></div>'
+ var month=currentMonthKey(),latest=latestHolderBalances(),rows=Object.keys(latest).map(function(k){
+   var x=latest[k],spent=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&cleanArabic(t.custodyHolder||t.supervisor)===k&&String(t.date||'').slice(0,7)===month&&isExpense(t)}).reduce(function(s,t){return s+num(t.amount)},0),
+   cnt=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&cleanArabic(t.custodyHolder||t.supervisor)===k&&String(t.date||'').slice(0,7)===month}).length;
+   return {holder:x.holder,region:x.region,category:x.category,balance:x.balance,spent:spent,count:cnt,last:x.last}
+ }).filter(function(x){return x.balance!=null||x.count>0}).sort(function(a,b){return num(b.balance)-num(a.balance)});
+ if(!rows.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد أرصدة حالية.</div>';return}
+ document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المشرف</th><th>المصروف هذا الشهر</th><th>آخر رصيد</th><th>آخر تاريخ</th><th></th></tr></thead><tbody>'+rows.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td class="money">'+money(x.spent)+'</td><td class="money"><strong>'+(x.balance==null?'-':money(x.balance))+'</strong></td><td>'+esc(x.last||'-')+'</td><td><button class="btn" onclick="openHolderLedger(\''+esc(x.holder).replaceAll("'","\\'")+'\')">فتح الدفتر</button></td></tr>'}).join('')+'</tbody></table></div>'
 }
-window.openHolderSettlement=function(h){go('settlement');var e=document.getElementById('settleHolder');if(e){e.value=h;renderSettlement()}}
-function activeHolderTransactions(holder){
- return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&(!holder||cleanArabic(t.custodyHolder||t.supervisor)===cleanArabic(holder))})
-}
-function holderBalance(holder){return activeHolderTransactions(holder).reduce(function(s,t){return s+txnEffect(t)},0)}
-function refreshHolderOptions(){
- var names={};state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;var h=(t.custodyHolder||t.supervisor||'').trim();if(h)names[h]=1});
- state.requests.forEach(function(r){if(r.snapshotStatus==='superseded')return;var h=(r.supervisor||'').trim();if(h)names[h]=1});
- var a=Object.keys(names).sort(function(a,b){return a.localeCompare(b,'ar')});
- var dl=document.getElementById('holderList');if(dl)dl.innerHTML=a.map(function(x){return '<option value="'+esc(x)+'"></option>'}).join('');
- var sel=document.getElementById('ledgerHolder');if(sel){var old=sel.value;sel.innerHTML='<option value="">كل المشرفين</option>'+a.map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>'}).join('');if(a.indexOf(old)>=0)sel.value=old}
-}
-window.updateQuickBalance=function(){
- var h=(document.getElementById('quickHolder')||{}).value||'',debit=num((document.querySelector('#quickLedgerForm [name="debit"]')||{}).value),credit=num((document.querySelector('#quickLedgerForm [name="credit"]')||{}).value),before=holderBalance(h),after=before+debit-credit;
- var a=document.getElementById('quickLedgerBalance'),b=document.getElementById('quickAfterBalance');if(a)a.textContent='الرصيد الحالي: '+money(before);if(b)b.textContent=money(after)
-}
+window.openHolderLedger=function(h){go('ledger');setTimeout(function(){var s=document.getElementById('ledgerHolder');if(s){s.value=h;renderLedger()}var q=document.getElementById('quickHolder');if(q){q.value=h;updateQuickBalance()}},30)}
+
 window.renderLedger=function(){
  refreshHolderOptions();
  var q=((document.getElementById('ledgerSearch')||{}).value||'').trim().toLowerCase(),holder=(document.getElementById('ledgerHolder')||{}).value||'',month=(document.getElementById('ledgerMonth')||{}).value||'';
