@@ -450,14 +450,15 @@ function assignmentModal(a=null){
  '<div class="grid2" style="margin-top:10px"><div class="field"><label>المسمى الوظيفي</label><input id="jobTitle" value="'+esc(a?.job_title||'حارس أمن')+'" placeholder="مثال: حارس أمن"></div><div class="field"><label>الموقع *</label><select id="siteSel">'+opts+'</select></div></div>'+
  '<div id="siteContextHint" class="sub" style="margin-top:6px"></div>'+
  '<div id="empSourceHint" class="sub" style="margin-top:6px"></div>'+
+ '<div id="empOpsHint" class="notice hidden" style="margin-top:8px"></div>'+
  '<div style="margin-top:12px;font-weight:900">بيانات التكليف المستخدمة في التايم شيت</div>'+
  '<div class="grid2" style="margin-top:8px">'+
    '<div class="field"><label>المشرف التشغيلي</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف"></div>'+
    '<div class="field"><label>نوع التكليف</label><select id="atype"><option value="PRIMARY">أساسي</option><option value="RELIEF_FIXED">بديل راحة ثابت</option><option value="TEMP_COVERAGE">تغطية مؤقتة بموظف فعلي</option><option value="NEW_HIRE">موظف جديد</option><option value="OTHER">أخرى</option></select></div>'+
    '<div class="field"><label>نقطة / موقع العمل التفصيلي</label><input id="workPointName" value="'+esc(a?.work_point_name||'')+'" placeholder="اختياري — بوابة، مبنى، نقطة حراسة..."></div>'+
    '<div class="field"><label>أيام الراحة الأسبوعية</label><input id="weeklyOffText" value="'+esc(a?.weekly_off_text||'')+'" placeholder="مثال: الجمعة أو الخميس والجمعة"></div>'+
-   '<div class="field"><label>أيام العمل أسبوعياً'+(!a?' *':'')+'</label><input id="workDays" type="number" min="0" max="7" step="0.5" value="'+esc(a?.work_days_per_week??'')+'" placeholder="كما هو معتمد في التايم شيت"></div>'+
-   '<div class="field"><label>ساعات العمل اليومية'+(!a?' *':'')+'</label><input id="dailyHours" type="number" min="1" max="24" step="0.5" value="'+esc(a?.daily_hours??'')+'" placeholder="مثال: 8 أو 12"></div>'+
+   '<div class="field"><label>أيام العمل أسبوعياً</label><input id="workDays" type="number" min="0" max="7" step="0.5" value="'+esc(a?.work_days_per_week??'')+'" placeholder="كما هو بالمصدر — يترك فارغاً إذا لم يرد"></div>'+
+   '<div class="field"><label>ساعات العمل اليومية</label><input id="dailyHours" type="number" min="1" max="24" step="0.5" value="'+esc(a?.daily_hours??'')+'" placeholder="مثال: 8 أو 12 — يترك فارغاً إذا لم يرد بالمصدر"></div>'+
    '<div class="field"><label>تصنيف الوردية</label><select id="shift">'+sh+'</select></div>'+
    '<div class="field"><label>تفصيل الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: صباح / مساء / بديل راحات"></div>'+
    '<div class="field"><label>بداية الوردية</label><input id="shiftStartText" value="'+esc(a?.shift_start_text||'')+'" placeholder="مثال: 08:00 أو 8ص"></div>'+
@@ -474,7 +475,9 @@ function assignmentModal(a=null){
  let selectedEmployeeStatus='';
  let selectedEvidence=a?{
    source_file_name:a.source_file_name||null,source_sheet:a.source_sheet||null,
-   source_row:a.source_row||null,source_hidden_row:a.source_hidden_row??null
+   source_row:a.source_row||null,source_hidden_row:a.source_hidden_row??null,
+   contract_status:a.contract_status_snapshot||null,
+   insurance_status:a.insurance_status_snapshot||null
  }:null;
  const inferTimesheetShift=(txt,hours)=>{
    const t=String(txt||'').toLowerCase(),h=Number(hours||0);
@@ -493,7 +496,7 @@ function assignmentModal(a=null){
      h.textContent='التغطية المؤقتة هنا مخصصة لموظف فعلي يغطي فترة متعددة الأيام. يلزم رقم وظيفي وتاريخ بداية ونهاية. التغطية اليومية/الكاش تسجل من شاشة اليوم.';
      h.classList.remove('hidden');
    }else if(t==='RELIEF_FIXED'){
-     h.textContent='بديل الراحة الثابت تكليف فعلي متكرر كما يظهر في ملفات التايم شيت، وليس صفاً وهمياً باسم «التغطية».';
+     h.textContent='بديل الراحة الثابت تكليف فعلي متكرر كما يظهر في ملفات التايم شيت. بعض ملفات المناطق لا تسجل له أياماً أو ساعات ثابتة؛ لا يتم اختلاق قيمة غير موجودة بالمصدر.';
      h.classList.remove('hidden');
    }else h.classList.add('hidden');
  };
@@ -532,13 +535,25 @@ function assignmentModal(a=null){
            source_row:e.timesheet_source_row||null,
            source_hidden_row:e.timesheet_hidden_row??null,
            source_group:e.timesheet_source_group||null,
-           evidence_quality:e.timesheet_evidence_quality||null
+           evidence_quality:e.timesheet_evidence_quality||null,
+           contract_status:e.last_contract_status||null,
+           insurance_status:e.last_insurance_status||null,
+           direct_start_text:e.timesheet_direct_start_text||null,
+           source_notes_text:e.timesheet_source_notes||null
          }:null;
          const source=e.timesheet_source_file
            ?'المصدر التشغيلي: '+e.timesheet_source_file+' / '+(e.timesheet_source_sheet||'')+' / صف '+(e.timesheet_source_row||'')+(e.timesheet_hidden_row?' (صف مخفي وتمت قراءته)':'')+(e.source_has_material_hidden_columns?' · الملف يحتوي أعمدة مخفية تشغيلية تمت مراعاتها':'')
            :'بيانات التكليف المرجعية: '+[e.default_client_name,e.default_project_name,e.default_site_name].filter(Boolean).join(' — ');
          $('empSourceHint').textContent=(selectedEmployeeStatus?'حالة الموظف: '+selectedEmployeeStatus+' · ':'')+source;
          $('empSourceHint').style.color=/منتهي|مستبعد/.test(selectedEmployeeStatus)?'var(--bad)':'';
+         const ops=[
+           e.last_contract_status?'حالة العقد: '+e.last_contract_status:'',
+           e.last_insurance_status?'التأمينات: '+e.last_insurance_status:'',
+           e.timesheet_direct_start_text?'المباشرة بالمصدر: '+e.timesheet_direct_start_text:'',
+           e.timesheet_source_notes?'ملاحظة المصدر: '+e.timesheet_source_notes:''
+         ].filter(Boolean);
+         $('empOpsHint').textContent=ops.join(' · ');
+         $('empOpsHint').classList.toggle('hidden',!ops.length);
          showSiteContext();showTypeHint();b.classList.add('hidden')
        };
        b.appendChild(x)
@@ -567,6 +582,8 @@ function assignmentModal(a=null){
     start_date:$('startDate').value,
     end_date:$('endDate').value,
     notes:$('assignmentNotes').value.trim()||null,
+    contract_status_snapshot:selectedEvidence?.contract_status||a?.contract_status_snapshot||null,
+    insurance_status_snapshot:selectedEvidence?.insurance_status||a?.insurance_status_snapshot||null,
     source_file_name:selectedEvidence?.source_file_name||a?.source_file_name||null,
     source_sheet:selectedEvidence?.source_sheet||a?.source_sheet||null,
     source_row:selectedEvidence?.source_row||a?.source_row||null,
@@ -574,15 +591,18 @@ function assignmentModal(a=null){
     source_snapshot:selectedEvidence||null
    };
    if(!p.full_name)return toast('اسم الموظف مطلوب',true);
-   if(/^(التغطية|تغطية|تغطيه|تغطية كاش|تغطيه كاش|بديل)$/i.test(p.full_name.replace(/\s+/g,' ').trim()))
-     return toast('لا ينشأ موظف باسم التغطية أو البديل. اختاري الموظف المنفذ الفعلي.',true);
+   const cleanName=p.full_name.replace(/\s+/g,' ').trim();
+   if(/^(التغطية|التغطيه|تغطية|تغطيه|تغطية كاش|تغطيه كاش|بديل)$/i.test(cleanName)
+      ||(/[0-9٠-٩۰-۹]/.test(cleanName)&&/(فرد|افراد|أفراد|شخص)/.test(cleanName)))
+     return toast('هذا السطر ليس موظفاً فعلياً. صفوف التغطية والمجاميع لا تنشأ كموظفين.',true);
    if(!p.site_code)return toast('اختيار الموقع مطلوب',true);
    if(!a&&/منتهي|مستبعد/.test(selectedEmployeeStatus)&&p.assignment_type!=='NEW_HIRE')
      return toast('حالة الموظف في قاعدة الموظفين '+selectedEmployeeStatus+'. لا ينشأ له تكليف جديد قبل معالجة حالته أو اختيار «موظف جديد» عند إعادة التعيين.',true);
-   if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&(!p.work_days_per_week||!p.daily_hours))
-     return toast('أيام العمل وساعات العمل مطلوبة للتكليف الجديد لأنها حقول أساسية في ملفات التايم شيت.',true);
-   if(!a&&['PRIMARY','RELIEF_FIXED','NEW_HIRE'].includes(p.assignment_type)&&!p.shift_code&&!p.shift_detail&&!p.shift_start_text)
-     return toast('حددي الوردية أو وقت بداية الوردية للتكليف الجديد.',true);
+   const sourceBacked=!!selectedEvidence?.source_file_name;
+   if(!a&&!sourceBacked&&['PRIMARY','NEW_HIRE'].includes(p.assignment_type)&&(!p.work_days_per_week||!p.daily_hours))
+     return toast('للتكليف اليدوي الجديد حددي أيام العمل وساعات العمل. إذا كان التكليف موثقاً في ملف تايم شيت فيسمح بحفظ النقص كفجوة بيانات بدلاً من اختلاق قيمة.',true);
+   if(!a&&!sourceBacked&&['PRIMARY','NEW_HIRE'].includes(p.assignment_type)&&!p.shift_code&&!p.shift_detail&&!p.shift_start_text)
+     return toast('للتكليف اليدوي الجديد حددي الوردية أو وقت بدايتها.',true);
    if(p.assignment_type==='TEMP_COVERAGE'&&!p.employee_ref)
      return toast('التغطية المؤقتة يجب أن ترتبط بموظف فعلي ذي رقم وظيفي.',true);
    if(p.start_date&&p.end_date&&p.start_date>p.end_date)return toast('تاريخ البداية يجب أن يسبق تاريخ النهاية',true);
