@@ -46,9 +46,15 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 .simple-note{padding:10px 12px;background:#fff9e8;border:1px solid #f0dfad;border-radius:12px;color:#6d5a23;font-size:12px;margin-bottom:12px}
 .home-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:640px){.sheet-grid{min-width:980px}.sheetbar{align-items:flex-start;flex-direction:column}.home-actions{width:100%}.home-actions .btn{flex:1}}
+
+.batchbar{align-items:flex-end}.batchcontrols{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.field.compact{min-width:160px}.field.compact label{font-size:11px}.field.compact input,.field.compact select{height:36px}
+.batchsummary{display:flex;align-items:center}.batchfooter{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;background:#f7fafb;border-top:1px solid var(--line);flex-wrap:wrap}
+.pastehint{font-size:11px;color:var(--muted)}.batch-grid tbody tr:nth-child(even) td{background:#fbfcfd}.batch-grid td.invalid{background:#fff0f0!important}
+.batch-grid .rownum{width:38px;min-width:38px;text-align:center;background:#f4f7f9;font-weight:700;color:var(--muted)}
+@media(max-width:640px){.batchcontrols{display:grid;grid-template-columns:1fr 1fr;width:100%}.batchcontrols .field:nth-child(2){grid-column:1/-1}.batchfooter .actions{width:100%}.batchfooter .actions .btn{flex:1}.batchsummary{width:100%}}
 </style>
-<script src="./config.js?v=1.7.0"></script>
-<script src="./cloud.js?v=1.7.0"></script>
+<script src="./config.js?v=1.8.0"></script>
+<script src="./cloud.js?v=1.8.0"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -65,13 +71,13 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.7.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">غير محدد</span></button><div class="pill">الصلاحية: <span id="userRole">—</span></div><button class="pill" style="border:0;color:#fff" onclick="refreshCloud()">التخزين: <span id="storageMode">جارٍ التهيئة</span></button><div class="pill">المزامنة: <span id="syncState">—</span></div><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.8.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
 <div class="navgroup">
 <button class="navbtn active" data-view="dash"><span>◈</span>الرئيسية</button>
-<button class="navbtn" data-view="ledger"><span>▦</span>دفتر العهد</button>
+<button class="navbtn" data-view="ledger"><span>▦</span>دفتر المشرف</button>
 <button class="navbtn" data-view="requests"><span>＋</span>طلبات العهد</button>
 <button class="navbtn" data-view="advances"><span>◫</span>السلف</button>
 <button class="navbtn" data-view="io"><span>⇄</span>استيراد Excel</button>
@@ -84,50 +90,48 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 <main>
 <div class="breadcrumbbar" id="breadcrumb"><span class="home" onclick="go('dash')">بوابة العهد</span><span class="sep">‹</span><span class="current">لوحة التحكم</span></div>
 <section id="dash" class="view active">
-<div class="titlebar"><div><h2>الرئيسية</h2><div class="subtitle">ملخص واضح للعهد: كم سُلّم للمشرفين، كم صُرف، وكم بقي</div></div>
-<div class="home-actions"><button class="btn primary" onclick="go('ledger')">إدخال في دفتر العهد</button><button class="btn" onclick="go('requests')">طلب عهدة</button><button class="btn" onclick="go('io')">استيراد Excel</button></div></div>
+<div class="titlebar"><div><h2>الرئيسية</h2><div class="subtitle">الصورة المختصرة: كم استلم المشرفون، كم صُرف، أين صُرف، وكم بقي</div></div>
+<div class="home-actions"><button class="btn primary" onclick="go('ledger')">فتح دفتر مشرف</button><button class="btn" onclick="go('requests')">إضافة طلب عهدة</button><button class="btn" onclick="go('io')">استيراد Excel</button></div></div>
+<div class="card" style="padding:12px;margin-bottom:12px"><div class="formgrid" style="grid-template-columns:minmax(160px,220px) 1fr">
+<div class="field"><label>عرض شهر</label><input id="homeMonth" type="month" onchange="renderHome()"></div>
+<div class="simple-note" style="margin:0"><strong>للموظف:</strong> استخدم «دفتر المشرف» للإدخال اليومي. <strong>للإدارة:</strong> هذه الصفحة للمتابعة فقط.</div>
+</div></div>
 <div class="kpis" id="kpis"></div>
 <div class="grid2">
 <div class="card"><h3>أين صُرفت العهد؟</h3><div id="spendSummary"></div></div>
+<div class="card"><h3>أعلى المشرفين صرفاً</h3><div id="topHolders"></div></div>
+</div>
+<div class="grid2">
+<div class="card"><h3>أعلى المواقع صرفاً</h3><div id="topSites"></div></div>
 <div class="card"><h3>آخر الحركات</h3><div id="recent"></div></div>
 </div>
-<div class="card"><h3>المتبقي مع المشرفين</h3><div class="subtitle" style="margin-bottom:10px">هذه هي الأرصدة الحالية حسب ما هو مسجل في دفاتر العهد.</div><div id="balances"></div></div>
+<div class="card"><h3>المتبقي مع المشرفين</h3><div class="subtitle" style="margin-bottom:10px">آخر رصيد مسجل لكل مشرف. اضغط «فتح الدفتر» لعرض التفاصيل.</div><div id="balances"></div></div>
 </section>
 
 <section id="ledger" class="view">
-<div class="titlebar"><div><h2>دفتر العهد</h2><div class="subtitle">أدخل الصف بنفس طريقة ملف Excel: مدين أو دائن، ثم تفاصيل الحركة</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
-<div class="simple-note"><strong>طريقة الاستخدام:</strong> إذا استلم المشرف عهدة اكتب المبلغ في «مدين / وارد». إذا صرف مبلغاً اكتب المبلغ في «دائن / منصرف». الرصيد يحسب تلقائياً.</div>
+<div class="titlebar"><div><h2>دفتر المشرف</h2><div class="subtitle">اختر المشرف مرة واحدة، ثم أدخل عدة صفوف مثل ملف Excel واحفظها دفعة واحدة</div></div><div class="actions"><button class="btn" onclick="exportXlsx()">تصدير Excel</button></div></div>
+<div class="simple-note"><strong>أسرع من Excel:</strong> اختر المشرف والتاريخ مرة واحدة. استخدم Tab للتنقل، Enter للنزول لنفس العمود، ويمكنك نسخ عدة خلايا من Excel ولصقها مباشرة في الجدول.</div>
 
 <div class="sheetbox">
-<div class="sheetbar"><div><strong>إضافة صف جديد</strong><br><small>مثل دفتر الأستاذ المستخدم حالياً</small></div><div id="quickLedgerBalance" class="badge info">الرصيد الحالي: 0.00 ر.س.</div></div>
-<div class="sheet-scroll">
-<form id="quickLedgerForm">
-<table class="sheet-grid"><thead><tr>
-<th>المشرف</th><th>التاريخ</th><th>مدين / وارد</th><th>دائن / منصرف</th><th>الحارس الأساسي / البيان</th><th>الحارس البديل</th><th>الموقع</th><th>الحالة / السبب</th><th>ملاحظات</th><th>الرصيد بعد الحركة</th><th></th>
-</tr></thead><tbody><tr>
-<td class="namecell"><input name="supervisor" id="quickHolder" list="holderList" required oninput="updateQuickBalance()"><datalist id="holderList"></datalist></td>
-<td><input name="date" type="date" required></td>
-<td class="moneycell"><input name="debit" type="number" min="0" step="0.01" inputmode="decimal" oninput="updateQuickBalance()"></td>
-<td class="moneycell"><input name="credit" type="number" min="0" step="0.01" inputmode="decimal" oninput="updateQuickBalance()"></td>
-<td class="textcell"><input name="main" placeholder="اسم الحارس أو بيان المصروف"></td>
-<td class="namecell"><input name="cover" placeholder="إن وجد"></td>
-<td class="sitecell"><input name="site"></td>
-<td class="textcell"><input name="reason" placeholder="غياب / مستأذن / وقود / صيانة..."></td>
-<td class="textcell"><input name="notes"></td>
-<td class="readonly" id="quickAfterBalance">0.00 ر.س.</td>
-<td class="sheet-save"><button class="btn primary" type="submit">حفظ</button></td>
-</tr></tbody></table>
-</form>
+<div class="sheetbar batchbar">
+<div class="batchcontrols">
+<div class="field compact"><label>نوع الدفتر</label><select id="batchBookType" onchange="resetLedgerBatch()"><option value="coverage">عهد وتغطيات</option><option value="vehicle">وقود ومركبات</option></select></div>
+<div class="field compact"><label>المشرف / حامل العهدة</label><input id="batchHolder" list="holderList" placeholder="اكتب الاسم مرة واحدة" oninput="updateLedgerBatchBalances()"><datalist id="holderList"></datalist></div>
+<div class="field compact"><label>التاريخ الافتراضي</label><input id="batchDefaultDate" type="date" onchange="fillBlankLedgerDates()"></div>
 </div>
-<details style="padding:10px 12px;border-top:1px solid var(--line)"><summary style="cursor:pointer;font-weight:700;color:var(--navy)">تفاصيل إضافية للمركبات والفواتير</summary>
-<div class="formgrid" style="margin-top:10px">
-<div class="field"><label>رقم الفاتورة / السند</label><input id="quickDocumentRef"></div>
-<div class="field"><label>رقم السيارة / اللوحة</label><input id="quickVehicle"></div>
-</div></details>
+<div class="batchsummary"><span id="batchCurrentBalance" class="badge info">الرصيد الحالي: 0.00 ر.س.</span></div>
+</div>
+<div class="sheet-scroll">
+<table class="sheet-grid batch-grid" id="batchLedgerTable"><thead id="batchLedgerHead"></thead><tbody id="batchLedgerBody"></tbody></table>
+</div>
+<div class="batchfooter">
+<div class="pastehint">يمكنك تحديد خلايا من Excel ونسخها ثم لصقها في أول خلية هنا.</div>
+<div class="actions"><button class="btn" type="button" onclick="addLedgerBatchRows(5)">+ 5 صفوف</button><button class="btn" type="button" onclick="resetLedgerBatch()">تفريغ الجدول</button><button class="btn primary" type="button" onclick="saveLedgerBatch()">حفظ الصفوف المدخلة</button></div>
+</div>
 </div>
 
 <div class="card"><div class="formgrid">
-<div class="field"><label>المشرف</label><select id="ledgerHolder" onchange="renderLedger()"><option value="">كل المشرفين</option></select></div>
+<div class="field"><label>عرض دفتر مشرف</label><select id="ledgerHolder" onchange="renderLedger()"><option value="">كل المشرفين</option></select></div>
 <div class="field"><label>بحث</label><input id="ledgerSearch" placeholder="حارس، موقع، بيان..." oninput="renderLedger()"></div>
 <div class="field"><label>الشهر</label><input id="ledgerMonth" type="month" onchange="renderLedger()"></div>
 </div></div>
@@ -135,24 +139,15 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 </section>
 
 <section id="requests" class="view">
-<div class="titlebar"><div><h2>طلبات العهد</h2><div class="subtitle">نفس أعمدة ملف «طلب عهدة»: القيمة، البيان، المشرف، الآيبان، اسم الحساب والملاحظات</div></div></div>
+<div class="titlebar"><div><h2>طلبات العهد</h2><div class="subtitle">جدول مطابق تقريباً لملف «طلب عهدة» ويمكن إدخال أكثر من طلب ثم حفظها دفعة واحدة</div></div></div>
 <div class="sheetbox">
-<div class="sheetbar"><div><strong>إضافة طلب</strong><br><small>صف واحد فقط، مثل Excel</small></div><div><label style="font-size:11px;color:var(--muted)">تاريخ الطلب</label><input id="requestPageDate" type="date" style="height:34px;border:1px solid var(--line);border-radius:8px;padding:4px 8px"></div></div>
+<div class="sheetbar batchbar"><div><strong>طلبات جديدة</strong><br><small>الصفوف ذات القيمة صفر أو الفارغة لن تحفظ كطلبات جديدة</small></div><div class="field compact"><label>تاريخ الطلبات</label><input id="requestPageDate" type="date"></div></div>
 <div class="sheet-scroll">
-<form id="requestForm">
-<table class="sheet-grid" style="min-width:980px"><thead><tr>
-<th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th><th></th>
-</tr></thead><tbody><tr>
-<td class="moneycell"><input name="amount" type="number" min="0.01" step="0.01" required></td>
-<td class="textcell"><input name="purpose" required placeholder="مثال: عهدة لتغطية مواقع جدة"></td>
-<td class="namecell"><input name="supervisor" required list="holderList"></td>
-<td class="textcell"><input name="iban" dir="ltr"></td>
-<td class="namecell"><input name="beneficiary"></td>
-<td class="textcell"><input name="notes"></td>
-<td class="sheet-save"><button class="btn primary" type="submit">حفظ</button></td>
-</tr></tbody></table>
-</form>
+<table class="sheet-grid batch-grid" id="requestBatchTable" style="min-width:980px"><thead><tr>
+<th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th>
+</tr></thead><tbody id="requestBatchBody"></tbody></table>
 </div>
+<div class="batchfooter"><div class="pastehint">انسخ صفوفاً من ملف طلب العهدة في Excel والصقها هنا مباشرة.</div><div class="actions"><button class="btn" type="button" onclick="addRequestRows(5)">+ 5 صفوف</button><button class="btn" type="button" onclick="resetRequestBatch()">تفريغ الجدول</button><button class="btn primary" type="button" onclick="saveRequestBatch()">حفظ الطلبات المدخلة</button></div></div>
 </div>
 <div class="card"><div class="formgrid">
 <div class="field"><label>بحث</label><input id="requestSearch" placeholder="مشرف أو بيان..." oninput="renderRequests()"></div>
@@ -351,14 +346,14 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.7.0 — صُممت لتستبدل ملفات Excel بنفس بساطة الإدخال، مع حفظ البيانات مباشرة في قاعدة البوابة المشتركة. الوصول المشترك مفتوح مؤقتاً بدون تسجيل دخول.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.8.0 — الإدخال اليومي أصبح على شكل دفتر مشرف متعدد الصفوف مع لصق مباشر من Excel وحفظ دفعة واحدة.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.7.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.7.0';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.8.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.8.0';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -708,7 +703,7 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.7.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.8.0',operator:(access&&access.display_name)||oldMeta.operator||''}};
  persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
@@ -1403,7 +1398,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.7.0',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.8.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
