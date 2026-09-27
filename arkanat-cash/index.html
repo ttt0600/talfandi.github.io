@@ -1069,9 +1069,17 @@ function gridPaste(e){
  if(!table||!body)return;
  e.preventDefault();var startRow=input.closest('tr'),rows=[].slice.call(body.querySelectorAll('tr')),ri=rows.indexOf(startRow),ci=+input.dataset.col,
  data=text.replace(/\r/g,'').split('\n').filter(function(x,i,a){return x!==''||i<a.length-1}).map(function(x){return x.split('\t')});
+ data=data.filter(function(vals,idx){
+   var joined=vals.join(' ').replace(/\s+/g,' ').trim().toLowerCase();
+   if(grid==='ledger'&&idx===0&&/التاريخ/.test(joined)&&(/مدين|منصرف/.test(joined))&&(/دائن|وارد/.test(joined)))return false;
+   if(grid==='request'&&idx===0&&/القيم/.test(joined)&&/المشرف/.test(joined))return false;
+   if(grid==='advance'&&idx===0&&/اسم الحارس|اسم الموظف/.test(joined)&&/المبلغ/.test(joined))return false;
+   return true
+ });
  var need=ri+data.length-rows.length;if(need>0){if(grid==='ledger')addLedgerBatchRows(need);else if(grid==='request')addRequestRows(need);else addAdvanceRows(need);rows=[].slice.call(body.querySelectorAll('tr'))}
  data.forEach(function(vals,r){
    var row=rows[ri+r],ins=[].slice.call(row.querySelectorAll('input[data-grid]')),v=vals.slice();
+   while(v.length>1&&String(v[0]||'').trim()===''&&((grid==='ledger'&&v.length>9)||(grid==='request'&&v.length>7)||(grid==='advance'&&v.length>7)))v.shift();
    if(grid==='ledger'&&ci===0){
      var book=(document.getElementById('batchBookType')||{}).value||'coverage';
      if(book==='coverage'&&v.length>=9){row.dataset.sourceBalance=v[3]||'';v=[v[0],v[1],v[2],v[4],v[5],v[6],v[7],v[8]]}
