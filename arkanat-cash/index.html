@@ -488,28 +488,45 @@ function latestHolderBalances(){
  });
  return m
 }
+function dashboardMonth(){return (document.getElementById('homeMonth')||{}).value||currentMonthKey()}
 function renderKpis(){
- var month=currentMonthKey(),monthly=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===month}),balances=latestHolderBalances(),balanceSum=Object.keys(balances).reduce(function(s,k){return s+(balances[k].balance==null?0:balances[k].balance)},0),
- spent=monthly.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0),funded=monthly.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0),
+ var month=dashboardMonth(),monthly=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===month}),balances=latestHolderBalances(),
+ balanceSum=Object.keys(balances).reduce(function(s,k){return s+(balances[k].balance==null?0:balances[k].balance)},0),
+ spent=monthly.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0),
+ funded=monthly.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0),
  openRequests=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'&&num(r.amount)>0});
  var data=[
-  ['العهد المسلّمة هذا الشهر',money(funded),'المبالغ التي دخلت عهد المشرفين'],
-  ['المصروف هذا الشهر',money(spent),'التغطيات والمصروفات المسجلة'],
-  ['المتبقي حسب آخر رصيد',money(balanceSum),'مجموع آخر رصيد ظاهر لكل مشرف'],
-  ['المشرفون في الدفاتر',Object.keys(balances).length.toLocaleString('ar-SA'),'مشرفون لديهم رصيد أو حركة مسجلة'],
-  ['طلبات لم تُموّل',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد بقيمة أكبر من صفر']
+  ['تم تسليم المشرفين',money(funded),'عهد دخلت للمشرفين خلال الشهر'],
+  ['تم صرفه',money(spent),'مصروفات مسجلة خلال الشهر'],
+  ['المتبقي المسجل',money(balanceSum),'آخر رصيد ظاهر لكل مشرف'],
+  ['طلبات لم تُصرف',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد بقيمة أكبر من صفر']
  ];
- document.getElementById('kpis').innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
+ var el=document.getElementById('kpis');if(el)el.innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
 }
+window.renderHome=function(){renderKpis();renderSpendSummary();renderTopAnalytics();renderBalances();renderRecent()}
 function renderSpendSummary(){
- var m={},total=0,month=currentMonthKey();state.transactions.forEach(function(t){
+ var m={},total=0,month=dashboardMonth();state.transactions.forEach(function(t){
   if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t)||String(t.date||'').slice(0,7)!==month)return;
   var k=t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory)||t.type||'أخرى',v=num(t.amount);
+  if(k==='مصروف تشغيلي')k='مصروفات تشغيلية';if(k==='تغطيات')k='تغطيات';if(k==='وقود')k='وقود';
   m[k]=(m[k]||0)+v;total+=v
  });
  var a=Object.keys(m).map(function(k){return {k:k,v:m[k]}}).sort(function(x,y){return y.v-x.v}).slice(0,7),el=document.getElementById('spendSummary');
- if(!el)return;if(!a.length){el.innerHTML='<div class="empty">لا توجد مصروفات.</div>';return}
+ if(!el)return;if(!a.length){el.innerHTML='<div class="empty">لا توجد مصروفات في هذا الشهر.</div>';return}
  el.innerHTML='<div class="inbox">'+a.map(function(x){var pct=total?Math.round(x.v/total*100):0;return '<div class="item"><div><strong>'+esc(x.k)+'</strong><small>'+pct+'٪ من المصروف</small></div><strong class="money">'+money(x.v)+'</strong></div>'}).join('')+'</div>'
+}
+function renderTopAnalytics(){
+ var month=dashboardMonth(),holders={},sites={};
+ state.transactions.forEach(function(t){
+   if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t)||String(t.date||'').slice(0,7)!==month)return;
+   var h=t.custodyHolder||t.supervisor||'غير محدد',s=t.site||'غير محدد',v=num(t.amount);holders[h]=(holders[h]||0)+v;sites[s]=(sites[s]||0)+v
+ });
+ function html(obj,clickable){
+   var a=Object.keys(obj).map(function(k){return {k:k,v:obj[k]}}).sort(function(a,b){return b.v-a.v}).slice(0,6);
+   if(!a.length)return '<div class="empty">لا توجد بيانات في هذا الشهر.</div>';
+   return '<div class="inbox">'+a.map(function(x){return '<div class="item" '+(clickable?'style="cursor:pointer" onclick="openHolderLedger(\''+esc(x.k).replaceAll("'","\\'")+'\')"':'')+'><div><strong>'+esc(x.k)+'</strong></div><strong class="money">'+money(x.v)+'</strong></div>'}).join('')+'</div>'
+ }
+ var h=document.getElementById('topHolders'),s=document.getElementById('topSites');if(h)h.innerHTML=html(holders,true);if(s)s.innerHTML=html(sites,false)
 }
 function evidenceFor(txId){return (state.evidence||[]).filter(function(e){return e.transactionId===txId})}
 function evidenceCount(txId){return evidenceFor(txId).length}
@@ -560,7 +577,7 @@ function renderBalances(){
  if(!rows.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد أرصدة حالية.</div>';return}
  document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المشرف</th><th>المصروف هذا الشهر</th><th>آخر رصيد</th><th>آخر تاريخ</th><th></th></tr></thead><tbody>'+rows.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td class="money">'+money(x.spent)+'</td><td class="money"><strong>'+(x.balance==null?'-':money(x.balance))+'</strong></td><td>'+esc(x.last||'-')+'</td><td><button class="btn" onclick="openHolderLedger(\''+esc(x.holder).replaceAll("'","\\'")+'\')">فتح الدفتر</button></td></tr>'}).join('')+'</tbody></table></div>'
 }
-window.openHolderLedger=function(h){go('ledger');setTimeout(function(){var s=document.getElementById('ledgerHolder');if(s){s.value=h;renderLedger()}var q=document.getElementById('quickHolder');if(q){q.value=h;updateQuickBalance()}},30)}
+window.openHolderLedger=function(h){go('ledger');setTimeout(function(){var s=document.getElementById('ledgerHolder');if(s){s.value=h;renderLedger()}var q=document.getElementById('batchHolder');if(q){q.value=h;updateLedgerBatchBalances()}},30)}
 
 window.renderLedger=function(){
  refreshHolderOptions();
@@ -584,7 +601,7 @@ window.renderLedger=function(){
    return '<tr><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(h)+'</td><td class="money">'+(debit?money(debit):'-')+'</td><td class="money">'+(credit?money(credit):'-')+'</td><td>'+esc(main)+'</td><td>'+esc(t.cover||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.reason||'-')+'</td><td>'+esc(t.notes||'-')+'</td><td class="money"><strong>'+money(bal)+'</strong></td><td>'+evidenceButtons(t.id)+'</td></tr>'
  });
  document.getElementById('ledgerTable').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid"><thead><tr><th>التاريخ</th><th>المشرف</th><th>مدين / وارد</th><th>دائن / منصرف</th><th>الحارس الأساسي / البيان</th><th>الحارس البديل</th><th>الموقع</th><th>الحالة / السبب</th><th>ملاحظات</th><th>الرصيد</th><th>مرفقات</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد حركات مطابقة.</div>';
- updateQuickBalance()
+ updateLedgerBatchBalances()
 }
 function requestFundedAmount(r){
  return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.requestId===r.id&&t.type==='تغذية عهدة'}).reduce(function(a,t){return a+num(t.amount)},0)
@@ -867,7 +884,115 @@ window.exportAdvancesXlsx=function(){
  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(cur),'السلف الحالية');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(hist),'السجل التاريخي');XLSX.writeFile(wb,'Arkanat_Employee_Advances.xlsx')
 }
 
-function renderAll(){var today=new Date().toISOString().slice(0,10),m=today.slice(0,7),rd=document.getElementById('requestPageDate'),ld=document.querySelector('#quickLedgerForm [name="date"]'),lm=document.getElementById('ledgerMonth');if(rd&&!rd.value)rd.value=today;if(ld&&!ld.value)ld.value=today;if(lm&&!lm.value)lm.value=m;renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderBalances();refreshHolderOptions();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
+
+function holderCurrentBalance(holder){
+ var key=cleanArabic(holder||''),latest=null,ord='';
+ state.transactions.forEach(function(t){
+   if(t.snapshotStatus==='superseded'||t.status==='ملغى'||cleanArabic(t.custodyHolder||t.supervisor)!==key)return;
+   var o=(t.date||'')+'|'+String(t.sourceRow||'').padStart(6,'0')+'|'+(t.createdAt||'');
+   if(t.reportedBalance!=null&&t.reportedBalance!==''&&o>=ord){latest=num(t.reportedBalance);ord=o}
+ });
+ if(latest!=null)return latest;
+ return state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&cleanArabic(t.custodyHolder||t.supervisor)===key}).reduce(function(s,t){return s+txnEffect(t)},0)
+}
+function batchToday(){return new Date().toISOString().slice(0,10)}
+function normalizePastedDate(v){
+ v=String(v||'').trim();if(!v)return '';
+ if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
+ var m=v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);if(m){var y=m[3].length===2?'20'+m[3]:m[3];return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0')}
+ return v
+}
+function ledgerColumns(){
+ return (document.getElementById('batchBookType')||{}).value==='vehicle'
+ ?[{k:'date',l:'التاريخ',t:'date'},{k:'debit',l:'مدين / وارد',t:'number'},{k:'credit',l:'دائن / منصرف',t:'number'},{k:'main',l:'البيان',t:'text'},{k:'documentRef',l:'رقم الفاتورة',t:'text'},{k:'vehicle',l:'السيارة / اللوحة',t:'text'},{k:'site',l:'الموقع',t:'text'},{k:'notes',l:'ملاحظات',t:'text'}]
+ :[{k:'date',l:'التاريخ',t:'date'},{k:'debit',l:'مدين / وارد',t:'number'},{k:'credit',l:'دائن / منصرف',t:'number'},{k:'main',l:'الحارس الأساسي / البيان',t:'text'},{k:'cover',l:'الحارس البديل',t:'text'},{k:'site',l:'الموقع',t:'text'},{k:'reason',l:'الحالة / السبب',t:'text'},{k:'notes',l:'ملاحظات',t:'text'}]
+}
+function ledgerRowHtml(i){
+ var cols=ledgerColumns(),d=(document.getElementById('batchDefaultDate')||{}).value||batchToday();
+ return '<tr data-row="'+i+'"><td class="rownum">'+(i+1)+'</td>'+cols.map(function(x,j){
+   var cls=x.t==='number'?'moneycell':(x.k==='main'||x.k==='notes'||x.k==='reason'?'textcell':(x.k==='site'?'sitecell':''));
+   return '<td class="'+cls+'"><input data-grid="ledger" data-col="'+j+'" name="'+x.k+'" type="'+x.t+'" '+(x.t==='number'?'min="0" step="0.01" inputmode="decimal"':'')+' value="'+(x.k==='date'?d:'')+'" oninput="updateLedgerBatchBalances()"></td>'
+ }).join('')+'<td class="readonly batch-balance">—</td></tr>'
+}
+window.resetLedgerBatch=function(){
+ var body=document.getElementById('batchLedgerBody'),head=document.getElementById('batchLedgerHead');if(!body||!head)return;
+ var cols=ledgerColumns();head.innerHTML='<tr><th>#</th>'+cols.map(function(x){return '<th>'+x.l+'</th>'}).join('')+'<th>الرصيد بعد الحركة</th></tr>';
+ body.innerHTML='';for(var i=0;i<8;i++)body.insertAdjacentHTML('beforeend',ledgerRowHtml(i));updateLedgerBatchBalances()
+}
+window.addLedgerBatchRows=function(n){
+ var body=document.getElementById('batchLedgerBody');if(!body)return;var start=body.querySelectorAll('tr').length;for(var i=0;i<n;i++)body.insertAdjacentHTML('beforeend',ledgerRowHtml(start+i));updateLedgerBatchBalances()
+}
+window.fillBlankLedgerDates=function(){
+ var d=(document.getElementById('batchDefaultDate')||{}).value||batchToday();document.querySelectorAll('#batchLedgerBody input[name="date"]').forEach(function(x){if(!x.value)x.value=d})
+}
+window.updateLedgerBatchBalances=function(){
+ var holder=(document.getElementById('batchHolder')||{}).value||'',bal=holder?holderCurrentBalance(holder):0;
+ var badge=document.getElementById('batchCurrentBalance');if(badge)badge.textContent='الرصيد الحالي: '+money(bal);
+ document.querySelectorAll('#batchLedgerBody tr').forEach(function(row){
+   var debit=num((row.querySelector('[name="debit"]')||{}).value),credit=num((row.querySelector('[name="credit"]')||{}).value);
+   if(debit||credit)bal+=debit-credit;
+   var cell=row.querySelector('.batch-balance');if(cell)cell.textContent=(debit||credit)?money(bal):'—'
+ })
+}
+function buildLedgerTransaction(row,holder,running,bookType){
+ var g=function(n){return ((row.querySelector('[name="'+n+'"]')||{}).value||'').trim()},debit=num(g('debit')),credit=num(g('credit'));
+ if(!debit&&!credit)return {empty:true};if(debit>0&&credit>0)return {error:'اكتب المبلغ في مدين أو دائن فقط'};
+ var date=g('date')||batchToday(),main=g('main'),cover=g('cover'),site=g('site'),reason=g('reason'),notes=g('notes'),t={id:id('TRX'),date:date,dateRaw:date,amount:debit||credit,region:'',custodyHolder:holder,supervisor:holder,site:site,notes:notes,status:'مسجل',source:'إدخال دفعي من دفتر المشرف',sourceChannel:'مباشر',createdAt:new Date().toISOString()};
+ if(bookType==='vehicle'){t.documentRef=g('documentRef');t.vehicle=g('vehicle')}
+ if(debit>0){
+   if(textHas(main,['رصيد اول المده','رصيد أول المده','رصيد اول المدة','رصيد أول المدة'])){t.type='رصيد افتتاحي';t.openingSign=1;t.description=main||'رصيد أول المدة';t.expenseCategory='تمويل ورصيد';t.periodExpense=false}
+   else{t.type='تغذية عهدة';t.description=main||'عهدة محولة من الإدارة';t.expenseCategory='تمويل ورصيد';t.periodExpense=false}
+ }else if(bookType==='vehicle'){
+   t.type='مصروف تشغيلي';t.description=main||'مصروف مركبة';t.reason=reason;t.expenseCategory=inferExpenseCategory(t.type,t.description,'',reason,'وقود');t.periodExpense=true
+ }else{
+   var isCoverage=!!cover||textHas(reason,['غياب','مستأذن','مستأذنه','مستأذنة','راحه','راحة','off','نقص']);
+   if(isCoverage){t.type='تغطية';t.absent=main;t.cover=cover;t.reason=reason;t.description='تغطية';t.expenseCategory='تغطيات';t.periodExpense=true}
+   else if(textHas(main+' '+reason,['رصيد عهدة متبقي مع المشرف','رصيد عهده متبقي مع المشرف'])){t.type='عهدة فرعية مفتوحة';t.transferTo=(main+' '+reason).replace(/.*المشرف/,'').trim();t.description=main||reason;t.expenseCategory='تحويل عهدة';t.periodExpense=false}
+   else{t.type=classifyOut(main,cover,site,reason);t.description=main||reason||'مصروف';t.reason=reason;t.expenseCategory=inferExpenseCategory(t.type,t.description,'',reason,inferCustodyCategory('cash_ledger',t.description,site));t.periodExpense=t.type!=='دفعة تحت التسوية'}
+ }
+ t.custodyCategory=inferCustodyCategory(bookType==='vehicle'?'expense_ledger':'cash_ledger',t.description||t.reason||'',site);t.accountKey=makeAccountKey('',holder,t.custodyCategory);
+ t.reportedBalance=running+debit-credit;t.recordFingerprint=eventKey(t);if(exceptionFor(t).length)t.status='يحتاج مراجعة';
+ return {tx:t,balance:t.reportedBalance}
+}
+window.saveLedgerBatch=function(){
+ var holder=((document.getElementById('batchHolder')||{}).value||'').trim();if(!holder){toast('اختر المشرف أولاً');return}
+ var rows=[].slice.call(document.querySelectorAll('#batchLedgerBody tr')),running=holderCurrentBalance(holder),saved=0,skipped=0,book=(document.getElementById('batchBookType')||{}).value||'coverage',bad=false;
+ rows.forEach(function(row){row.classList.remove('invalid');var b=buildLedgerTransaction(row,holder,running,book);if(b.empty)return;if(b.error){row.classList.add('invalid');bad=true;return}var t=b.tx;running=b.balance;
+   if(state.transactions.some(function(x){return x.snapshotStatus!=='superseded'&&eventKey(x)===t.recordFingerprint})){skipped++;return}
+   state.transactions.push(t);captureQualityIssuesForTransaction(t,{year:+t.date.slice(0,4),month:+t.date.slice(5,7)});saved++
+ });
+ if(bad){toast('راجع الصفوف المظللة: لا تستخدم مدين ودائن في الصف نفسه');return}
+ if(!saved){toast(skipped?'الصفوف المدخلة موجودة مسبقاً':'لا توجد صفوف فيها مبالغ للحفظ');return}
+ audit('إضافة صفوف دفتر مشرف','TransactionBatch',id('BATCH'),holder+' | '+saved+' صف | '+money(running));
+ save();refreshHolderOptions();renderLedger();resetLedgerBatch();toast('تم حفظ '+saved+' صف — الرصيد الجديد '+money(running)+(skipped?' · تم تجاهل '+skipped+' مكرر':''))
+}
+function requestRowHtml(i){return '<tr data-row="'+i+'"><td class="rownum">'+(i+1)+'</td><td class="moneycell"><input data-grid="request" data-col="0" name="amount" type="number" min="0" step="0.01" inputmode="decimal"></td><td class="textcell"><input data-grid="request" data-col="1" name="purpose"></td><td class="namecell"><input data-grid="request" data-col="2" name="supervisor" list="holderList"></td><td class="textcell"><input data-grid="request" data-col="3" name="iban" dir="ltr"></td><td class="namecell"><input data-grid="request" data-col="4" name="beneficiary"></td><td class="textcell"><input data-grid="request" data-col="5" name="notes"></td></tr>'}
+window.resetRequestBatch=function(){var b=document.getElementById('requestBatchBody');if(!b)return;b.innerHTML='';for(var i=0;i<6;i++)b.insertAdjacentHTML('beforeend',requestRowHtml(i))}
+window.addRequestRows=function(n){var b=document.getElementById('requestBatchBody');if(!b)return;var s=b.querySelectorAll('tr').length;for(var i=0;i<n;i++)b.insertAdjacentHTML('beforeend',requestRowHtml(s+i))}
+window.saveRequestBatch=function(){
+ var date=(document.getElementById('requestPageDate')||{}).value||batchToday(),rows=[].slice.call(document.querySelectorAll('#requestBatchBody tr')),saved=0,zeros=0,dupes=0;
+ rows.forEach(function(row){var g=function(n){return ((row.querySelector('[name="'+n+'"]')||{}).value||'').trim()},amt=num(g('amount')),sup=g('supervisor'),purpose=g('purpose');if(!amt){if(sup||purpose)zeros++;return}if(!sup||!purpose)return;
+   var d={id:id('REQ'),date:date,dateRaw:date,amount:amt,purpose:purpose,supervisor:sup,iban:g('iban'),beneficiary:g('beneficiary'),notes:g('notes'),custodyCategory:inferCustodyCategory('request_snapshot',purpose,''),region:'',site:'',status:'جديد',createdAt:new Date().toISOString(),source:'إدخال دفعي من البوابة',sourceChannel:'مباشر'};
+   d.accountKey=makeAccountKey('',d.supervisor,d.custodyCategory);d.recordFingerprint=requestKey(d);
+   if(state.requests.some(function(r){return r.snapshotStatus!=='superseded'&&requestKey(r)===d.recordFingerprint})){dupes++;return}
+   captureQualityIssuesForRequest(d);state.requests.push(d);saved++
+ });
+ if(!saved){toast(zeros?'لا توجد طلبات بقيمة أكبر من صفر للحفظ':'لا توجد طلبات مكتملة للحفظ');return}
+ audit('إضافة طلبات عهد دفعة واحدة','RequestBatch',id('REQBATCH'),saved+' طلب بتاريخ '+date);save();refreshHolderOptions();renderRequests();resetRequestBatch();toast('تم حفظ '+saved+' طلب'+(zeros?' · تم تجاهل '+zeros+' صف بقيمة صفر':'')+(dupes?' · '+dupes+' مكرر':''))
+}
+function gridPaste(e){
+ var input=e.target.closest('input[data-grid]');if(!input)return;var text=e.clipboardData&&e.clipboardData.getData('text');if(!text||text.indexOf('\t')<0&&text.indexOf('\n')<0)return;
+ var grid=input.dataset.grid,table=grid==='ledger'?document.getElementById('batchLedgerTable'):document.getElementById('requestBatchTable'),body=grid==='ledger'?document.getElementById('batchLedgerBody'):document.getElementById('requestBatchBody');if(!table||!body)return;
+ e.preventDefault();var startRow=input.closest('tr'),rows=[].slice.call(body.querySelectorAll('tr')),ri=rows.indexOf(startRow),ci=+input.dataset.col,data=text.replace(/\r/g,'').split('\n').filter(function(x,i,a){return x!==''||i<a.length-1}).map(function(x){return x.split('\t')});
+ var need=ri+data.length-rows.length;if(need>0){if(grid==='ledger')addLedgerBatchRows(need);else addRequestRows(need);rows=[].slice.call(body.querySelectorAll('tr'))}
+ data.forEach(function(vals,r){var ins=[].slice.call(rows[ri+r].querySelectorAll('input[data-grid]'));vals.forEach(function(v,j){var x=ins[ci+j];if(!x)return;if(x.type==='date')v=normalizePastedDate(v);x.value=v})});
+ if(grid==='ledger')updateLedgerBatchBalances()
+}
+document.addEventListener('paste',gridPaste);
+document.addEventListener('keydown',function(e){
+ var x=e.target;if(e.key!=='Enter'||!x.matches('input[data-grid]'))return;e.preventDefault();var body=x.closest('tbody'),rows=[].slice.call(body.querySelectorAll('tr')),row=x.closest('tr'),ri=rows.indexOf(row),ci=+x.dataset.col;if(ri===rows.length-1){if(x.dataset.grid==='ledger')addLedgerBatchRows(1);else addRequestRows(1);rows=[].slice.call(body.querySelectorAll('tr'))}var next=[].slice.call(rows[ri+1].querySelectorAll('input[data-grid]'))[ci];if(next)next.focus()
+});
+function renderAll(){var today=batchToday(),m=today.slice(0,7),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=m;if(hm&&!hm.value)hm.value=m;renderOperator();renderStorageMode();renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
 
 document.getElementById('advanceForm').addEventListener('submit',function(e){
  e.preventDefault();if(!canWritePortal()){toast('لا توجد صلاحية لإضافة السلف');return}
@@ -877,30 +1002,6 @@ document.getElementById('advanceForm').addEventListener('submit',function(e){
  var x={id:id('ADV'),employeeName:String(d.employeeName||'').trim(),employeeRef:'',department:String(d.department||'').trim(),recordDate:d.recordDate,sourceMonth:m,advanceAmount:amt,previousBalance:0,outstandingBalance:amt,monthlyInstallment:inst,payrollActionMonth:pay,status:pay?'مرشح تسوية راتب — غير مثبت':(inst?'قائم — خطة أقساط':'قائم — سلفة حالية'),statusCode:pay?'PAYROLL_CANDIDATE':(inst?'OPEN_INSTALLMENT':'OPEN_CURRENT'),sourceAmountRaw:String(d.advanceAmount||''),sourceId:'MANUAL_PORTAL',sourceFile:'',sourceSheet:'',sourceRow:null,notes:String(d.notes||'').trim(),createdAt:new Date().toISOString()};
  state.employeeAdvances.push(x);state.advanceHistory.push({id:id('ADVH'),periodMonth:m,sourceRow:null,employeeName:x.employeeName,employeeRef:'',department:x.department,amount:amt,amountRaw:String(d.advanceAmount||''),previousBalance:0,sourceTotal:amt,derivedExposure:amt,monthlyInstallment:inst,payrollActionMonth:pay,classification:'سلفة مضافة من بوابة العهد النقدية',notes:x.notes,extraNotes:'',sourceId:'MANUAL_PORTAL',sourceFile:'',createdAt:new Date().toISOString()});
  audit('إضافة سلفة موظف','EmployeeAdvance',x.id,x.employeeName+' | '+money(amt));e.target.reset();save();toast('تم حفظ السلفة داخل البوابة المستقلة')
-});
-document.getElementById('requestForm').addEventListener('submit',function(e){
- e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),pageDate=(document.getElementById('requestPageDate')||{}).value||new Date().toISOString().slice(0,10);
- d.id=id('REQ');d.date=pageDate;d.dateRaw=pageDate;d.amount=num(d.amount);d.custodyCategory=inferCustodyCategory('request_snapshot',d.purpose,'');d.region='';d.site='';d.accountKey=makeAccountKey('',d.supervisor,d.custodyCategory);d.recordFingerprint=requestKey(d);d.status='جديد';d.createdAt=new Date().toISOString();d.source='إدخال مباشر من البوابة';d.sourceChannel='مباشر';
- if(state.requests.some(function(r){return r.snapshotStatus!=='superseded'&&requestKey(r)===d.recordFingerprint})){toast('هذا الطلب موجود مسبقاً');return}
- captureQualityIssuesForRequest(d);state.requests.push(d);audit('إنشاء طلب عهدة','Request',d.id,d.supervisor+' | '+money(d.amount)+' | '+d.purpose);e.target.reset();save();refreshHolderOptions();renderRequests();toast('تم حفظ طلب '+d.supervisor+' بمبلغ '+money(d.amount))
-});
-document.getElementById('quickLedgerForm').addEventListener('submit',function(e){
- e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),debit=num(d.debit),credit=num(d.credit),holder=(d.supervisor||'').trim();
- if(!holder){toast('اكتب اسم المشرف');return}if((debit>0&&credit>0)||(!debit&&!credit)){toast('اكتب المبلغ في مدين أو دائن فقط');return}
- var main=(d.main||'').trim(),reason=(d.reason||'').trim(),site=(d.site||'').trim(),cover=(d.cover||'').trim(),notes=(d.notes||'').trim(),t={id:id('TRX'),date:d.date,dateRaw:d.date,amount:debit||credit,region:'',custodyHolder:holder,supervisor:holder,site:site,notes:notes,status:'مسجل',source:'إدخال مباشر من دفتر العهد',sourceChannel:'مباشر',documentRef:(document.getElementById('quickDocumentRef')||{}).value||'',vehicle:(document.getElementById('quickVehicle')||{}).value||''};
- if(debit>0){
-   if(textHas(main,['رصيد اول المده','رصيد أول المده','رصيد اول المدة','رصيد أول المدة'])){t.type='رصيد افتتاحي';t.openingSign=1;t.description=main||'رصيد أول المدة';t.expenseCategory='تمويل ورصيد';t.periodExpense=false}
-   else{t.type='تغذية عهدة';t.description=main||'عهدة محولة من الإدارة';t.expenseCategory='تمويل ورصيد';t.periodExpense=false}
- }else{
-   var isCoverage=!!cover||textHas(reason,['غياب','مستأذن','مستأذنه','مستأذنة','راحه','راحة','off','نقص']);
-   if(isCoverage){t.type='تغطية';t.absent=main;t.cover=cover;t.reason=reason;t.description='تغطية';t.expenseCategory='تغطيات';t.periodExpense=true}
-   else if(textHas(main+' '+reason,['رصيد عهدة متبقي مع المشرف','رصيد عهده متبقي مع المشرف'])){t.type='عهدة فرعية مفتوحة';t.transferTo=(main+' '+reason).replace(/.*المشرف/,'').trim();t.description=main||reason;t.expenseCategory='تحويل عهدة';t.periodExpense=false}
-   else{t.type=classifyOut(main,cover,site,reason);t.description=main||reason||'مصروف';t.reason=reason;t.expenseCategory=inferExpenseCategory(t.type,t.description,'',reason,inferCustodyCategory('cash_ledger',t.description,site));t.periodExpense=t.type!=='دفعة تحت التسوية'}
- }
- t.custodyCategory=inferCustodyCategory('cash_ledger',t.description||t.reason||'',site);t.accountKey=makeAccountKey('',holder,t.custodyCategory);
- var before=holderBalance(holder);t.reportedBalance=before+debit-credit;t.recordFingerprint=eventKey(t);
- if(state.transactions.some(function(x){return x.snapshotStatus!=='superseded'&&eventKey(x)===t.recordFingerprint})){toast('هذه الحركة موجودة مسبقاً');return}
- if(exceptionFor(t).length)t.status='يحتاج مراجعة';state.transactions.push(t);captureQualityIssuesForTransaction(t,{year:t.date?+t.date.slice(0,4):null,month:t.date?+t.date.slice(5,7):null});audit('إضافة صف في دفتر العهد','Transaction',t.id,holder+' | '+money(t.amount));e.target.reset();var doc=document.getElementById('quickDocumentRef'),veh=document.getElementById('quickVehicle');if(doc)doc.value='';if(veh)veh.value='';save();refreshHolderOptions();renderLedger();toast('تم حفظ الصف — الرصيد الجديد '+money(t.reportedBalance))
 });
 document.getElementById('fundingForm').addEventListener('submit',function(e){e.preventDefault();var d=Object.fromEntries(new FormData(e.target).entries()),r=state.requests.find(function(x){return x.id===d.requestId});if(!r)return;var amount=num(d.amount),already=requestFundedAmount(r),remaining=Math.max(0,num(r.amount)-already),comp=d.componentId?requestComponentsFor(r.id).find(function(x){return x.id===d.componentId}):null;if(amount<=0){toast('أدخل مبلغ تمويل صحيح');return}if(comp&&amount>componentRemaining(comp)+0.001){toast('المبلغ أكبر من المتبقي في مكوّن الطلب');return}if(amount>remaining+0.001&&!confirm('المبلغ أكبر من المتبقي في الطلب. هل تريد تسجيله كما هو؟'))return;var desc=comp?(comp.treatment||comp.componentType)+' — '+r.id:'تمويل طلب '+r.id;var tx={id:id('TRX'),requestId:r.id,requestComponentId:comp?comp.id:'',date:d.date,dateRaw:d.date,amount:amount,type:'تغذية عهدة',region:r.region||'',custodyHolder:r.supervisor||'',supervisor:r.supervisor||'',custodyCategory:r.custodyCategory||inferCustodyCategory('request_snapshot',r.purpose,''),accountKey:r.accountKey||makeAccountKey(r.region,r.supervisor,r.custodyCategory),periodExpense:false,expenseCategory:'تمويل ورصيد',site:r.site||'',description:desc,fundingMethod:d.method||'',fundingRef:d.reference||'',beneficiary:d.beneficiary||r.beneficiary||'',status:'معتمد',source:'تنفيذ طلب عهدة',sourceChannel:r.sourceChannel||'',sourceReference:r.sourceReference||'',sourceMessage:r.sourceMessage||'',notes:d.notes||'',createdAt:new Date().toISOString()};tx.recordFingerprint=eventKey(tx);state.transactions.push(tx);if(comp){var cf=requestComponentFundedAmount(comp);comp.status=cf+0.001>=num(comp.amount)?'ممول':'ممول جزئياً';comp.notes=(comp.notes?comp.notes+' | ':'')+'آخر تمويل: '+money(amount)+' بتاريخ '+d.date}var total=requestFundedAmount(r);r.status=total+0.001>=num(r.amount)?'ممول':'ممول جزئياً';r.fundedAt=r.status==='ممول'?new Date().toISOString():r.fundedAt;r.lastActionAt=new Date().toISOString();audit('تنفيذ تمويل طلب','Transaction',tx.id,r.id+' | '+r.supervisor+' | '+(comp?comp.componentType+' | ':'')+money(amount)+' | '+(d.method||''));save();closeFundingForm();toast(r.status==='ممول'?'تم تمويل الطلب بالكامل':'تم تسجيل تمويل جزئي')});
 document.getElementById('txnForm').addEventListener('submit',function(e){
