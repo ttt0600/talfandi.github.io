@@ -157,8 +157,8 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 </section>
 
 <section id="advances" class="view">
-<div class="titlebar"><div><h2>السلف</h2><div class="subtitle">سجل مستقل داخل بوابة العهد النقدية — لا يكتب تلقائياً في الأنظمة الحاكمة أو الرواتب</div></div><div class="actions"><button class="btn" onclick="exportAdvancesXlsx()">تصدير السلف</button></div></div>
-<div class="notice"><strong>الاستقلالية:</strong> هذه الصفحة تعمل داخل قاعدة بيانات البوابة فقط. أي تسوية عبر الرواتب أو نقل إلى نظام آخر يتطلب إجراءً مستقلاً ومثبتاً.</div>
+<div class="titlebar"><div><h2>السلف</h2><div class="subtitle">من استلم سلفة، كم قيمتها، وما المتبقي منها</div></div><div class="actions"><button class="btn" onclick="exportAdvancesXlsx()">تصدير السلف</button></div></div>
+<div class="simple-note"><strong>ملاحظة:</strong> تسجيل السلفة هنا لا يعني خصمها من الراتب تلقائياً.</div>
 <div class="kpis" id="advanceKpis"></div>
 <div class="grid2">
 <div class="card"><h3>إضافة سلفة</h3>
@@ -325,10 +325,10 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 </section>
 
 <section id="io" class="view">
-<div class="titlebar"><div><h2>الاستيراد والتصدير</h2><div class="subtitle">محرك استيراد متعدد الأنماط لملفات العهد النقدية القديمة والحالية والمستقبلية</div></div></div>
-<div class="notice warn"><strong>الخصوصية:</strong> تتم قراءة ملفات Excel داخل المتصفح، ثم تحفظ السجلات المنظمة في قاعدة العهد المشتركة. لا يتم رفع ملفات العهد الأصلية إلى GitHub.</div>
+<div class="titlebar"><div><h2>استيراد Excel</h2><div class="subtitle">ارفع ملف العهدة أو التصفية كما هو؛ النظام يتعرف على شكل الملف ويحفظ الحركات</div></div></div>
+<div class="simple-note"><strong>لا تحتاج لتعديل ملف Excel قبل الرفع.</strong> ارفع النسخة التي يعمل عليها الموظف كما هي.</div>
 <div class="grid2">
-<div class="card"><h3>استيراد ملف عهدة</h3>
+<div class="card"><h3>رفع ملف Excel</h3>
 <div class="drop" id="drop"><strong>اختر ملف Excel أو اسحبه هنا</strong><br>
 <span class="muted">يدعم تلقائياً: كشوف التغطيات، دفاتر الأستاذ مدين/دائن، دفاتر الوقود والمصروفات، طلبات العهد، والملفات متعددة المشرفين.</span><br><br>
 <input id="fileInput" type="file" accept=".xlsx,.xls"></div>
@@ -336,7 +336,7 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 <select id="importMode"><option value="snapshot">لقطة محدثة كاملة — تستبدل اللقطة السابقة لنفس الحساب/الفترة</option><option value="delta">حركات إضافية فقط — يضاف الجديد بعد منع التكرار</option></select></div>
 <div id="importResult" style="margin-top:12px"></div>
 </div>
-<div class="card"><h3>التصدير والنسخ الاحتياطي</h3>
+<div class="card"><h3>تنزيل نسخة من البيانات</h3>
 <div class="actions"><button class="btn primary" onclick="exportXlsx()">تصدير Excel</button><button class="btn" onclick="exportJson()">نسخة احتياطية JSON</button><button class="btn" onclick="document.getElementById('jsonInput').click()">استعادة JSON</button><input id="jsonInput" type="file" accept=".json" hidden></div>
 <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
 <div class="actions"><button class="btn danger" onclick="clearData()">مسح بيانات هذا الجهاز</button></div>
@@ -400,7 +400,7 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){return
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},1800)}
 function same(a,b){return String(a||'').trim().replace(/\s+/g,' ')===String(b||'').trim().replace(/\s+/g,' ')}
 
-var viewLabels={dash:'لوحة التحكم',accounts:'العهد',ledger:'دفتر العهد',advances:'السلف',settlement:'التصفية',requests:'طلبات العهد',entry:'إضافة حركة',io:'استيراد ملف',users:'المستخدمون',review:'مراجعة المالية',exceptions:'الاستثناءات',audit:'سجل التدقيق',evidence:'المستندات'};
+var viewLabels={dash:'الرئيسية',accounts:'العهد',ledger:'دفتر المشرف',advances:'السلف',settlement:'التصفية',requests:'طلبات العهد',entry:'إضافة حركة',io:'استيراد Excel',users:'المستخدمون',review:'مراجعة المالية',exceptions:'الاستثناءات',audit:'سجل التدقيق',evidence:'المستندات'};
 function setBreadcrumb(v){var el=document.getElementById('breadcrumb'),label=viewLabels[v]||'الصفحة';if(el)el.innerHTML='<span class="home" onclick="go(\'dash\')">بوابة العهد</span><span class="sep">‹</span><span class="current">'+esc(label)+'</span>'}
 window.openSideMenu=function(){var s=document.getElementById('nav'),o=document.getElementById('menuOverlay');if(s)s.classList.add('open');if(o)o.classList.add('show');document.body.style.overflow='hidden'}
 window.closeSideMenu=function(){var s=document.getElementById('nav'),o=document.getElementById('menuOverlay');if(s)s.classList.remove('open');if(o)o.classList.remove('show');document.body.style.overflow=''}
@@ -501,7 +501,7 @@ function renderKpis(){
   ['تم تسليم المشرفين',money(funded),'عهد دخلت للمشرفين خلال الشهر'],
   ['تم صرفه',money(spent),'مصروفات مسجلة خلال الشهر'],
   ['المتبقي المسجل',money(balanceSum),'آخر رصيد ظاهر لكل مشرف'],
-  ['طلبات لم تُصرف',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد بقيمة أكبر من صفر']
+  ['طلبات لم تُسلّم',openRequests.length.toLocaleString('ar-SA'),'طلبات عهد لم تدخل بعد في دفتر المشرف']
  ];
  var el=document.getElementById('kpis');if(el)el.innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
 }
@@ -645,6 +645,7 @@ function requestComponentsHtml(r){
  var a=requestComponentsFor(r.id);if(!a.length)return '';
  return '<div style="margin-top:8px">'+a.map(function(x){return '<small><strong>'+esc(x.componentType||'مكوّن')+':</strong> '+money(x.amount)+(x.treatment?' · '+esc(x.treatment):'')+(x.durationDays?' · '+x.durationDays+' أيام':'')+(x.status?' · '+esc(x.status):'')+'</small>'}).join('')+'</div>'
 }
+function friendlyRequestStatus(st){st=String(st||'جديد');if(st==='جديد')return 'طلب جديد';if(st==='معتمد')return 'جاهز للتسليم';if(st==='ممول')return 'تم تسليم العهدة';if(st.indexOf('ممول جزئياً')===0)return 'تم تسليم جزء';if(st==='يحتاج استكمال')return 'يحتاج استكمال';return st}
 function renderRequests(){
  var q=((document.getElementById('requestSearch')||{}).value||'').trim().toLowerCase(),mode=(document.getElementById('requestView')||{}).value||'open';
  var a=state.requests.filter(function(r){
@@ -652,7 +653,7 @@ function renderRequests(){
   if(mode==='open'&&(num(r.amount)<=0||r.status==='ممول'||r.status==='مرفوض'))return false;
   var s=[r.supervisor,r.purpose,r.iban,r.beneficiary,r.notes].join(' ').toLowerCase();return !q||s.indexOf(q)>=0
  }).slice().reverse();
- var rows=a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded);return '<tr><td>'+esc(r.date||r.dateRaw||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td>'+esc(r.status||'جديد')+(funded>0?' · ممول '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
+ var rows=a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded);return '<tr><td>'+esc(r.date||r.dateRaw||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td>'+esc(friendlyRequestStatus(r.status))+(funded>0?' · تم تسليم '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
  document.getElementById('requestList').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid" style="min-width:1050px"><thead><tr><th>التاريخ</th><th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th><th>الحالة</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد طلبات مطابقة.</div>'
 }
 function renderReview(){
