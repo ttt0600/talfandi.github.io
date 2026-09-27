@@ -317,14 +317,38 @@ async function bulkPresent(){
 async function month(){
  const future=S.ctx?.cycle_state==='future';
  const intro=future
-  ?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h2>التخطيط المسبق للدورة</h2><div class="sub">اختاري أي دورة خلال 12 شهراً قادمة وجهزي التكليفات والمواقع والورديات. لا يتم إنشاء حضور مستقبلي.</div></div><div class="pill warn">'+esc(monthLabel(period()))+'</div></div></div>'
+  ?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h2>التخطيط المسبق للدورة</h2><div class="sub">اختاري أي دورة خلال 12 شهراً قادمة وجهزي التكليفات والمواقع والورديات. لا يتم إنشاء حضور مستقبلي.</div></div><div><div class="pill warn">'+esc(monthLabel(period()))+'</div><div id="planningReadiness" class="sub" style="margin-top:6px;text-align:left">جاري فحص جاهزية التكليفات...</div></div></div></div>'
   :'';
  $('mainView').innerHTML=intro+'<div class="monthLayout"><section class="card roster"><input id="rosterSearch" class="search" placeholder="بحث بالاسم أو الرقم أو الموقع"><div id="rosterList" class="roster-list"><div class="empty" style="min-height:120px"><span class="loading"></span></div></div></section><section id="attendancePanel" class="card attendance"><div class="empty"><b>'+(future?'اختاري موظفاً لمراجعة تكليفه المستقبلي':'اختاري موظفاً')+'</b></div></section></div>';
  let tm;$('rosterSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>loadRoster($('rosterSearch').value.trim()),250)};await loadRoster('')
 }
 
 async function loadRoster(q){try{const d=await fast('roster',{period:period(),q},10000);S.roster=d.rows||[];drawRoster()}catch(e){toast(e.message,true)}}
-function drawRoster(){const l=$('rosterList');if(!l)return;l.innerHTML='';if(!S.roster.length){l.innerHTML='<div class="empty">لا توجد نتائج</div>';return}S.roster.forEach(a=>{const d=document.createElement('div');d.className='person'+(S.employee?.id===a.id?' active':'');d.innerHTML='<div class="name">'+esc(a.full_name)+'</div><div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+'</div>';d.onclick=()=>loadEmployee(a.id);l.appendChild(d)})}
+function drawRoster(){
+ const l=$('rosterList');if(!l)return;l.innerHTML='';
+ if(!S.roster.length){l.innerHTML='<div class="empty">لا توجد نتائج</div>';return}
+ let incomplete=0;
+ S.roster.forEach(a=>{
+   const needs= S.ctx?.cycle_state==='future' && (
+     !a.site_code || a.work_days_per_week===null || a.work_days_per_week===undefined ||
+     a.daily_hours===null || a.daily_hours===undefined ||
+     (!a.shift_code&&!a.shift_detail&&!a.shift_start_text)
+   );
+   if(needs)incomplete++;
+   const d=document.createElement('div');d.className='person'+(S.employee?.id===a.id?' active':'');
+   d.innerHTML='<div class="name">'+esc(a.full_name)+(needs?' <span class="pill warn" style="font-size:9px">ناقص التخطيط</span>':'')+'</div>'+
+     '<div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+
+     (a.assignment_type==='RELIEF_FIXED'?' · بديل راحة ثابت':a.assignment_type==='TEMP_COVERAGE'?' · تغطية مؤقتة':'')+'</div>';
+   d.onclick=()=>loadEmployee(a.id);l.appendChild(d)
+ });
+ const pr=$('planningReadiness');
+ if(pr){
+   const ready=S.roster.length-incomplete;
+   pr.innerHTML=incomplete
+     ?'<span style="color:var(--warn)">'+incomplete+' تكليفاً يحتاج استكمال حقول التايم شيت</span> · '+ready+' جاهز'
+     :'<span style="color:var(--ok)">جميع التكليفات الظاهرة مكتملة الحقول الأساسية</span>';
+ }
+}
 async function loadEmployee(id){
  $('attendancePanel').innerHTML='<div class="empty"><span class="loading"></span></div>';
  try{
