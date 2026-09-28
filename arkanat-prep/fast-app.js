@@ -2,16 +2,16 @@
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
 let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,seq:0};
-const STATUS={P:'حاضر',OFF:'راحة',A:'غياب',T:'استئذان / غياب بإذن',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'موقوف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'بديل / تغطية',CASH:'تغطية كاش',OTHER:'أخرى'};
-const SHIFTS=[['D8','صباحي 8 ساعات'],['E8','مسائي 8 ساعات'],['N8','ليلي 8 ساعات'],['D12','نهاري 12 ساعة'],['N12','ليلي 12 ساعة'],['OTHER','وردية أخرى']];
+const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
+const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
 function friendlyError(msg){
  const s=String(msg||'');
- if(/permission denied/i.test(s))return 'تعذر الوصول إلى خدمة التحضير. أعيدي المحاولة بعد تحديث الصفحة.';
- if(/failed to fetch|networkerror|load failed/i.test(s))return 'تعذر الاتصال بخدمة التحضير. تحققي من الاتصال ثم أعيدي المحاولة.';
- if(/timeout|تأخر الاتصال/i.test(s))return 'تأخر الاتصال بخدمة التحضير. أعيدي المحاولة.';
+ if(/permission denied/i.test(s))return 'تعذر الوصول إلى خدمة الحضور. أعيدي المحاولة بعد تحديث الصفحة.';
+ if(/failed to fetch|networkerror|load failed/i.test(s))return 'تعذر الاتصال بخدمة الحضور. تحققي من الاتصال ثم أعيدي المحاولة.';
+ if(/timeout|تأخر الاتصال/i.test(s))return 'تأخر الاتصال بخدمة الحضور. أعيدي المحاولة.';
  if(/session_expired/i.test(s))return 'انتهت الجلسة. سجلي الدخول مرة أخرى.';
- if(/DATE_OUTSIDE_CYCLE/i.test(s))return 'التاريخ المحدد خارج دورة التحضير. تم ضبطه تلقائياً داخل الفترة.';
+ if(/DATE_OUTSIDE_CYCLE/i.test(s))return 'التاريخ المحدد خارج دورة التايم شيت الداخلية. تم ضبطه تلقائياً داخل الفترة.';
  return s.length>160?'حدث خطأ أثناء تنفيذ العملية. أعيدي المحاولة.':s;
 }
 function cacheKey(){return 'arkPrepCache:v8:'+(S.region||'unknown')+':'+period()+':'+work()}
@@ -70,7 +70,7 @@ async function req(url,action,payload={},timeout=12000){
  }catch(e){
   if(e?.name==='AbortError')throw new Error(friendlyError('تأخر الاتصال'));
   if(e instanceof Error)throw new Error(friendlyError(e.message));
-  throw new Error('حدث خطأ أثناء الاتصال بخدمة التحضير.');
+  throw new Error('حدث خطأ أثناء الاتصال بخدمة الحضور.');
  }finally{clearTimeout(tm)}
 }
 const fast=(a,p={},t=12000)=>req(API,a,p,t);
@@ -83,19 +83,19 @@ function syncContextUi(){
  const df=$('dayField');if(df)df.classList.toggle('hidden',monthly||future);
  const mt=$('metrics');if(mt)mt.classList.toggle('hidden',monthly||future);
  const monthTab=document.querySelector('.tab[data-tab="month"]');
- if(monthTab)monthTab.textContent=future?'التخطيط':'الشهر';
+ if(monthTab)monthTab.textContent=future?'جدول الدوام':'التايم شيت';
  document.querySelectorAll('.tab').forEach(t=>{
    const blocked=future&&t.dataset.tab!=='month';
    t.disabled=blocked;
-   t.title=blocked?'هذه دورة مستقبلية؛ استخدمي مساحة التخطيط لتجهيز التكليفات فقط. يبدأ التحضير اليومي عند بدء الدورة.':'';
+   t.title=blocked?'هذه دورة مستقبلية؛ استخدمي جدول الدوام لتوزيع الحراس والورديات. يبدأ تسجيل الحضور عند بدء الدورة.':'';
  });
  const pb=$('printBtn');
  if(pb){
-   pb.textContent='طباعة التحضير الشهري';
+   pb.textContent='طباعة التايم شيت';
    pb.disabled=future;
-   pb.title=future?'الطباعة التشغيلية تبدأ بعد دخول الدورة ضمن الفترة الفعلية.':'';
+   pb.title=future?'طباعة التايم شيت التشغيلي تتاح عند بدء الفترة الفعلية.':'';
  }
- const sb=$('submitBtn');if(sb){sb.disabled=future;sb.title=future?'لا يمكن إقفال دورة مستقبلية قبل بدءها.':''}
+ const sb=$('submitBtn');if(sb){sb.textContent='إقفال التايم شيت الداخلي';sb.disabled=future;sb.title=future?'لا يمكن إقفال دورة مستقبلية قبل بدءها.':''}
 }
 
 function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab));syncContextUi()}
@@ -103,17 +103,17 @@ function loading(msg='جاري تحميل بيانات المنطقة...'){tabUI
 function sourceBanner(){
  const m=S.ctx?.metrics||{},b=$('sourceBanner'),future=S.ctx?.cycle_state==='future';
  b.classList.remove('hidden');
- b.innerHTML='<div><b>'+(future?'خطة التكليف المستقبلية جاهزة':'بيانات المنطقة جاهزة')+'</b><div><span>'+Number(m.employees||0)+' تكليفاً نشطاً · '+esc(S.ctx?.roster_note||'')+'</span></div></div><div class="pill '+(future?'warn':'ok')+'">'+(future?'تخطيط حتى 12 شهر':'تحميل خفيف')+'</div>';
+ b.innerHTML='<div><b>'+(future?'جدول الدوام المستقبلي جاهز':'بيانات التشغيل جاهزة')+'</b><div><span>'+Number(m.employees||0)+' حارساً موزعاً · '+(future?'يمكن تعديل المواقع والورديات قبل بدء الدورة.':'تعرض الشاشة الحضور المعتاد والاستثناءات التشغيلية فقط.')+'</span></div></div><div class="pill '+(future?'warn':'ok')+'">'+(future?'جداول 12 شهراً':'جاهز')+'</div>';
 }
 
 function metrics(){
  const m=S.day?.metrics||{};
  const action=Number(m.action_now||0),review=Number(m.needs_review||0),present=Number(m.present||0),total=Number(m.employees||0),overrides=Math.max(0,total-present);
  $('metrics').innerHTML=
-  '<div class="card metric '+(action?'bad':'ok')+'"><b>'+action+'</b><span>استثناء يحتاج إجراء</span></div>'+
+  '<div class="card metric '+(action?'bad':'ok')+'"><b>'+action+'</b><span>تحتاج إجراء</span></div>'+
   '<div class="card metric '+(review?'warn':'ok')+'"><b>'+review+'</b><span>بانتظار المراجعة</span></div>'+
-  '<div class="card metric ok"><b>'+present+'</b><span>حاضر P</span></div>'+
-  '<div class="card metric"><b>'+overrides+'</b><span>حالات غير P</span></div>'+
+  '<div class="card metric ok"><b>'+present+'</b><span>حضور</span></div>'+
+  '<div class="card metric"><b>'+overrides+'</b><span>حالات استثنائية</span></div>'+
   '<div class="card metric"><b>'+total+'</b><span>إجمالي الحراس</span></div>';
 }
 
@@ -179,14 +179,14 @@ function today(){
  const review=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)>0);
  const normal=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)===0&&Number(x.expected||0)>0);
  $('mainView').innerHTML=
-  '<div class="card viewCard" style="margin-bottom:12px"><div class="sectionHead"><div><h2>تسجيل استثناء / تغيير حالة</h2><div class="sub">الحالة الطبيعية لجميع الحراس هي <b>P — حاضر</b>. ابحثي فقط عند وجود غياب، إجازة، انسحاب، استقالة، تغطية أو أي تغيير آخر.</div></div><div class="pill ok">P افتراضياً</div></div>'+
-  '<input id="exceptionSearch" class="search" placeholder="ابحثي بالاسم أو الرقم الوظيفي أو رقم الهوية">'+
+  '<div class="card viewCard" style="margin-bottom:12px"><div class="sectionHead"><div><h2>تسجيل حالة استثنائية</h2><div class="sub">الحالة الافتراضية في كشف الحضور هي <b>حضور (P)</b>. سجلي فقط الغياب، الإجازة، الاستئذان، الانسحاب، الاستقالة، الإيقاف أو التغطية.</div></div><div class="pill ok">الافتراضي: حضور</div></div>'+
+  '<input id="exceptionSearch" class="search" placeholder="ابحثي باسم الحارس أو الرقم الوظيفي">'+
   '<div id="exceptionSearchResults" class="roster-list" style="margin-top:8px"><div class="empty" style="min-height:70px">ابدئي بكتابة اسم الموظف أو رقمه لتغيير حالته.</div></div></div>'+
-  '<div class="sectionHead"><div><h2>الاستثناءات الآن</h2><div class="sub">تظهر فقط الحالات التي خرجت عن P وتحتاج إجراءً.</div></div><div class="pill '+(action.length?'bad':'ok')+'">'+action.length+' موقع</div></div>'+
-  '<div class="siteGrid">'+(action.length?action.map(siteCard).join(''):'<div class="card empty"><div><b>لا توجد استثناءات تحتاج إجراء الآن</b><div class="sub">جميع الحراس يعتبرون حاضرين P ما لم تسجل حالة مختلفة.</div></div></div>')+'</div>'+
+  '<div class="sectionHead"><div><h2>حالات تحتاج إجراء</h2><div class="sub">تظهر فقط الحالات التي تحتاج تدخلاً من العمليات.</div></div><div class="pill '+(action.length?'bad':'ok')+'">'+action.length+' موقع</div></div>'+
+  '<div class="siteGrid">'+(action.length?action.map(siteCard).join(''):'<div class="card empty"><div><b>لا توجد حالات تحتاج إجراء</b><div class="sub">الحضور المعتاد لا يحتاج تسجيله حارساً بحارس.</div></div></div>')+'</div>'+
   '<div class="sectionHead"><div><h2>بانتظار المراجعة</h2><div class="sub">حالات استثنائية مسجلة وتنتظر تدقيقاً أو اعتماداً داخلياً.</div></div><div class="pill '+(review.length?'warn':'ok')+'">'+review.length+' موقع</div></div>'+
   '<div class="siteGrid">'+(review.length?review.map(siteCard).join(''):'<div class="card empty"><b>لا توجد حالات بانتظار المراجعة</b></div>')+'</div>'+
-  '<div class="sectionHead"><div><h2>المواقع الطبيعية</h2><div class="sub">مطوية افتراضياً لأنها لا تحتاج عملاً.</div></div><button id="toggleDone" class="btn ghost">عرض '+normal.length+'</button></div>'+
+  '<div class="sectionHead"><div><h2>المواقع بدون استثناءات</h2><div class="sub">مطوية افتراضياً لأنها لا تحتاج متابعة.</div></div><button id="toggleDone" class="btn ghost">عرض '+normal.length+'</button></div>'+
   '<div id="doneSites" class="siteGrid hidden"></div>';
  wireSites();
  let tm;
@@ -309,15 +309,15 @@ function siteDetail(){
  const action=rows.filter(x=>x.exception_level==='action');
  const review=rows.filter(x=>x.exception_level==='review');
  const normal=rows.filter(x=>!action.includes(x)&&!review.includes(x));
- const top=action.length?{c:'bad',t:action.length+' استثناء'}:review.length?{c:'warn',t:review.length+' مراجعة'}:{c:'ok',t:'طبيعي · P'};
+ const top=action.length?{c:'bad',t:action.length+' تحتاج إجراء'}:review.length?{c:'warn',t:review.length+' بانتظار المراجعة'}:{c:'ok',t:'بدون استثناءات'};
  $('mainView').innerHTML=
   '<div class="sectionHead"><button id="backSites" class="btn ghost">← رجوع</button><div style="flex:1"><h2>'+esc(g.site_name||'')+'</h2><div class="sub">'+esc(g.client_name||'')+(g.project_name?' · '+esc(g.project_name):'')+' · '+work()+'</div></div>'+
   '<div class="guardStatus '+top.c+'">'+top.t+'</div></div>'+
-  '<div class="sectionHead"><div><h3>الاستثناءات والمراجعات</h3><div class="sub">الحراس غير الظاهرين هنا حالتهم الطبيعية P.</div></div></div>'+
+  '<div class="sectionHead"><div><h3>الحالات الاستثنائية</h3><div class="sub">يعرض هذا القسم الغياب والإجازات والتغطيات والحالات التي تحتاج متابعة فقط.</div></div></div>'+
   '<div class="card viewCard"><div class="guardRows">'+
-    (action.length||review.length?[...action,...review].map(guardRow).join(''):'<div class="empty"><b>لا توجد استثناءات في هذا الموقع</b><div class="sub">جميع الحراس P افتراضياً.</div></div>')+
+    (action.length||review.length?[...action,...review].map(guardRow).join(''):'<div class="empty"><b>لا توجد حالات استثنائية في هذا الموقع</b><div class="sub">الحالة الافتراضية للحراس: حضور.</div></div>')+
   '</div></div>'+
-  '<div class="sectionHead"><div><h3>الحراس الطبيعيون P</h3><div class="sub">لا حاجة لتأكيد حضورهم واحداً واحداً.</div></div><button id="toggleGuardDone" class="btn ghost">عرض '+normal.length+'</button></div>'+
+  '<div class="sectionHead"><div><h3>الحضور المعتاد</h3><div class="sub">لا حاجة لتسجيل الحضور حارساً بحارس؛ افتحي القائمة فقط عند الحاجة.</div></div><button id="toggleGuardDone" class="btn ghost">عرض '+normal.length+'</button></div>'+
   '<div id="guardDone" class="card viewCard hidden"><div class="guardRows">'+normal.map(guardRow).join('')+'</div></div>';
  $('backSites').onclick=()=>{S.site=null;S.siteData=null;render()};
  $('toggleGuardDone').onclick=()=>{const b=$('guardDone');b.classList.toggle('hidden');$('toggleGuardDone').textContent=b.classList.contains('hidden')?'عرض '+normal.length:'إخفاء'};
@@ -330,7 +330,7 @@ function guardRow(e){
  const reason=e.exception_reason?'<div class="guardMeta"><b>'+(level==='action'?'يحتاج إجراء: ':level==='review'?'يحتاج مراجعة: ':'')+'</b>'+esc(e.exception_reason)+'</div>':'';
  const scls=level==='action'?'bad':level==='review'?'warn':'ok';
  return '<div class="guardRow '+c+'">'+
-  '<div class="guardMain"><div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(e.employee_ref||'بدون رقم وظيفي')+' · '+esc(e.shift_code||'وردية غير محددة')+(e.status_source==='DEFAULT_PRESENT'?' · P افتراضي':'')+'</div>'+reason+caseMetaMarkup(e)+'</div>'+
+  '<div class="guardMain"><div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(e.employee_ref||'بدون رقم وظيفي')+' · '+esc(e.shift_code||'وردية غير محددة')+(e.status_source==='DEFAULT_PRESENT'?' · حضور افتراضي':'')+'</div>'+reason+caseMetaMarkup(e)+'</div>'+
   '<button class="guardStatus '+scls+' editDay" data-a="'+e.assignment_id+'">'+esc(STATUS[e.status]||e.status||'حاضر')+'</button></div>'+
   caseActionsMarkup(e)+
   '</div>';
@@ -353,9 +353,9 @@ async function bulkPresent(){
 async function month(){
  const future=S.ctx?.cycle_state==='future';
  const intro=future
-  ?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h2>التخطيط المسبق للدورة</h2><div class="sub">اختاري أي دورة خلال 12 شهراً قادمة وجهزي التكليفات والمواقع والورديات. لا يتم إنشاء حضور مستقبلي.</div></div><div><div class="pill warn">'+esc(monthLabel(period()))+'</div><div id="planningReadiness" class="sub" style="margin-top:6px;text-align:left">جاري فحص جاهزية التكليفات...</div></div></div></div>'
+  ?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h2>جدول الدوام والورديات</h2><div class="sub">يمكن تجهيز توزيع الحراس والمواقع والورديات حتى 12 شهراً قادمة. لا يتم تسجيل حضور قبل بدء الفترة.</div></div><div><div class="pill warn">'+esc(monthLabel(period()))+'</div><div id="planningReadiness" class="sub" style="margin-top:6px;text-align:left">جاري فحص جاهزية التكليفات...</div></div></div></div>'
   :'';
- $('mainView').innerHTML=intro+'<div class="monthLayout"><section class="card roster"><input id="rosterSearch" class="search" placeholder="بحث بالاسم أو الرقم أو الموقع"><div id="rosterList" class="roster-list"><div class="empty" style="min-height:120px"><span class="loading"></span></div></div></section><section id="attendancePanel" class="card attendance"><div class="empty"><b>'+(future?'اختاري موظفاً لمراجعة تكليفه المستقبلي':'اختاري موظفاً')+'</b></div></section></div>';
+ $('mainView').innerHTML=intro+'<div class="monthLayout"><section class="card roster"><input id="rosterSearch" class="search" placeholder="بحث بالاسم أو الرقم أو الموقع"><div id="rosterList" class="roster-list"><div class="empty" style="min-height:120px"><span class="loading"></span></div></div></section><section id="attendancePanel" class="card attendance"><div class="empty"><b>'+(future?'اختاري حارساً لمراجعة توزيعه المستقبلي':'اختاري موظفاً')+'</b></div></section></div>';
  let tm;$('rosterSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>loadRoster($('rosterSearch').value.trim()),250)};await loadRoster('')
 }
 
@@ -398,13 +398,13 @@ function futureAssignment(){
  const source=a.source_file_name
   ?'<div class="notice" style="margin-top:14px"><b>مرجع التايم شيت:</b> '+esc(a.source_file_name)+' / '+esc(a.source_sheet||'')+(a.source_row?' / صف '+esc(a.source_row):'')+(a.source_hidden_row?' · صف مخفي تمت قراءته':'')+'</div>'
   :'';
- p.innerHTML='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.employee_ref||'بدون رقم وظيفي')+'</div></div><button id="editAssignment" class="btn primary">تعديل خطة التكليف</button></div>'+
+ p.innerHTML='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.employee_ref||'بدون رقم وظيفي')+'</div></div><button id="editAssignment" class="btn primary">تعديل توزيع الحارس</button></div>'+
  '<div class="grid2" style="margin-top:14px">'+
  '<div class="field"><label>المشروع</label><div class="card" style="padding:10px">'+esc(a.project_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>الموقع</label><div class="card" style="padding:10px">'+esc(a.site_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>نقطة العمل</label><div class="card" style="padding:10px">'+esc(a.work_point_name||'غير محددة')+'</div></div>'+
  '<div class="field"><label>المشرف</label><div class="card" style="padding:10px">'+esc(a.supervisor_name||'غير محدد')+'</div></div>'+
- '<div class="field"><label>نوع التكليف</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
+ '<div class="field"><label>نوع التوزيع</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
  '<div class="field"><label>أيام العمل أسبوعياً</label><div class="card" style="padding:10px">'+esc(workDays)+'</div></div>'+
  '<div class="field"><label>أيام الراحة الأسبوعية</label><div class="card" style="padding:10px">'+esc(a.weekly_off_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>ساعات العمل اليومية</label><div class="card" style="padding:10px">'+esc(dailyHours)+'</div></div>'+
@@ -412,12 +412,12 @@ function futureAssignment(){
  '<div class="field"><label>تفصيل الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
  '<div class="field"><label>بداية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_start_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>نهاية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_end_text||'غير محددة')+'</div></div>'+
- '<div class="field"><label>بداية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
- '<div class="field"><label>نهاية التكليف</label><div class="card" style="padding:10px">'+esc(String(a.end_date||S.ctx.cycle_end).slice(0,10))+'</div></div>'+
+ '<div class="field"><label>تاريخ المباشرة بالموقع</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
+ '<div class="field"><label>تاريخ نهاية التوزيع</label><div class="card" style="padding:10px">'+esc(String(a.end_date||S.ctx.cycle_end).slice(0,10))+'</div></div>'+
  '</div>'+
- (a.notes?'<div class="notice" style="margin-top:14px"><b>ملاحظات تشغيلية:</b> '+esc(a.notes)+'</div>':'')+
+ (a.notes?'<div class="notice" style="margin-top:14px"><b>ملاحظات التشغيل:</b> '+esc(a.notes)+'</div>':'')+
  source+
- '<div class="notice" style="margin-top:14px">هذه خطة مستقبلية فقط. عند بدء الدورة سيعمل التحضير اليومي على التكليفات المعتمدة في هذه الخطة، بينما التغطيات اليومية والكاش تبقى أحداثاً منفصلة مرتبطة بالمنفذ الفعلي.</div>';
+ '<div class="notice" style="margin-top:14px">هذا جدول دوام مستقبلي. عند بدء الفترة ينتقل توزيع الحراس والورديات إلى المتابعة اليومية، بينما تبقى التغطيات اليومية وتغطية الكاش حالات تشغيلية مستقلة.</div>';
  $('editAssignment').onclick=()=>assignmentModal(a);
 }
 
@@ -440,13 +440,13 @@ function drawGaps(){
  };
  const sec=(title,sub,count,rows,cls)=>'<div class="card gapCard '+(cls||'')+'"><div class="sectionHead"><div><h3>'+esc(title)+'</h3><div class="sub">'+esc(sub)+'</div></div><div class="pill '+(cls||'')+'">'+Number(count||0)+'</div></div><div class="gapItems">'+(rows.length?rows.slice(0,50).map(row).join(''):'<div class="gapItem">لا توجد حالات</div>')+(rows.length>50?'<div class="gapItem">+ '+(rows.length-50)+' حالات أخرى</div>':'')+'</div></div>';
  $('mainView').innerHTML=
-  '<div class="sectionHead"><div><h2>الاستثناءات</h2><div class="sub">Management by Exception — لا يعتبر عدم بدء تحضير اليوم استثناءً. الاستثناء هو انحراف فعلي أو تحضير يوم سابق ما زال ناقصاً.</div></div></div>'+
+  '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
   (pending.length?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList">'+
-    sec('يحتاج إجراء الآن','غياب، انسحاب، استقالة، إيقاف، تحضير يوم سابق ناقص أو تغطية غير مكتملة.',c.action_now,action,'bad')+
+    sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
     sec('بانتظار المراجعة','إجازات واستئذانات وتغطيات وأحداث تم تسجيلها وتحتاج اعتماد المسار المختص.',c.needs_review,review,'warn')+
-    sec('استثناءات البيانات','ربط موظف/موقع ناقص أو تداخلات تحتاج معالجة في البيانات.',c.data_issues,data,'')+
-    sec('مغلق','حالات تمت معالجتها واعتمادها، وتبقى ظاهرة للأثر التدقيقي عند الطلب.',c.closed_cases,closed,'ok')+
+    sec('مشكلات البيانات','رقم وظيفي أو موقع غير مربوط، أو تداخل يحتاج تصحيحاً.',c.data_issues,data,'')+
+    sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
  wireCaseActions();
 }
@@ -456,7 +456,7 @@ function dayModal(e,d,done){
  if(!e)return;
  let st='';
  Object.entries(STATUS).forEach(x=>st+='<option value="'+x[0]+'" '+(e.status===x[0]?'selected':'')+'>'+x[1]+'</option>');
- modal('<h3>'+esc(e.full_name)+' — '+d+'</h3><div class="grid2"><div class="field"><label>الحالة *</label><select id="dStatus">'+st+'</select></div><div class="field"><label>الوردية</label><input id="dShift" value="'+esc(e.shift_code||'')+'"></div></div><div id="coverageFields" class="hidden"><div class="section-title">تفاصيل التغطية</div><div class="grid2"><div class="field"><label>اسم منفذ التغطية</label><input id="replName" value="'+esc(e.replacement_name||'')+'"></div><div class="field"><label>رقم منفذ التغطية</label><input id="replRef" value="'+esc(e.replacement_employee_ref||'')+'"></div><div class="field" id="cashBox"><label>مبلغ الكاش</label><input id="cash" type="number" min="0" value="'+(e.cash_amount??'')+'"></div></div></div><div class="field" style="margin-top:10px"><label>ملاحظة</label><textarea id="dNote" rows="2">'+esc(e.note||'')+'</textarea></div><div class="modal-actions"><button id="saveD" class="btn primary">حفظ</button><button id="cancelD" class="btn ghost">إلغاء</button></div>');
+ modal('<h3>'+esc(e.full_name)+' — '+d+'</h3><div class="grid2"><div class="field"><label>حالة الحضور *</label><select id="dStatus">'+st+'</select></div><div class="field"><label>الوردية</label><input id="dShift" value="'+esc(e.shift_code||'')+'"></div></div><div id="coverageFields" class="hidden"><div class="section-title">بيانات التغطية</div><div class="grid2"><div class="field"><label>اسم الحارس البديل</label><input id="replName" value="'+esc(e.replacement_name||'')+'"></div><div class="field"><label>الرقم الوظيفي للحارس البديل</label><input id="replRef" value="'+esc(e.replacement_employee_ref||'')+'"></div><div class="field" id="cashBox"><label>مبلغ تغطية الكاش</label><input id="cash" type="number" min="0" value="'+(e.cash_amount??'')+'"></div></div></div><div class="field" style="margin-top:10px"><label>ملاحظات التشغيل</label><textarea id="dNote" rows="2">'+esc(e.note||'')+'</textarea></div><div class="modal-actions"><button id="saveD" class="btn primary">حفظ</button><button id="cancelD" class="btn ghost">إلغاء</button></div>');
  const cov=()=>{const s=$('dStatus').value,on=s==='SUB'||s==='CASH';$('coverageFields').classList.toggle('hidden',!on);$('cashBox').classList.toggle('hidden',s!=='CASH')};
  $('dStatus').onchange=cov;cov();$('cancelD').onclick=closeModal;
  $('saveD').onclick=async()=>{
@@ -479,33 +479,33 @@ function assignmentModal(a=null){
  (S.ctx.sites||[]).forEach(s=>opts+='<option value="'+esc(s.site_code)+'" '+(a?.site_code===s.site_code?'selected':'')+'>'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>');
  let sh='';SHIFTS.forEach(x=>sh+='<option value="'+x[0]+'" '+(a?.shift_code===x[0]?'selected':'')+'>'+x[1]+'</option>');
  modal(
- '<h3>'+(a?'تعديل التكليف':'إضافة موظف / تكليف')+'</h3>'+
- '<div class="notice"><b>متوافق مع ملفات التايم شيت التشغيلية:</b> تحفظ هنا فقط بيانات التكليف التي تتكرر فعلياً في ملفات المناطق. الهوية والجوال والبنك والآيبان والتأمينات والراتب تبقى بيانات مرجعية ولا يعاد إدخالها في التحضير.</div>'+
- '<div class="field" style="margin-top:10px"><label>بحث في قاعدة الموظفين</label><input id="empSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="empSug" class="suggestions hidden"></div></div>'+
- '<div class="grid2" style="margin-top:10px"><div class="field"><label>الرقم الوظيفي</label><input id="empRef" value="'+esc(a?.employee_ref||'')+'" placeholder="EMP_ID"></div><div class="field"><label>الاسم *</label><input id="empName" value="'+esc(a?.full_name||'')+'"></div></div>'+
+ '<h3>'+(a?'تعديل توزيع الحارس':'توزيع حارس على موقع')+'</h3>'+
+ '<div class="notice"><b>توزيع الحراس:</b> هذه الشاشة لتوزيع حارس على موقع ووردية، وليست لإنشاء ملف موظف جديد. بيانات الهوية والجوال والآيبان والراتب تبقى في ملف الموظف، بينما يعتمد التايم شيت هنا على بيانات الموقع والدوام والوردية.</div>'+
+ '<div class="field" style="margin-top:10px"><label>اختيار الحارس من قاعدة الموظفين</label><input id="empSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="empSug" class="suggestions hidden"></div></div>'+
+ '<div class="grid2" style="margin-top:10px"><div class="field"><label>الرقم الوظيفي</label><input id="empRef" value="'+esc(a?.employee_ref||'')+'" placeholder="EMP_ID"></div><div class="field"><label>اسم الحارس *</label><input id="empName" value="'+esc(a?.full_name||'')+'"></div></div>'+
  '<div class="grid2" style="margin-top:10px"><div class="field"><label>المسمى الوظيفي</label><input id="jobTitle" value="'+esc(a?.job_title||'حارس أمن')+'" placeholder="مثال: حارس أمن"></div><div class="field"><label>الموقع *</label><select id="siteSel">'+opts+'</select></div></div>'+
  '<div id="siteContextHint" class="sub" style="margin-top:6px"></div>'+
  '<div id="empSourceHint" class="sub" style="margin-top:6px"></div>'+
  '<div id="empOpsHint" class="notice hidden" style="margin-top:8px"></div>'+
- '<div style="margin-top:12px;font-weight:900">بيانات التكليف المستخدمة في التايم شيت</div>'+
+ '<div style="margin-top:12px;font-weight:900">بيانات الدوام بالموقع</div>'+
  '<div class="grid2" style="margin-top:8px">'+
-   '<div class="field"><label>المشرف التشغيلي</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف"></div>'+
-   '<div class="field"><label>نوع التكليف</label><select id="atype"><option value="PRIMARY">أساسي</option><option value="RELIEF_FIXED">بديل راحة ثابت</option><option value="TEMP_COVERAGE">تغطية مؤقتة بموظف فعلي</option><option value="NEW_HIRE">موظف جديد</option><option value="OTHER">أخرى</option></select></div>'+
-   '<div class="field"><label>نقطة / موقع العمل التفصيلي</label><input id="workPointName" value="'+esc(a?.work_point_name||'')+'" placeholder="اختياري — بوابة، مبنى، نقطة حراسة..."></div>'+
-   '<div class="field"><label>أيام الراحة الأسبوعية</label><input id="weeklyOffText" value="'+esc(a?.weekly_off_text||'')+'" placeholder="مثال: الجمعة أو الخميس والجمعة"></div>'+
+   '<div class="field"><label>المشرف الميداني</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف"></div>'+
+   '<div class="field"><label>نوع التوزيع</label><select id="atype"><option value="PRIMARY">حارس ثابت</option><option value="RELIEF_FIXED">بديل راحات</option><option value="TEMP_COVERAGE">تغطية مؤقتة</option><option value="OTHER">تكليف آخر</option></select></div>'+
+   '<div class="field"><label>نقطة الحراسة</label><input id="workPointName" value="'+esc(a?.work_point_name||'')+'" placeholder="مثال: بوابة رئيسية، مدخل موظفين، مبنى إداري"></div>'+
+   '<div class="field"><label>الراحة الأسبوعية</label><input id="weeklyOffText" value="'+esc(a?.weekly_off_text||'')+'" placeholder="مثال: الجمعة أو الخميس والجمعة"></div>'+
    '<div class="field"><label>أيام العمل أسبوعياً</label><input id="workDays" type="number" min="0" max="7" step="0.5" value="'+esc(a?.work_days_per_week??'')+'" placeholder="كما هو بالمصدر — يترك فارغاً إذا لم يرد"></div>'+
    '<div class="field"><label>ساعات العمل اليومية</label><input id="dailyHours" type="number" min="1" max="24" step="0.5" value="'+esc(a?.daily_hours??'')+'" placeholder="مثال: 8 أو 12 — يترك فارغاً إذا لم يرد بالمصدر"></div>'+
-   '<div class="field"><label>تصنيف الوردية</label><select id="shift">'+sh+'</select></div>'+
-   '<div class="field"><label>تفصيل الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: صباح / مساء / بديل راحات"></div>'+
+   '<div class="field"><label>الوردية</label><select id="shift">'+sh+'</select></div>'+
+   '<div class="field"><label>وصف الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: صباح / مساء / بديل راحات"></div>'+
    '<div class="field"><label>بداية الوردية</label><input id="shiftStartText" value="'+esc(a?.shift_start_text||'')+'" placeholder="مثال: 08:00 أو 8ص"></div>'+
    '<div class="field"><label>نهاية الوردية</label><input id="shiftEndText" value="'+esc(a?.shift_end_text||'')+'" placeholder="مثال: 16:00 أو 4م"></div>'+
-   '<div class="field"><label>بداية التكليف / المباشرة</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div>'+
-   '<div class="field"><label>نهاية التكليف</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div>'+
+   '<div class="field"><label>تاريخ المباشرة بالموقع</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div>'+
+   '<div class="field"><label>تاريخ نهاية التوزيع</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div>'+
  '</div>'+
  '<div id="atypeHint" class="notice hidden" style="margin-top:10px"></div>'+
- '<div class="field" style="margin-top:10px"><label>ملاحظات تشغيلية</label><textarea id="assignmentNotes" rows="2" placeholder="مباشرة، نقل، استثناء تكليف، أو ملاحظة تشغيلية">'+esc(a?.notes||'')+'</textarea></div>'+
- '<div class="sub" style="margin-top:8px">التغطية الكاش أو التغطية اليومية لا تنشأ كموظف باسم «التغطية»؛ تسجل من التحضير اليومي وتربط بالمنفذ الفعلي والمستفيد والتاريخ والمبلغ عند الحاجة.</div>'+
- '<div class="modal-actions"><button id="saveA" class="btn primary">حفظ التكليف</button><button id="cancelA" class="btn ghost">إلغاء</button></div>'
+ '<div class="field" style="margin-top:10px"><label>ملاحظات التشغيل</label><textarea id="assignmentNotes" rows="2" placeholder="مباشرة، نقل، استثناء تكليف، أو ملاحظة تشغيلية">'+esc(a?.notes||'')+'</textarea></div>'+
+ '<div class="sub" style="margin-top:8px">تغطية الكاش أو التغطية اليومية تسجل كحالة تشغيلية بتاريخها وحارسها البديل، ولا تنشأ كسجل موظف باسم «التغطية».</div>'+
+ '<div class="modal-actions"><button id="saveA" class="btn primary">حفظ التوزيع</button><button id="cancelA" class="btn ghost">إلغاء</button></div>'
  );
  if(a)$('atype').value=a.assignment_type||'PRIMARY';
  let selectedEmployeeStatus='';
@@ -529,10 +529,10 @@ function assignmentModal(a=null){
  const showTypeHint=()=>{
    const t=$('atype').value,h=$('atypeHint');
    if(t==='TEMP_COVERAGE'){
-     h.textContent='التغطية المؤقتة هنا مخصصة لموظف فعلي يغطي فترة متعددة الأيام. يلزم رقم وظيفي وتاريخ بداية ونهاية. التغطية اليومية/الكاش تسجل من شاشة اليوم.';
+     h.textContent='التغطية المؤقتة مخصصة لحارس فعلي يغطي الموقع لفترة محددة. يلزم الرقم الوظيفي وتاريخ البداية والنهاية. تغطية اليوم الواحد وتغطية الكاش تسجل من شاشة الحضور اليومي.';
      h.classList.remove('hidden');
    }else if(t==='RELIEF_FIXED'){
-     h.textContent='بديل الراحة الثابت تكليف فعلي متكرر كما يظهر في ملفات التايم شيت. بعض ملفات المناطق لا تسجل له أياماً أو ساعات ثابتة؛ لا يتم اختلاق قيمة غير موجودة بالمصدر.';
+     h.textContent='بديل الراحات حارس فعلي يغطي أيام الراحة بشكل متكرر. إذا لم يحدد المصدر أياماً أو ساعات ثابتة فلا يتم افتراضها.';
      h.classList.remove('hidden');
    }else h.classList.add('hidden');
  };
@@ -630,8 +630,8 @@ function assignmentModal(a=null){
    const cleanName=p.full_name.replace(/\s+/g,' ').trim();
    if(/^(التغطية|التغطيه|تغطية|تغطيه|تغطية كاش|تغطيه كاش|بديل)$/i.test(cleanName)
       ||(/[0-9٠-٩۰-۹]/.test(cleanName)&&/(فرد|افراد|أفراد|شخص)/.test(cleanName)))
-     return toast('هذا السطر ليس موظفاً فعلياً. صفوف التغطية والمجاميع لا تنشأ كموظفين.',true);
-   if(!p.site_code)return toast('اختيار الموقع مطلوب',true);
+     return toast('هذا السطر ليس حارساً فعلياً. صفوف التغطية والمجاميع لا تنشأ كسجلات موظفين.',true);
+   if(!p.site_code)return toast('اختيار موقع العمل مطلوب',true);
    if(!a&&/منتهي|مستبعد/.test(selectedEmployeeStatus)&&p.assignment_type!=='NEW_HIRE')
      return toast('حالة الموظف في قاعدة الموظفين '+selectedEmployeeStatus+'. لا ينشأ له تكليف جديد قبل معالجة حالته أو اختيار «موظف جديد» عند إعادة التعيين.',true);
    const sourceBacked=!!selectedEvidence?.source_file_name;
@@ -640,10 +640,10 @@ function assignmentModal(a=null){
    if(!a&&!sourceBacked&&['PRIMARY','NEW_HIRE'].includes(p.assignment_type)&&!p.shift_code&&!p.shift_detail&&!p.shift_start_text)
      return toast('للتكليف اليدوي الجديد حددي الوردية أو وقت بدايتها.',true);
    if(p.assignment_type==='TEMP_COVERAGE'&&!p.employee_ref)
-     return toast('التغطية المؤقتة يجب أن ترتبط بموظف فعلي ذي رقم وظيفي.',true);
+     return toast('التغطية المؤقتة يجب أن ترتبط بحارس فعلي ذي رقم وظيفي.',true);
    if(p.start_date&&p.end_date&&p.start_date>p.end_date)return toast('تاريخ البداية يجب أن يسبق تاريخ النهاية',true);
    const btn=$('saveA');btn.disabled=true;
-   try{await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم حفظ التكليف')}
+   try{await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم حفظ توزيع الحارس')}
    catch(e){toast(e.message,true);btn.disabled=false}
  }
 }
@@ -657,7 +657,7 @@ $('period').onchange=async()=>{$('workDate').value=period()+'-01';S.employee=nul
 $('workDate').onchange=async()=>{normalizeWorkDate();S.site=null;S.siteData=null;S.issues=null;await refreshDay(true)};
 $('logoutBtn').onclick=()=>{localStorage.removeItem('arkPrepToken');localStorage.removeItem('arkPrepRegion');for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith('arkPrepCache:'))sessionStorage.removeItem(k)}S.token='';S.region='';S.ctx=null;S.day=null;showLogin()};
 $('printBtn').onclick=()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(window.openClientPrint)return window.openClientPrint();toast('خدمة الطباعة ما زالت قيد التهيئة',true)};
-$('submitBtn').onclick=async()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(!await confirmUI('إقفال التحضير مبدئياً','سيتم فحص الأيام والحقول الأساسية قبل الإقفال.','ابدأ الفحص'))return;try{const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)}catch(e){toast(e.message,true)}};
+$('submitBtn').onclick=async()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(!await confirmUI('إقفال التايم شيت الداخلي','سيتم فحص سجلات الحضور والحقول الأساسية قبل الإقفال.','ابدأ الفحص'))return;try{const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)}catch(e){toast(e.message,true)}};
 $('exportBtn').onclick=exportCsv;
 
 const d=ry();initPeriodOptions(d.slice(0,7));$('workDate').value=d;syncContextUi();
