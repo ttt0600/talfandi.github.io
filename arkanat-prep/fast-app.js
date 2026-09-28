@@ -108,13 +108,13 @@ function sourceBanner(){
 
 function metrics(){
  const m=S.day?.metrics||{};
- const action=Number(m.action_now||0),review=Number(m.needs_review||0),waiting=Number(m.awaiting_prep||0),complete=Number(m.complete||0),total=Number(m.employees||0);
+ const action=Number(m.action_now||0),review=Number(m.needs_review||0),present=Number(m.present||0),total=Number(m.employees||0),overrides=Number(m.overrides||0);
  $('metrics').innerHTML=
   '<div class="card metric '+(action?'bad':'ok')+'"><b>'+action+'</b><span>استثناء يحتاج إجراء</span></div>'+
   '<div class="card metric '+(review?'warn':'ok')+'"><b>'+review+'</b><span>بانتظار المراجعة</span></div>'+
-  '<div class="card metric"><b>'+waiting+'</b><span>بانتظار التحضير اليوم</span></div>'+
-  '<div class="card metric ok"><b>'+complete+'</b><span>مكتمل / طبيعي</span></div>'+
-  '<div class="card metric"><b>'+total+'</b><span>إجمالي اليوم</span></div>';
+  '<div class="card metric ok"><b>'+present+'</b><span>حاضر P</span></div>'+
+  '<div class="card metric"><b>'+overrides+'</b><span>حالات معدلة اليوم</span></div>'+
+  '<div class="card metric"><b>'+total+'</b><span>إجمالي الحراس</span></div>';
 }
 
 function applyCtx(){
@@ -159,16 +159,16 @@ function render(){
 }
 
 function siteCard(s){
- const a=Number(s.action_now||0),r=Number(s.needs_review||0),w=Number(s.awaiting_prep||0),e=Number(s.expected||0),c=Number(s.confirmed||0),pct=e?Math.round(c*100/e):100;
- const cls=a?'attention critical':r?'attention':w?'waiting':'complete';
- const badge=a?a+' يحتاج إجراء':r?r+' يحتاج مراجعة':w?w+' بانتظار التحضير':'مكتمل';
- const bcls=a?'bad':r?'warn':w?'pending':'ok';
+ const a=Number(s.action_now||0),r=Number(s.needs_review||0),e=Number(s.expected||0),p=Number(s.present||0),o=Number(s.overrides||0);
+ const cls=a?'attention critical':r?'attention':'complete';
+ const badge=a?a+' يحتاج إجراء':r?r+' يحتاج مراجعة':'طبيعي';
+ const bcls=a?'bad':r?'warn':'ok';
  return '<article class="card siteCard '+cls+'" data-site="'+esc(s.site_code||'__MISSING__')+'">'+
   '<div class="siteTop"><div><div class="siteName">'+esc(s.site_name||'بدون موقع')+'</div><div class="siteMeta">'+esc(s.client_name||'')+(s.project_name?' · '+esc(s.project_name):'')+'</div></div>'+
   '<div class="guardStatus '+bcls+'">'+badge+'</div></div>'+
-  '<div class="siteCounts"><span class="pill">'+e+' حارس</span><span class="pill ok">'+c+' محضر</span>'+
-  (a?'<span class="pill bad">'+a+' استثناء</span>':'')+(r?'<span class="pill warn">'+r+' مراجعة</span>':'')+(w?'<span class="pill">'+w+' لم يُحضّر</span>':'')+'</div>'+
-  '<div class="progress '+(!a&&!r&&!w?'done':'')+'"><span style="width:'+pct+'%"></span></div>'+
+  '<div class="siteCounts"><span class="pill">'+e+' حارس</span><span class="pill ok">'+p+' P</span>'+
+  (o?'<span class="pill">'+o+' حالة معدلة</span>':'')+(a?'<span class="pill bad">'+a+' استثناء</span>':'')+(r?'<span class="pill warn">'+r+' مراجعة</span>':'')+'</div>'+
+  '<div class="progress '+(!a&&!r?'done':'')+'"><span style="width:100%"></span></div>'+
   '<div class="siteActions"><button class="btn secondary openSite" data-site="'+esc(s.site_code||'__MISSING__')+'">فتح الموقع</button></div></article>';
 }
 
@@ -177,37 +177,53 @@ function today(){
  const all=S.day?.sites||[];
  const action=all.filter(x=>Number(x.action_now||0)>0);
  const review=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)>0);
- const waiting=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)===0&&Number(x.awaiting_prep||0)>0);
- const done=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)===0&&Number(x.awaiting_prep||0)===0&&Number(x.expected||0)>0);
+ const normal=all.filter(x=>Number(x.action_now||0)===0&&Number(x.needs_review||0)===0&&Number(x.expected||0)>0);
  $('mainView').innerHTML=
-  '<div class="sectionHead"><div><h2>الاستثناءات الآن</h2><div class="sub">يعرض النظام الانحرافات الفعلية فقط، وليس كل من لم يبدأ تحضيره بعد.</div></div><div class="pill '+(action.length?'bad':'ok')+'">'+action.length+' موقع</div></div>'+
-  '<div class="siteGrid">'+(action.length?action.map(siteCard).join(''):'<div class="card empty"><div><b>لا توجد استثناءات تحتاج إجراء الآن</b><div class="sub">هذا هو الهدف من Management by Exception.</div></div></div>')+'</div>'+
-  '<div class="sectionHead"><div><h2>بانتظار المراجعة</h2><div class="sub">حالات تم تسجيلها وتحتاج تدقيقاً أو اعتماداً داخلياً.</div></div><div class="pill '+(review.length?'warn':'ok')+'">'+review.length+' موقع</div></div>'+
+  '<div class="card viewCard" style="margin-bottom:12px"><div class="sectionHead"><div><h2>تسجيل استثناء / تغيير حالة</h2><div class="sub">الحالة الطبيعية لجميع الحراس هي <b>P — حاضر</b>. ابحثي فقط عند وجود غياب، إجازة، انسحاب، استقالة، تغطية أو أي تغيير آخر.</div></div><div class="pill ok">P افتراضياً</div></div>'+
+  '<input id="exceptionSearch" class="search" placeholder="ابحثي بالاسم أو الرقم الوظيفي أو رقم الهوية">'+
+  '<div id="exceptionSearchResults" class="roster-list" style="margin-top:8px"><div class="empty" style="min-height:70px">ابدئي بكتابة اسم الموظف أو رقمه لتغيير حالته.</div></div></div>'+
+  '<div class="sectionHead"><div><h2>الاستثناءات الآن</h2><div class="sub">تظهر فقط الحالات التي خرجت عن P وتحتاج إجراءً.</div></div><div class="pill '+(action.length?'bad':'ok')+'">'+action.length+' موقع</div></div>'+
+  '<div class="siteGrid">'+(action.length?action.map(siteCard).join(''):'<div class="card empty"><div><b>لا توجد استثناءات تحتاج إجراء الآن</b><div class="sub">جميع الحراس يعتبرون حاضرين P ما لم تسجل حالة مختلفة.</div></div></div>')+'</div>'+
+  '<div class="sectionHead"><div><h2>بانتظار المراجعة</h2><div class="sub">حالات استثنائية مسجلة وتنتظر تدقيقاً أو اعتماداً داخلياً.</div></div><div class="pill '+(review.length?'warn':'ok')+'">'+review.length+' موقع</div></div>'+
   '<div class="siteGrid">'+(review.length?review.map(siteCard).join(''):'<div class="card empty"><b>لا توجد حالات بانتظار المراجعة</b></div>')+'</div>'+
-  '<div class="sectionHead"><div><h2>قائمة عمل التحضير اليومي</h2><div class="sub">هذه ليست استثناءات؛ هي المواقع التي لم يكتمل إدخال تحضيرها اليوم بعد.</div></div><div class="pill">'+waiting.length+' موقع</div></div>'+
-  '<div class="siteGrid">'+(waiting.length?waiting.map(siteCard).join(''):'<div class="card empty"><b>تم استكمال التحضير لجميع المواقع</b></div>')+'</div>'+
-  '<div class="sectionHead"><div><h2>المكتمل / الطبيعي</h2><div class="sub">الحالات الطبيعية مطوية حتى لا تشتت المستخدم.</div></div><button id="toggleDone" class="btn ghost">عرض '+done.length+'</button></div>'+
+  '<div class="sectionHead"><div><h2>المواقع الطبيعية</h2><div class="sub">مطوية افتراضياً لأنها لا تحتاج عملاً.</div></div><button id="toggleDone" class="btn ghost">عرض '+normal.length+'</button></div>'+
   '<div id="doneSites" class="siteGrid hidden"></div>';
  wireSites();
+ let tm;
+ $('exceptionSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(()=>exceptionLookup($('exceptionSearch').value.trim()),220)};
  $('toggleDone').onclick=()=>{
    const b=$('doneSites'),show=b.classList.contains('hidden');
-   if(show&&!b.dataset.loaded){b.innerHTML=done.map(siteCard).join('');b.dataset.loaded='1';wireSites()}
+   if(show&&!b.dataset.loaded){b.innerHTML=normal.map(siteCard).join('');b.dataset.loaded='1';wireSites()}
    b.classList.toggle('hidden');
-   $('toggleDone').textContent=b.classList.contains('hidden')?'عرض '+done.length:'إخفاء';
+   $('toggleDone').textContent=b.classList.contains('hidden')?'عرض '+normal.length:'إخفاء';
  };
+}
+async function exceptionLookup(q){
+ const box=$('exceptionSearchResults');if(!box)return;
+ if(q.length<2){box.innerHTML='<div class="empty" style="min-height:70px">ابدئي بكتابة اسم الموظف أو رقمه لتغيير حالته.</div>';return}
+ box.innerHTML='<div class="empty" style="min-height:70px"><span class="loading"></span></div>';
+ try{
+   const d=await fast('roster',{period:period(),q},8000),rows=(d.rows||[]).slice(0,20);
+   if(!rows.length){box.innerHTML='<div class="empty" style="min-height:70px">لا توجد نتيجة مطابقة.</div>';return}
+   box.innerHTML=rows.map(a=>'<div class="person exceptionPick" data-id="'+esc(a.id)+'"><div><div class="name">'+esc(a.full_name)+'</div><div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="pill ok">P</span><button class="btn secondary exceptionEdit" data-id="'+esc(a.id)+'">تغيير الحالة</button></div></div>').join('');
+   document.querySelectorAll('.exceptionEdit').forEach(b=>b.onclick=()=>{
+     const a=rows.find(x=>String(x.id)===String(b.dataset.id));if(!a)return;
+     dayModal({...a,assignment_id:a.id,status:'P'},work(),async()=>{await refreshDay(true);const s=$('exceptionSearch');if(s){s.value='';exceptionLookup('')}})
+   });
+ }catch(e){box.innerHTML='<div class="empty" style="min-height:70px">تعذر البحث</div>';toast(e.message,true)}
 }
 
 function sites(){const all=S.day?.sites||[];$('mainView').innerHTML='<div class="sectionHead"><div><h2>المواقع</h2><div class="sub">بحث سريع في اليوم المحدد.</div></div></div><div class="card viewCard"><input id="siteSearch" class="search" placeholder="بحث بالعميل أو المشروع أو الموقع"></div><div id="allSites" class="siteGrid" style="margin-top:10px"></div>';const draw=()=>{const q=$('siteSearch').value.trim().toLowerCase(),a=all.filter(s=>!q||[s.site_name,s.project_name,s.client_name].some(v=>String(v||'').toLowerCase().includes(q)));$('allSites').innerHTML=a.map(siteCard).join('')||'<div class="card empty">لا توجد نتائج</div>';wireSites()};$('siteSearch').oninput=draw;draw()}
 async function openSite(k){if(k==='__MISSING__'){S.tab='gaps';return gaps()}S.site=k;$('mainView').innerHTML='<div class="card empty" style="min-height:160px"><div><span class="loading"></span><div style="margin-top:8px">جاري تحميل الموقع فقط...</div></div></div>';try{S.siteData=await fast('site',{period:period(),date:work(),site_code:k},10000);if(S.site===k)siteDetail()}catch(e){toast(e.message,true);render()}}
 function classifyLocalException(e){
- const st=e.status||'';
- if(!st){e.exception_level='action';e.exception_reason='لم يتم تسجيل حالة اليوم';return e}
+ const st=e.status||'P';
  if(['A','W','R','S'].includes(st)){e.exception_level='action';e.exception_reason=STATUS[st]||st;return e}
  if(['SUB','CASH'].includes(st)&&!String(e.replacement_employee_ref||'').trim()&&!String(e.replacement_name||'').trim()){e.exception_level='action';e.exception_reason='تغطية بدون تحديد المنفذ';return e}
  if(st==='CASH'&&(e.cash_amount===null||e.cash_amount===undefined||e.cash_amount==='')){e.exception_level='action';e.exception_reason='تغطية كاش بدون مبلغ';return e}
  if(['T','AL','SK','O','OTHER','SUB','CASH'].includes(st)){e.exception_level='review';e.exception_reason=st==='SUB'||st==='CASH'?'تغطية مسجلة تحتاج مراجعة داخلية':STATUS[st]||st;return e}
- e.exception_level='complete';e.exception_reason=null;return e
+ e.status='P';e.exception_level='complete';e.exception_reason=null;return e
 }
+
 function caseStateLabel(s){return {OPEN:'مفتوح',IN_PROGRESS:'قيد المعالجة',PENDING_REVIEW:'بانتظار المراجعة',CLOSED:'مغلق'}[s]||''}
 function laneLabel(s){return {OPERATIONS:'العمليات',HR:'الموارد البشرية',FINANCE:'المالية'}[s]||s||''}
 function caseMetaMarkup(e){
@@ -292,51 +308,36 @@ function siteDetail(){
  const rows=g.employees||[];
  const action=rows.filter(x=>x.exception_level==='action');
  const review=rows.filter(x=>x.exception_level==='review');
- const pending=rows.filter(x=>x.exception_level==='pending'||(!x.exception_level&&!x.status));
- const done=rows.filter(x=>!action.includes(x)&&!review.includes(x)&&!pending.includes(x));
- const top=action.length?{c:'bad',t:action.length+' استثناء'}:review.length?{c:'warn',t:review.length+' مراجعة'}:pending.length?{c:'pending',t:pending.length+' بانتظار التحضير'}:{c:'ok',t:'مكتمل'};
+ const normal=rows.filter(x=>!action.includes(x)&&!review.includes(x));
+ const top=action.length?{c:'bad',t:action.length+' استثناء'}:review.length?{c:'warn',t:review.length+' مراجعة'}:{c:'ok',t:'طبيعي · P'};
  $('mainView').innerHTML=
   '<div class="sectionHead"><button id="backSites" class="btn ghost">← رجوع</button><div style="flex:1"><h2>'+esc(g.site_name||'')+'</h2><div class="sub">'+esc(g.client_name||'')+(g.project_name?' · '+esc(g.project_name):'')+' · '+work()+'</div></div>'+
   '<div class="guardStatus '+top.c+'">'+top.t+'</div></div>'+
-  '<div class="sectionHead"><div><h3>الاستثناءات والمراجعات</h3><div class="sub">تظهر هنا الانحرافات الفعلية فقط.</div></div></div>'+
+  '<div class="sectionHead"><div><h3>الاستثناءات والمراجعات</h3><div class="sub">الحراس غير الظاهرين هنا حالتهم الطبيعية P.</div></div></div>'+
   '<div class="card viewCard"><div class="guardRows">'+
-    (action.length||review.length?[...action,...review].map(guardRow).join(''):'<div class="empty"><b>لا توجد استثناءات في هذا الموقع حالياً</b></div>')+
+    (action.length||review.length?[...action,...review].map(guardRow).join(''):'<div class="empty"><b>لا توجد استثناءات في هذا الموقع</b><div class="sub">جميع الحراس P افتراضياً.</div></div>')+
   '</div></div>'+
-  '<div class="sectionHead"><div><h3>بانتظار التحضير</h3><div class="sub">قائمة العمل اليومية وليست استثناءً حتى يصبح التاريخ سابقاً دون تسجيل.</div></div><div class="pill">'+pending.length+'</div></div>'+
-  '<div class="card viewCard"><div class="guardRows">'+(pending.length?pending.map(guardRow).join(''):'<div class="empty"><b>لا توجد حالات بانتظار التحضير</b></div>')+'</div></div>'+
-  '<div class="sectionHead"><div><h3>الحالات المكتملة</h3><div class="sub">لا تظهر إلا عند الطلب.</div></div><button id="toggleGuardDone" class="btn ghost">عرض '+done.length+'</button></div>'+
-  '<div id="guardDone" class="card viewCard hidden"><div class="guardRows">'+done.map(guardRow).join('')+'</div></div>'+
-  '<div class="stickyAction"><div class="sub"><b>'+pending.length+'</b> بانتظار التحضير في هذا الموقع.</div><button id="bulkPresent" class="btn primary" '+(pending.length?'':'disabled')+'>تأكيد المحددين حاضر</button></div>';
+  '<div class="sectionHead"><div><h3>الحراس الطبيعيون P</h3><div class="sub">لا حاجة لتأكيد حضورهم واحداً واحداً.</div></div><button id="toggleGuardDone" class="btn ghost">عرض '+normal.length+'</button></div>'+
+  '<div id="guardDone" class="card viewCard hidden"><div class="guardRows">'+normal.map(guardRow).join('')+'</div></div>';
  $('backSites').onclick=()=>{S.site=null;S.siteData=null;render()};
- $('toggleGuardDone').onclick=()=>{const b=$('guardDone');b.classList.toggle('hidden');$('toggleGuardDone').textContent=b.classList.contains('hidden')?'عرض '+done.length:'إخفاء'};
+ $('toggleGuardDone').onclick=()=>{const b=$('guardDone');b.classList.toggle('hidden');$('toggleGuardDone').textContent=b.classList.contains('hidden')?'عرض '+normal.length:'إخفاء'};
  wireGuards();wireCaseActions();
- $('bulkPresent').onclick=bulkPresent;
 }
 
 function guardRow(e){
- const p=!e.status,level=e.exception_level||(p?'pending':EX.has(e.status)?'review':'complete');
- const c=level==='action'?'exception':level==='review'?'exception':level==='pending'?'pending':'';
- const reason=e.exception_reason?'<div class="guardMeta"><b>'+(level==='action'?'يحتاج إجراء: ':level==='review'?'يحتاج مراجعة: ':level==='pending'?'الحالة: ':'')+'</b>'+esc(e.exception_reason)+'</div>':'';
- const scls=level==='action'?'bad':level==='review'?'warn':level==='pending'?'pending':'ok';
+ const level=e.exception_level||'complete';
+ const c=level==='action'||level==='review'?'exception':'';
+ const reason=e.exception_reason?'<div class="guardMeta"><b>'+(level==='action'?'يحتاج إجراء: ':level==='review'?'يحتاج مراجعة: ':'')+'</b>'+esc(e.exception_reason)+'</div>':'';
+ const scls=level==='action'?'bad':level==='review'?'warn':'ok';
  return '<div class="guardRow '+c+'">'+
-  '<div class="guardMain"><div style="display:flex;gap:8px;align-items:flex-start">'+
-   (p?'<input class="check guardCheck" type="checkbox" value="'+e.assignment_id+'">':'')+
-   '<div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(e.employee_ref||'بدون رقم وظيفي')+' · '+esc(e.shift_code||'وردية غير محددة')+'</div>'+reason+caseMetaMarkup(e)+'</div></div>'+
-   '<button class="guardStatus '+scls+' editDay" data-a="'+e.assignment_id+'">'+(p?(level==='action'?'تحضير متأخر':'بانتظار التحضير'):esc(STATUS[e.status]||e.status))+'</button></div>'+
-  (p?'<div class="quickActions"><button class="quickBtn present qStatus" data-a="'+e.assignment_id+'" data-s="P">حاضر</button><button class="quickBtn off qStatus" data-a="'+e.assignment_id+'" data-s="OFF">راحة</button><button class="quickBtn absent qStatus" data-a="'+e.assignment_id+'" data-s="A">غياب</button><button class="quickBtn qMore" data-a="'+e.assignment_id+'">المزيد…</button></div>':'')+
+  '<div class="guardMain"><div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(e.employee_ref||'بدون رقم وظيفي')+' · '+esc(e.shift_code||'وردية غير محددة')+(e.status_source==='DEFAULT_PRESENT'?' · P افتراضي':'')+'</div>'+reason+caseMetaMarkup(e)+'</div>'+
+  '<button class="guardStatus '+scls+' editDay" data-a="'+e.assignment_id+'">'+esc(STATUS[e.status]||e.status||'حاضر')+'</button></div>'+
   caseActionsMarkup(e)+
   '</div>';
 }
 
 function wireGuards(){
- document.querySelectorAll('.editDay,.qMore').forEach(b=>b.onclick=()=>dayModal((S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a),work(),()=>openSite(S.site)));
- document.querySelectorAll('.qStatus').forEach(b=>b.onclick=async()=>{
-   const e=(S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a);b.disabled=true;
-   try{
-     await fast('saveDay',{payload:{assignment_id:e.assignment_id,date:work(),status:b.dataset.s,shift_code:e.shift_code||null}},10000);
-     await openSite(S.site);refreshDay(false);toast('تم الحفظ')
-   }catch(x){toast(x.message,true);b.disabled=false}
- })
+ document.querySelectorAll('.editDay').forEach(b=>b.onclick=()=>dayModal((S.siteData?.employees||[]).find(x=>x.assignment_id===b.dataset.a),work(),()=>openSite(S.site)));
 }
 
 async function bulkPresent(){
