@@ -406,10 +406,10 @@ function futureAssignment(){
  '<div class="field"><label>المشرف</label><div class="card" style="padding:10px">'+esc(a.supervisor_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>نوع التوزيع</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
  '<div class="field"><label>أيام العمل أسبوعياً</label><div class="card" style="padding:10px">'+esc(workDays)+'</div></div>'+
- '<div class="field"><label>أيام الراحة الأسبوعية</label><div class="card" style="padding:10px">'+esc(a.weekly_off_text||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>الراحة الأسبوعية</label><div class="card" style="padding:10px">'+esc(a.weekly_off_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>ساعات العمل اليومية</label><div class="card" style="padding:10px">'+esc(dailyHours)+'</div></div>'+
- '<div class="field"><label>تصنيف الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
- '<div class="field"><label>تفصيل الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
+ '<div class="field"><label>الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>وصف الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
  '<div class="field"><label>بداية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_start_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>نهاية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_end_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>تاريخ المباشرة بالموقع</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
