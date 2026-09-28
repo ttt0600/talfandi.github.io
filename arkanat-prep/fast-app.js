@@ -108,12 +108,12 @@ function sourceBanner(){
 
 function metrics(){
  const m=S.day?.metrics||{};
- const action=Number(m.action_now||0),review=Number(m.needs_review||0),present=Number(m.present||0),total=Number(m.employees||0),overrides=Number(m.overrides||0);
+ const action=Number(m.action_now||0),review=Number(m.needs_review||0),present=Number(m.present||0),total=Number(m.employees||0),overrides=Math.max(0,total-present);
  $('metrics').innerHTML=
   '<div class="card metric '+(action?'bad':'ok')+'"><b>'+action+'</b><span>استثناء يحتاج إجراء</span></div>'+
   '<div class="card metric '+(review?'warn':'ok')+'"><b>'+review+'</b><span>بانتظار المراجعة</span></div>'+
   '<div class="card metric ok"><b>'+present+'</b><span>حاضر P</span></div>'+
-  '<div class="card metric"><b>'+overrides+'</b><span>حالات معدلة اليوم</span></div>'+
+  '<div class="card metric"><b>'+overrides+'</b><span>حالات غير P</span></div>'+
   '<div class="card metric"><b>'+total+'</b><span>إجمالي الحراس</span></div>';
 }
 
@@ -159,7 +159,7 @@ function render(){
 }
 
 function siteCard(s){
- const a=Number(s.action_now||0),r=Number(s.needs_review||0),e=Number(s.expected||0),p=Number(s.present||0),o=Number(s.overrides||0);
+ const a=Number(s.action_now||0),r=Number(s.needs_review||0),e=Number(s.expected||0),p=Number(s.present||0),o=Math.max(0,e-p);
  const cls=a?'attention critical':r?'attention':'complete';
  const badge=a?a+' يحتاج إجراء':r?r+' يحتاج مراجعة':'طبيعي';
  const bcls=a?'bad':r?'warn':'ok';
@@ -167,7 +167,7 @@ function siteCard(s){
   '<div class="siteTop"><div><div class="siteName">'+esc(s.site_name||'بدون موقع')+'</div><div class="siteMeta">'+esc(s.client_name||'')+(s.project_name?' · '+esc(s.project_name):'')+'</div></div>'+
   '<div class="guardStatus '+bcls+'">'+badge+'</div></div>'+
   '<div class="siteCounts"><span class="pill">'+e+' حارس</span><span class="pill ok">'+p+' P</span>'+
-  (o?'<span class="pill">'+o+' حالة معدلة</span>':'')+(a?'<span class="pill bad">'+a+' استثناء</span>':'')+(r?'<span class="pill warn">'+r+' مراجعة</span>':'')+'</div>'+
+  (o?'<span class="pill">'+o+' حالة غير P</span>':'')+(a?'<span class="pill bad">'+a+' استثناء</span>':'')+(r?'<span class="pill warn">'+r+' مراجعة</span>':'')+'</div>'+
   '<div class="progress '+(!a&&!r?'done':'')+'"><span style="width:100%"></span></div>'+
   '<div class="siteActions"><button class="btn secondary openSite" data-site="'+esc(s.site_code||'__MISSING__')+'">فتح الموقع</button></div></article>';
 }
