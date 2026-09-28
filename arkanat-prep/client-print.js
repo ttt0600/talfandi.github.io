@@ -203,7 +203,10 @@ async function loadSelectedSite(){
 }
 
 function activeOn(a,date){const c=cycleContext(),s=cleanDate(a.start_date)||c.start,e=cleanDate(a.end_date)||c.end;return date>=s&&date<=e}
-function dayEntry(a,date){return (a.days||[]).find(function(d){return cleanDate(d.date)===date})}
+function dayEntry(a,date){
+ const d=(a.days||[]).find(function(x){return cleanDate(x.date)===date});
+ return d||{date:date,status:'P',shift_code:a.shift_code||null,_default_present:true};
+}
 function shiftHours(code){const m=String(code||'').match(/(8|12)$/);return m?Number(m[1]):null}
 function workHours(a,d){if(!d)return 0;if(d.worked_hours!==null&&d.worked_hours!==undefined&&d.worked_hours!=='')return Number(d.worked_hours)||0;if(['P','SUB','CASH'].includes(d.status))return shiftHours(d.shift_code||a.shift_code)||0;return 0}
 function dayClass(st){if(!st)return'missing';if(['A','W','R','S'].includes(st))return'abs';if(['OFF','O','AL','SK'].includes(st))return'off';if(['SUB','CASH'].includes(st))return'cover';return''}
