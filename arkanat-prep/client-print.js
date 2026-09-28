@@ -42,10 +42,10 @@ async function setPrintMode(mode){
  CP.mode=next;
  $p('cpModeClient').classList.toggle('active',CP.mode==='client');
  $p('cpModeInternal').classList.toggle('active',CP.mode==='internal');
- $p('cpPeriodLabel').textContent=CP.mode==='client'?'شهر العميل للطباعة':'دورة التحضير الداخلية للطباعة';
+ $p('cpPeriodLabel').textContent=CP.mode==='client'?'شهر العميل للطباعة':'دورة التايم شيت الداخلية للطباعة';
  $p('cpModeNote').textContent=CP.mode==='client'
   ?'تايم شيت العميل يغطي الشهر الميلادي كاملاً من يوم 1 حتى آخر يوم في الشهر، ولا يعرض التفاصيل المالية أو ملاحظات العمل الداخلية.'
-  :'التايم شيت الداخلي يتبع دورة العمليات والموارد والمالية المعتمدة، ويعرض الاستثناءات والتغطيات والأثر التشغيلي والمالي.';
+  :'التايم شيت الداخلي يتبع دورة العمليات والموارد البشرية والمالية، ويعرض الحضور والحالات الاستثنائية والتغطيات وساعات العمل الإضافية.';
  if(CP.period)await loadPrintPeriod(CP.period,prefer); else emptyStage();
 }
 
@@ -53,7 +53,7 @@ async function setPrintMode(mode){
 async function api(action,payload,timeout){
  payload=payload||{};timeout=timeout||15000;
  const token=localStorage.getItem('arkPrepToken')||'';
- if(!token)throw new Error('سجلي الدخول إلى التحضير أولاً.');
+ if(!token)throw new Error('سجلي الدخول إلى نظام الحضور أولاً.');
  const ctrl=new AbortController(),tm=setTimeout(function(){ctrl.abort()},timeout);
  try{
   const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(Object.assign({action:action,token:token},payload)),signal:ctrl.signal});
@@ -171,7 +171,7 @@ function fillSites(prefer,load){
 }
 function emptyStage(){
  CP.site=null;CP.guards=[];CP.coverageEvents=[];CP.filename='';$p('cpPrint').disabled=true;$p('cpProgress').textContent='';$p('cpNotice').style.display='none';
- $p('cpStage').innerHTML='<div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">سيتم تجهيز كشف التحضير الشهري للموقع المحدد فقط.</div></div></div>';
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">سيتم تجهيز التايم شيت للموقع المحدد فقط.</div></div></div>';
 }
 
 async function loadSelectedSite(){
@@ -180,7 +180,7 @@ async function loadSelectedSite(){
  CP.site=s;CP.guards=[];CP.coverageEvents=[];$p('cpPrint').disabled=true;
  $p('cpNotice').style.display='block';$p('cpNotice').textContent='جاري تجهيز بيانات الكشف...';
  $p('cpProgress').textContent='جاري التحميل';
- $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">'+(CP.mode==='client'?'فترة العميل: من أول الشهر إلى آخر يوم فيه.':'الفترة الداخلية: حسب دورة التحضير المعتمدة.')+'</div></div></div>';
+ $p('cpStage').innerHTML='<div class="cp-empty"><div><span class="loading"></span><div style="margin-top:9px"><b>جاري تجهيز '+(CP.mode==='internal'?'التايم شيت الداخلي':'تايم شيت العميل')+'</b></div><div style="margin-top:6px">'+(CP.mode==='client'?'فترة العميل: من أول الشهر إلى آخر يوم فيه.':'الفترة الداخلية: حسب دورة التايم شيت المعتمدة.')+'</div></div></div>';
  try{
   const ctx=cycleContext();
   const action=CP.mode==='client'?'printClientSiteMonth':'printSiteMonth';
@@ -278,7 +278,7 @@ function head(ds){
 
 function pageHeader(page,total,ds){
  const c=cycleContext(),s=CP.site,label=s.project_name||s.site_name||s.client_name;
- const title=CP.mode==='internal'?'التايم شيت الداخلي - '+label:'كشف حضور حراس الأمن - '+label;
+ const title=CP.mode==='internal'?'تايم شيت داخلي - '+label:'كشف حضور حراس الأمن - '+label;
  const extra=CP.mode==='internal'
   ?'<span>PRJ: '+escp(s.project_code||'—')+'</span><span>SIT: '+escp(s.code||s.site_code||'—')+'</span>'
   :'';
@@ -293,10 +293,10 @@ function finalBlock(m){
   ?'<div class="cp-approvals"><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>إدارة العمليات الموحدة</b>الاسم / التوقيع</div><div class="cp-approval"><b>الموارد البشرية</b>الاسم / التوقيع</div><div class="cp-approval"><b>الإدارة المالية</b>الاسم / التوقيع</div><div class="cp-approval"><b>المراجعة</b>الاسم / التوقيع</div></div>'
   :'<div class="cp-approvals"><div class="cp-approval"><b>مسؤول العميل / الموقع</b>الاسم / التوقيع</div><div class="cp-approval"><b>مشرف الأمن</b>الاسم / التوقيع</div><div class="cp-approval"><b>ممثل أركانات / العمليات</b>الاسم / التوقيع</div></div>';
  const banner=CP.mode==='internal'
-  ?'<div class="cp-internal-banner">مستند داخلي للمصالحة بين العمليات والموارد البشرية والمالية — يتبع دورة التحضير الداخلية ويعرض محركات الأثر المالي والتشغيلي ولا يرسل للعميل.</div>'
+  ?'<div class="cp-internal-banner">تايم شيت داخلي للمراجعة بين العمليات والموارد البشرية والمالية — يتبع الدورة الداخلية ويعرض الحضور والتغطيات وساعات العمل الإضافية والحالات الاستثنائية، ولا يرسل للعميل.</div>'
   :'<div class="cp-client-block">كشف العميل يغطي الشهر الميلادي من يوم 1 حتى آخر يوم في الشهر لإثبات الحضور والتنفيذ والاعتماد، ولا يتضمن بيانات الرواتب أو مبالغ التغطية أو الملاحظات الداخلية.</div>';
  const internalImpact=CP.mode==='internal'
-  ?'<div class="cp-kpis" style="margin-top:1.2mm"><div class="cp-kpi"><b>غياب للحسم</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>انسحاب للحسم</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>تغطية كاش</b><strong>'+m.cash_total.toFixed(2)+'</strong></div><div class="cp-kpi"><b>إضافي مسجل</b><strong>'+m.overtime_total.toFixed(1)+'</strong></div></div>'+
+  ?'<div class="cp-kpis" style="margin-top:1.2mm"><div class="cp-kpi"><b>غياب للحسم</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>انسحاب للحسم</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>تغطية كاش</b><strong>'+m.cash_total.toFixed(2)+'</strong></div><div class="cp-kpi"><b>ساعات عمل إضافية</b><strong>'+m.overtime_total.toFixed(1)+'</strong></div></div>'+
    '<div class="cp-legend"><span>مراجعة HR: <b>'+m.hr_cases+'</b></span><span>مراجعة المالية: <b>'+m.finance_cases+'</b></span><span>مراجعة العمليات: <b>'+m.operations_cases+'</b></span><span>مفتوح/قيد المعالجة: <b>'+m.open_cases+'</b></span><span>بانتظار المراجعة: <b>'+m.review_cases+'</b></span><span>مغلق: <b>'+m.closed_cases+'</b></span></div>'
   :'';
  return '<div class="cp-final">'+banner+'<div class="cp-kpis"><div class="cp-kpi"><b>الحضور</b><strong>'+m.present+'</strong></div><div class="cp-kpi"><b>الغياب</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>الانسحاب</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>التغطيات</b><strong>'+m.coverage+'</strong></div></div>'+
@@ -353,9 +353,9 @@ function internalEvents(){
  return rows.sort(function(a,b){return a.date.localeCompare(b.date)||a.name.localeCompare(b.name,'ar')});
 }
 function internalLedgerPage(rows,page,total,ds){
- return '<section class="cp-page">'+pageHeader(page,total,ds)+'<div class="cp-internal-banner">سجل الاستثناءات والتغطيات الداخلي — يستخدم للمراجعة والمصالحة بين العمليات والموارد البشرية والمالية، ولا يرسل للعميل.</div>'+
- '<div class="cp-ledger-wrap"><div class="cp-ledger-title">تفاصيل الاستثناءات والتغطيات ومسار المعالجة</div><table class="cp-ledger"><thead><tr>'+
- '<th>التاريخ</th><th>الحارس</th><th>EMP_ID</th><th>الحالة</th><th>الاستثناء</th><th>مسار المعالجة</th><th>جهة المراجعة</th><th>إضافي</th><th>البديل / المنفذ</th><th>الكاش</th><th>ملاحظات</th>'+
+ return '<section class="cp-page">'+pageHeader(page,total,ds)+'<div class="cp-internal-banner">سجل الحالات الاستثنائية والتغطيات — يستخدم للمراجعة بين العمليات والموارد البشرية والمالية، ولا يرسل للعميل.</div>'+
+ '<div class="cp-ledger-wrap"><div class="cp-ledger-title">تفاصيل الحالات الاستثنائية والتغطيات ومسار المعالجة</div><table class="cp-ledger"><thead><tr>'+
+ '<th>التاريخ</th><th>الحارس</th><th>EMP_ID</th><th>الحالة</th><th>الحالة الاستثنائية</th><th>مسار المعالجة</th><th>جهة المراجعة</th><th>ساعات إضافية</th><th>الحارس البديل</th><th>الكاش</th><th>ملاحظات</th>'+
  '</tr></thead><tbody>'+
  rows.map(function(r){
    const notes=[r.note,r.action_note,r.review_note].filter(Boolean).join(' | ');
@@ -384,11 +384,11 @@ function renderReport(){
  if(m.missing){
   $p('cpNotice').style.display='block';
   $p('cpNotice').textContent=CP.mode==='client'
-   ?'لا يمكن اعتماد نسخة العميل بعد: توجد '+m.missing+' خانات تحضير يومية غير مسجلة (موظف × يوم)، موزعة على '+m.missing_guards+' حارس و'+m.missing_dates+' تواريخ.'
-   :'مسودة داخلية: توجد '+m.missing+' خانات تحضير يومية غير مسجلة. يمكن طباعتها للمراجعة الداخلية، ولا تعتمد كنسخة عميل.';
+   ?'لا يمكن اعتماد نسخة العميل بعد: توجد '+m.missing+' خانات حضور يومية غير مسجلة (موظف × يوم)، موزعة على '+m.missing_guards+' حارس و'+m.missing_dates+' تواريخ.'
+   :'مسودة داخلية: توجد '+m.missing+' خانات حضور يومية غير مسجلة. يمكن طباعتها للمراجعة الداخلية، ولا تعتمد كنسخة عميل.';
  }else{$p('cpNotice').style.display='none';$p('cpNotice').textContent=''}
  $p('cpPrint').disabled=CP.mode==='client'&&m.missing>0;
- CP.filename='أركانات - '+(CP.mode==='internal'?'تايم شيت داخلي':'كشف حضور العميل')+' - '+safeName(CP.site.project_name||CP.site.site_name||CP.site.client_name)+' - '+safeName(c.region||'')+' - '+safeName(monthName(c.period));
+ CP.filename='أركانات - '+(CP.mode==='internal'?'تايم شيت داخلي':'كشف حضور حراس الأمن')+' - '+safeName(CP.site.project_name||CP.site.site_name||CP.site.client_name)+' - '+safeName(c.region||'')+' - '+safeName(monthName(c.period));
 }
 
 function printReport(){
@@ -414,7 +414,7 @@ async function openClientPrint(){
    CP.periods=p.periods||[];
    if(!CP.periods.length){
      $p('cpPeriod').innerHTML='<option value="">لا توجد دورات محفوظة</option>';
-     $p('cpStage').innerHTML='<div class="cp-empty"><b>لا توجد دورات تحضير محفوظة لهذه المنطقة.</b></div>';
+     $p('cpStage').innerHTML='<div class="cp-empty"><b>لا توجد دورات تايم شيت محفوظة لهذه المنطقة.</b></div>';
      return;
    }
    $p('cpPeriod').innerHTML=CP.periods.map(function(x){return '<option value="'+escp(x.period)+'">'+escp(periodOptionText(x))+'</option>'}).join('');
@@ -427,7 +427,7 @@ async function openClientPrint(){
    await loadPrintPeriod(chosen,prefer);
  }catch(e){
    $p('cpCycle').textContent='تعذر تحميل أرشيف الطباعة';
-   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تحميل دورات التحضير السابقة</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
+   $p('cpStage').innerHTML='<div class="cp-empty"><div><b>تعذر تحميل دورات التايم شيت السابقة</b><div style="margin-top:7px">'+escp(e.message)+'</div></div></div>';
  }
 }
 
