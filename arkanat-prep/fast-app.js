@@ -220,27 +220,62 @@ function caseActionsMarkup(e){
  const s=e.workflow_status||'OPEN',id=esc(e.case_id);
  if(s==='OPEN')return '<div class="caseActions"><button class="caseBtn caseAction" data-case="'+id+'" data-transition="START">بدء المعالجة</button><button class="caseBtn primary caseAction" data-case="'+id+'" data-transition="SUBMIT_REVIEW">تم الإجراء ← للمراجعة</button></div>';
  if(s==='IN_PROGRESS')return '<div class="caseActions"><button class="caseBtn primary caseAction" data-case="'+id+'" data-transition="SUBMIT_REVIEW">تم الإجراء ← للمراجعة</button></div>';
- if(s==='PENDING_REVIEW')return '<div class="caseActions"><button class="caseBtn ok caseAction" data-case="'+id+'" data-transition="CLOSE">اعتماد وإغلاق</button></div>';
+ if(s==='PENDING_REVIEW')return '<div class="caseActions"><button class="caseBtn ok caseAction" data-case="'+id+'" data-transition="CLOSE">اعتماد وإغلاق</button><button class="caseBtn gold caseAction" data-case="'+id+'" data-transition="RETURN">إعادة للتعديل</button></div>';
  if(s==='CLOSED')return '<div class="caseActions"><button class="caseBtn caseAction" data-case="'+id+'" data-transition="REOPEN">إعادة فتح</button></div>';
  return '';
 }
-function caseTransitionTitle(a){return {START:'بدء معالجة الاستثناء',SUBMIT_REVIEW:'تأكيد الإجراء وإرساله للمراجعة',CLOSE:'اعتماد وإغلاق الاستثناء',REOPEN:'إعادة فتح الاستثناء'}[a]||'تحديث الاستثناء'}
-function caseTransitionButton(a){return {START:'بدء المعالجة',SUBMIT_REVIEW:'إرسال للمراجعة',CLOSE:'إغلاق الاستثناء',REOPEN:'إعادة فتح'}[a]||'حفظ'}
+function caseTransitionTitle(a){return {START:'بدء معالجة الاستثناء',SUBMIT_REVIEW:'تأكيد الإجراء وإرساله للمراجعة',RETURN:'إعادة الحالة للتعديل',CLOSE:'اعتماد وإغلاق الاستثناء',REOPEN:'إعادة فتح الاستثناء'}[a]||'تحديث الاستثناء'}
+function caseTransitionButton(a){return {START:'بدء المعالجة',SUBMIT_REVIEW:'إرسال للمراجعة',RETURN:'إعادة للتعديل',CLOSE:'إغلاق الاستثناء',REOPEN:'إعادة فتح'}[a]||'حفظ'}
+function normalizeExceptionForEdit(row){
+ if(!row?.assignment_id)return null;
+ return Object.assign({},row,{
+   status:row.status||row.status_code||'',
+   shift_code:row.shift_code||'',
+   employee_ref:row.employee_ref||'',
+   replacement_name:row.replacement_name||'',
+   replacement_employee_ref:row.replacement_employee_ref||'',
+   cash_amount:row.cash_amount??null,
+   note:row.note||''
+ });
+}
 function caseTransitionModal(caseId,action){
  const row=[...(S.issues?.action_rows||[]),...(S.issues?.review_rows||[]),...(S.issues?.closed_rows||[]),...(S.siteData?.employees||[])].find(x=>x.case_id===caseId)||{};
  const lane=laneLabel(row.review_lane);
+ const canEdit=action==='SUBMIT_REVIEW'&&!!row.assignment_id;
+ const noteRequired=action==='RETURN';
+ const helper=action==='SUBMIT_REVIEW'
+   ?'<div class="notice" style="margin-top:10px"><b>قبل الإرسال:</b> يمكنك تعديل الحالة أو التفاصيل أولاً، أو الرجوع بدون إرسال. لن تنتقل الحالة للمراجعة إلا بعد الضغط على «إرسال للمراجعة».</div>'
+   :action==='RETURN'
+   ?'<div class="notice" style="margin-top:10px"><b>إعادة للتعديل:</b> ستعود الحالة إلى «قيد المعالجة» ولن تعتبر معتمدة حتى يعاد إرسالها للمراجعة.</div>'
+   :'';
+ const buttons='<button id="caseSave" class="btn primary">'+esc(caseTransitionButton(action))+'</button>'+
+   (canEdit?'<button id="caseEdit" class="btn secondary">تعديل الحالة</button>':'')+
+   '<button id="caseCancel" class="btn ghost">رجوع بدون إرسال</button>';
  modal('<h3>'+esc(caseTransitionTitle(action))+'</h3><div class="sub" style="line-height:1.8">'+
    (row.full_name?'<b>'+esc(row.full_name)+'</b><br>':'')+
    (row.exception_reason||row.exception_label?esc(row.exception_reason||row.exception_label)+'<br>':'')+
-   (action==='SUBMIT_REVIEW'&&lane?'سيتم تحويلها إلى مسار مراجعة: <b>'+esc(lane)+'</b>.':'')+
-  '</div><div class="field" style="margin-top:12px"><label>ملاحظة الإجراء / المراجعة</label><textarea id="caseNote" rows="3" placeholder="اختياري، ويفضل تسجيل ما تم عند وجود أثر على الموارد أو المالية"></textarea></div>'+
-  '<div class="modal-actions"><button id="caseSave" class="btn primary">'+esc(caseTransitionButton(action))+'</button><button id="caseCancel" class="btn ghost">إلغاء</button></div>');
+   (action==='SUBMIT_REVIEW'&&lane?'مسار المراجعة بعد الإرسال: <b>'+esc(lane)+'</b>.':'')+
+   (action==='RETURN'&&lane?'ستعود من مراجعة <b>'+esc(lane)+'</b> إلى موظف العمليات للتعديل.':'')+
+  '</div>'+helper+
+  '<div class="field" style="margin-top:12px"><label>ملاحظة الإجراء / المراجعة'+(noteRequired?' *':'')+'</label><textarea id="caseNote" rows="3" placeholder="'+(noteRequired?'اكتب سبب الإعادة للتعديل':'اختياري، ويفضل تسجيل ما تم عند وجود أثر على الموارد أو المالية')+'"></textarea></div>'+
+  '<div class="modal-actions">'+buttons+'</div>');
  $('caseCancel').onclick=closeModal;
+ if(canEdit)$('caseEdit').onclick=()=>{
+   const editable=normalizeExceptionForEdit(row);
+   closeModal();
+   dayModal(editable,work(),async()=>{
+     if(S.site){await openSite(S.site);refreshDay(false)}
+     else if(S.tab==='gaps'){await gaps()}
+     else{await refreshDay(true)}
+   });
+ };
  $('caseSave').onclick=async()=>{
+   const note=$('caseNote').value.trim();
+   if(noteRequired&&!note)return toast('اكتب سبب إعادة الحالة للتعديل',true);
    const b=$('caseSave');b.disabled=true;
    try{
-     await fast('exceptionTransition',{case_id:caseId,transition:action,note:$('caseNote').value.trim()||null},10000);
-     closeModal();toast('تم تحديث الاستثناء');
+     await fast('exceptionTransition',{case_id:caseId,transition:action,note:note||null},10000);
+     closeModal();toast(action==='RETURN'?'تمت إعادة الحالة للتعديل':'تم تحديث الاستثناء');
      if(S.site){await openSite(S.site);refreshDay(false)}
      else if(S.tab==='gaps'){await gaps()}
      else{await refreshDay(true)}
