@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,opsReadiness:null,identityTriage:null,triageCategory:'OPS_ACTION',seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,opsReadiness:null,sourceIntegrity:null,identityTriage:null,triageCategory:'OPS_ACTION',seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -133,7 +133,7 @@ function normalizeWorkDate(){
  return false;
 }
 async function bootstrap(){
- if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;S.opsReadiness=null;S.identityTriage=null;
+ if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;S.opsReadiness=null;S.sourceIntegrity=null;S.identityTriage=null;
  const cached=readCache();
  if(cached){S.ctx=cached.ctx;S.day=cached.day;$('workDate').value=cached.date||work();applyCtx();render();$('saveState').textContent='عرض سريع · جاري التحقق من آخر البيانات...'}
  else{S.ctx=null;S.day=null;loading();$('saveState').textContent='جاري تحميل البيانات...'}
@@ -429,16 +429,17 @@ function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
-   const [issues,recon,multiRecon,timeConflicts,readiness,opsReadiness,identityTriage]=await Promise.all([
+   const [issues,recon,multiRecon,timeConflicts,readiness,opsReadiness,sourceIntegrity,identityTriage]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
      fast('reconciliationQueue',{period:period(),limit:20},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
      fast('readiness',{period:period()},10000),
      fast('operationsReadiness',{period:period()},10000),
+     fast('sourceIntegrity',{period:period()},10000),
      fast('identityTriage',{period:period(),category:'OPS_ACTION',limit:40},12000)
    ]);
-   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.opsReadiness=opsReadiness;S.identityTriage=identityTriage;S.triageCategory='OPS_ACTION';drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.opsReadiness=opsReadiness;S.sourceIntegrity=sourceIntegrity;S.identityTriage=identityTriage;S.triageCategory='OPS_ACTION';drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -616,7 +617,26 @@ function drawGaps(){
    (opsHandoffStale?'<div class="notice" style="margin-top:8px"><b>تغيرت بيانات تشغيلية بعد آخر تسليم.</b> يلزم إعادة اعتماد العمليات بعد مراجعة الحالات الحالية.</div>':'')+
    (Number(ord.hr_link_pending||0)?'<div class="sub" style="margin-top:7px">يوجد '+Number(ord.hr_link_pending||0)+' حالة ربط موظف في مسار الموارد البشرية؛ لا تدخل ضمن مسؤولية الإقفال التشغيلي لموظفة العمليات.</div>':'')+
  '</div>';
-  const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
+  const si=S.sourceIntegrity||{},sis=si.summary||{},siFiles=si.files||[];
+ const sourceMismatch=Number(sis.count_mismatch_files||0);
+ const sourceFilesMarkup=siFiles.map(f=>{
+   const ok=!!f.rows_reconciled&&!!f.days_reconciled;
+   const dt=f.source_updated_at?new Date(f.source_updated_at).toLocaleString('ar-SA',{timeZone:'Asia/Riyadh'}):'—';
+   return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(f.source_file_name||'مصدر التحضير')+'</b><div class="sub">'+esc(f.source_sheet||'')+' · آخر مزامنة '+esc(dt)+'</div></div><span class="guardStatus '+(ok?'ok':'bad')+'">'+(ok?'متطابق':'فرق تحميل')+'</span></div>'+
+     '<div class="caseMeta"><span class="caseTag">الصفوف '+Number(f.actual_rows||0)+'/'+Number(f.expected_rows||0)+'</span><span class="caseTag">الأيام '+Number(f.actual_days||0)+'/'+Number(f.expected_days||0)+'</span>'+
+     (Number(f.pending_hr_rows||0)?'<span class="caseTag">HR '+Number(f.pending_hr_rows||0)+'</span>':'')+
+     (Number(f.pending_masterdata_rows||0)?'<span class="caseTag">Master Data '+Number(f.pending_masterdata_rows||0)+'</span>':'')+
+     (Number(f.unmatched_rows||0)?'<span class="caseTag">غير مربوط '+Number(f.unmatched_rows||0)+'</span>':'')+
+     '</div></div>';
+ }).join('');
+ const sourceIntegrityCard='<details class="card '+(sourceMismatch?'attention critical':'complete')+'" style="margin-bottom:10px">'+
+   '<summary class="sectionHead" style="cursor:pointer"><div><h3>سلامة مصادر التحضير</h3><div class="sub">فحص آلي يثبت أن جميع صفوف وأيام ملفات التحضير المحملة مطابقة للنسخة التشغيلية داخل النظام.</div></div><div class="pill '+(sourceMismatch?'bad':'ok')+'">'+(sourceMismatch?sourceMismatch+' ملف يحتاج مزامنة':'المصادر متطابقة')+'</div></summary>'+
+   '<div style="padding-top:4px"><div class="caseMeta"><span class="caseTag">الملفات: '+Number(sis.files||0)+'</span><span class="caseTag">الصفوف: '+Number(sis.rows_actual||0)+'/'+Number(sis.rows_expected||0)+'</span><span class="caseTag">الأيام: '+Number(sis.days_actual||0)+'/'+Number(sis.days_expected||0)+'</span>'+
+     (Number(sis.pending_hr_rows||0)?'<span class="caseTag">مراجعة HR: '+Number(sis.pending_hr_rows||0)+'</span>':'')+
+     (Number(sis.pending_masterdata_rows||0)?'<span class="caseTag">Master Data: '+Number(sis.pending_masterdata_rows||0)+'</span>':'')+
+     (Number(sis.unmatched_rows||0)?'<span class="caseTag">غير مربوط: '+Number(sis.unmatched_rows||0)+'</span>':'')+
+   '</div><div class="gapItems" style="margin-top:9px">'+(sourceFilesMarkup||'<div class="gapItem">لا توجد مصادر تحضير حالية لهذه المنطقة.</div>')+'</div></div></details>';
+ const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
  const sourceGap=Number(rd.reference_roster_without_source||0);
  const dataLaneCount=Number(rd.data_blockers||0)+Number(mqs.data_review||0)+Number(tqs.data_review||0)+sourceGap;
  const readinessCard='<details class="card '+(blocked?'attention':'complete')+'" style="margin-bottom:10px">'+
@@ -640,7 +660,7 @@ function drawGaps(){
     sec('بانتظار المراجعة','إجازات واستئذانات وتغطيات وأحداث تم تسجيلها وتحتاج اعتماد المسار المختص.',c.needs_review,review,'warn')+
   '</div>'+
   '<div class="sectionHead" style="margin-top:16px"><div><h2>تهيئة وإقفال الدورة</h2><div class="sub">تظهر هنا فقط مشكلات البيانات والورديات التي تمنع الإقفال أو تحتاج قراراً. لا يعاد إدخال التحضير الصحيح.</div></div></div>'+
-  opsCard+readinessCard+triageCard+timeCard+multiCard+reconCard+
+  opsCard+sourceIntegrityCard+readinessCard+triageCard+timeCard+multiCard+reconCard+
   '<div class="gapList" style="margin-top:10px">'+
     sec('مشكلات البيانات اليومية','هوية حارس أو موقع غير محسوم، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
