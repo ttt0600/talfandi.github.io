@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -426,11 +426,12 @@ function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
-   const [issues,recon]=await Promise.all([
+   const [issues,recon,multiRecon]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
-     fast('reconciliationQueue',{period:period(),limit:120},12000)
+     fast('reconciliationQueue',{period:period(),limit:120},12000),
+     fast('multiAssignmentQueue',{period:period(),limit:60},12000)
    ]);
-   S.issues=issues;S.recon=recon;drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -466,9 +467,25 @@ function drawGaps(){
    '</div>'+
    ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
    '<div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></div>';
+ const mq=S.multiRecon||{},mqs=mq.summary||{},mGroups=mq.groups||[];
+ const patternLabel=p=>({MULTI_SHIFT_SAME_DAY:'وردية ثانية في اليوم نفسه',DUPLICATE_OR_COVERAGE:'تكرار أو تغطية محتملة'}[p]||p||'مراجعة');
+ const multiItems=mGroups.map(g=>{
+   const rows=(g.rows||[]).map(r=>{
+     const sg=r.shift_suggestion||{};
+     const tm=sg.ok?sg.start_time+'–'+sg.end_time:(r.shift_text||'الوقت غير محدد');
+     return 'صف '+esc(r.source_row)+' · '+esc(tm)+(r.notes?' · '+esc(r.notes):'');
+   }).join('<br>');
+   return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(g.guard_name||'')+'</b><div class="sub">'+esc(g.raw_site||'')+' · '+esc(patternLabel(g.review_pattern))+'</div></div><span class="guardStatus '+(g.review_pattern==='MULTI_SHIFT_SAME_DAY'?'bad':'warn')+'">'+Number(g.same_date_multi_work||0)+' يوم</span></div>'+
+     '<div class="sub" style="margin-top:6px">'+rows+'</div>'+
+     '<div class="caseActions"><button class="caseBtn primary multiReconOpen" data-group="'+esc(g.group_key)+'">معالجة الورديات / التغطية</button></div></div>';
+ }).join('');
+ const multiCard='<div class="card gapCard '+(Number(mqs.total||0)?'attention':'complete')+'" style="margin-top:10px">'+
+   '<div class="sectionHead"><div><h3>الورديات المتعددة والتغطيات المحتملة</h3><div class="sub">الحالات التي ظهر فيها الموظف أكثر من مرة في الموقع نفسه. لا تعتبر خطأ تلقائياً؛ يلزم تحديد وردية إضافية أو تغطية أو تكرار.</div></div><div class="pill '+(Number(mqs.total||0)?'warn':'ok')+'">'+Number(mqs.total||0)+'</div></div>'+
+   '<div class="caseMeta"><span class="caseTag">ورديات متعددة: '+Number(mqs.multi_shift_same_day||0)+'</span><span class="caseTag">تكرار/تغطية محتملة: '+Number(mqs.duplicate_or_coverage||0)+'</span></div>'+
+   '<div class="gapItems" style="margin-top:9px">'+(multiItems||'<div class="gapItem">لا توجد مجموعات معلقة لهذه المنطقة.</div>')+'</div></div>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
-  reconCard+
+  reconCard+multiCard+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList" style="margin-top:10px">'+
     sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
@@ -476,7 +493,7 @@ function drawGaps(){
     sec('مشكلات البيانات اليومية','رقم وظيفي أو موقع غير مربوط، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
- wireCaseActions();wireReconActions();
+ wireCaseActions();wireReconActions();wireMultiReconActions();
 }
 
 
@@ -565,6 +582,88 @@ function reconciliationModal(r){
  $('rqSave').onclick=()=>submitResolution();
  $('rqHR').onclick=()=>submitResolution('SEND_HR');
  $('rqMDM').onclick=()=>submitResolution('SEND_MASTERDATA');
+}
+
+
+function wireMultiReconActions(){
+ document.querySelectorAll('.multiReconOpen').forEach(b=>b.onclick=()=>{
+   const g=(S.multiRecon?.groups||[]).find(x=>x.group_key===b.dataset.group);
+   if(g)multiAssignmentModal(g);
+ });
+}
+
+function shiftDurationHours(start,end){
+ if(!start||!end)return null;
+ const a=start.split(':').map(Number),b=end.split(':').map(Number);
+ if(a.length<2||b.length<2)return null;
+ let x=a[0]*60+a[1],y=b[0]*60+b[1];if(y<=x)y+=1440;
+ return (y-x)/60;
+}
+
+function multiAssignmentModal(g){
+ const rows=g.rows||[];
+ const rowCards=rows.map((r,i)=>{
+   const sg=r.shift_suggestion||{};
+   let start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
+   const dur=shiftDurationHours(start,end);
+   const suspicious=dur!==null&&dur>16;
+   if(suspicious){start='';end=''}
+   const sourceTime=r.shift_text||'غير محدد';
+   return '<div class="card" style="padding:11px;margin-top:8px">'+
+     '<div class="guardMain"><div><b>صف '+esc(r.source_row)+'</b><div class="sub">'+esc(sourceTime)+(r.notes?' · '+esc(r.notes):'')+'</div></div><span class="pill">'+Number(r.working_dates||0)+' يوم عمل</span></div>'+
+     (suspicious?'<div class="notice" style="margin:7px 0"><b>يحتاج تصحيحاً:</b> قراءة الوقت من المصدر تنتج مدة '+dur.toFixed(1)+' ساعة؛ لم يتم اعتمادها تلقائياً.</div>':'')+
+     '<div class="grid2" style="margin-top:8px"><div class="field"><label>بداية الوردية</label><input class="maStart" data-row="'+esc(r.legacy_row_id)+'" type="time" value="'+esc(start)+'"></div>'+
+     '<div class="field"><label>نهاية الوردية</label><input class="maEnd" data-row="'+esc(r.legacy_row_id)+'" type="time" value="'+esc(end)+'"></div></div>'+
+   '</div>';
+ }).join('');
+ let rowOptions=rows.map(r=>'<option value="'+esc(r.legacy_row_id)+'">صف '+esc(r.source_row)+' — '+esc(r.shift_text||r.notes||'بدون وصف')+'</option>').join('');
+ modal(
+  '<h3>معالجة الورديات / التغطية</h3>'+
+  '<div class="notice"><b>'+esc(g.guard_name||'')+'</b> — '+esc(g.raw_site||'')+'<br>المصدر: '+esc(g.source_file_name||'')+'<br>ظهر الموظف في أكثر من صف. النظام لن يدمج الصفوف تلقائياً حتى يتم تحديد معناها التشغيلي.</div>'+
+  '<div class="field"><label>ما معنى ظهور الصفوف المتعددة؟</label><select id="maType"><option value="INDEPENDENT_SHIFTS">ورديات مستقلة صحيحة</option><option value="COVERAGE">أحد الصفوف تغطية</option><option value="DUPLICATE">صف مكرر بالخطأ</option></select></div>'+
+  '<div id="maCoverageBox" class="field hidden" style="margin-top:9px"><label>أي صف يمثل التغطية؟</label><select id="maCoverageRow">'+rowOptions+'</select></div>'+
+  '<div id="maKeepBox" class="field hidden" style="margin-top:9px"><label>أي صف هو السجل الصحيح الذي سيبقى؟</label><select id="maKeepRow">'+rowOptions+'</select></div>'+
+  '<div id="maTimeRows">'+rowCards+'</div>'+
+  '<div id="maRule" class="notice" style="margin-top:10px">سيتم فصل كل صف إلى وردية زمنية مستقلة. يمنع الحفظ إذا تداخلت الفترات فعلياً في نفس التاريخ.</div>'+
+  '<div class="modal-actions"><button id="maSave" class="btn primary">اعتماد المعالجة</button><button id="maCancel" class="btn ghost">إلغاء</button></div>'
+ );
+ const sync=()=>{
+   const t=$('maType').value;
+   $('maCoverageBox').classList.toggle('hidden',t!=='COVERAGE');
+   $('maKeepBox').classList.toggle('hidden',t!=='DUPLICATE');
+   $('maTimeRows').classList.toggle('hidden',t==='DUPLICATE');
+   $('maRule').textContent=t==='DUPLICATE'
+     ?'اختاري الصف الصحيح فقط. ستستبعد الصفوف الأخرى كتكرار مع الاحتفاظ بأثر المصدر والمراجعة.'
+     :t==='COVERAGE'
+       ?'حددي صف التغطية وأوقات كل وردية. التغطية ستبقى مفتوحة حتى تحديد الحارس/الوردية المغطاة إذا لم تكن موجودة في المصدر.'
+       :'سيتم فصل الصفوف إلى ورديات مستقلة. نهاية وردية عند نفس لحظة بداية الوردية التالية لا تعد تداخلاً.';
+ };
+ $('maType').onchange=sync;sync();$('maCancel').onclick=closeModal;
+ $('maSave').onclick=async()=>{
+   const type=$('maType').value;
+   const payload={
+     group_key:g.group_key,
+     resolution_type:type,
+     keep_legacy_row_id:type==='DUPLICATE'?$('maKeepRow').value:null,
+     coverage_legacy_row_id:type==='COVERAGE'?$('maCoverageRow').value:null,
+     row_times:[]
+   };
+   if(type!=='DUPLICATE'){
+     let bad=false;
+     rows.forEach(r=>{
+       const st=document.querySelector('.maStart[data-row="'+r.legacy_row_id+'"]')?.value||'';
+       const en=document.querySelector('.maEnd[data-row="'+r.legacy_row_id+'"]')?.value||'';
+       if(!st||!en)bad=true;
+       payload.row_times.push({legacy_row_id:r.legacy_row_id,start_time:st,end_time:en});
+     });
+     if(bad)return toast('حددي بداية ونهاية الوردية لكل صف قبل الاعتماد.',true);
+   }
+   const b=$('maSave');b.disabled=true;
+   try{
+     const d=await fast('resolveMultiAssignment',{payload},18000);
+     closeModal();await gaps();toast(d.message||'تم اعتماد معالجة الورديات')
+   }catch(e){toast(e.message,true);b.disabled=false}
+ };
 }
 
 
