@@ -542,21 +542,32 @@ function drawGaps(){
    ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
    '<details style="margin-top:9px"><summary class="caseBtn">عرض الصفوف الفنية المحملة</summary><div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></details></div></details>';
  const mq=S.multiRecon||{},mqs=mq.summary||{},mGroups=mq.groups||[];
+ const mOps=mGroups.filter(g=>g.owner_lane!=='DATA_REVIEW'),mData=mGroups.filter(g=>g.owner_lane==='DATA_REVIEW');
  const patternLabel=p=>({MULTI_SHIFT_SAME_DAY:'وردية ثانية في اليوم نفسه',DUPLICATE_OR_COVERAGE:'تكرار أو تغطية محتملة'}[p]||p||'مراجعة');
- const multiItems=mGroups.map(g=>{
+ const suggestionLabel=s=>({INDEPENDENT_SHIFTS:'مرشح: ورديات مستقلة',COVERAGE:'مرشح: تغطية',COVERAGE_REVIEW:'مرشح: تغطية',DUPLICATE_REVIEW:'مرشح: صف مكرر',DATA_REVIEW:'مسار بيانات'}[s]||'');
+ const multiItems=mOps.map(g=>{
    const rows=(g.rows||[]).map(r=>{
      const sg=r.shift_suggestion||{};
      const tm=sg.ok?sg.start_time+'–'+sg.end_time:(r.shift_text||'الوقت غير محدد');
      return 'صف '+esc(r.source_row)+' · '+esc(tm)+(r.notes?' · '+esc(r.notes):'');
    }).join('<br>');
+   const sugg=suggestionLabel(g.suggested_resolution);
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(g.guard_name||'')+'</b><div class="sub">'+esc(g.raw_site||'')+' · '+esc(patternLabel(g.review_pattern))+'</div></div><span class="guardStatus '+(g.review_pattern==='MULTI_SHIFT_SAME_DAY'?'bad':'warn')+'">'+Number(g.same_date_multi_work||0)+' يوم</span></div>'+
+     (sugg?'<div class="notice" style="margin:7px 0"><b>'+esc(sugg)+'</b><br>'+esc(g.suggestion_reason||'')+'</div>':'')+
      '<div class="sub" style="margin-top:6px">'+rows+'</div>'+
-     '<div class="caseActions"><button class="caseBtn primary multiReconOpen" data-group="'+esc(g.group_key)+'">معالجة الورديات / التغطية</button></div></div>';
+     '<div class="caseActions"><button class="caseBtn primary multiReconOpen" data-group="'+esc(g.group_key)+'">اعتماد معنى الصفوف</button></div></div>';
  }).join('');
- const multiCard='<div class="card gapCard '+(Number(mqs.total||0)?'attention':'complete')+'" style="margin-top:10px">'+
-   '<div class="sectionHead"><div><h3>الورديات المتعددة والتغطيات المحتملة</h3><div class="sub">الحالات التي ظهر فيها الموظف أكثر من مرة في الموقع نفسه. لا تعتبر خطأ تلقائياً؛ يلزم تحديد وردية إضافية أو تغطية أو تكرار.</div></div><div class="pill '+(Number(mqs.total||0)?'warn':'ok')+'">'+Number(mqs.total||0)+'</div></div>'+
-   '<div class="caseMeta"><span class="caseTag">ورديات متعددة: '+Number(mqs.multi_shift_same_day||0)+'</span><span class="caseTag">تكرار/تغطية محتملة: '+Number(mqs.duplicate_or_coverage||0)+'</span></div>'+
-   '<div class="gapItems" style="margin-top:9px">'+(multiItems||'<div class="gapItem">لا توجد مجموعات معلقة لهذه المنطقة.</div>')+'</div></div>';
+ const dataItems=mData.map(g=>'<div class="gapItem"><b>'+esc(g.guard_name||'')+'</b><div class="sub">'+esc(g.raw_site||'')+'</div><div class="notice" style="margin:7px 0"><b>مسار بيانات / موارد بشرية</b><br>'+esc(g.suggestion_reason||'توجد مشكلة ربط بيانات تمنع اعتبارها قرار ورديات تشغيلياً.')+'</div></div>').join('');
+ const multiCard='<div class="card gapCard '+(Number(mqs.operations_action||0)?'attention':'complete')+'" style="margin-top:10px">'+
+   '<div class="sectionHead"><div><h3>الورديات المتعددة والتغطيات المحتملة</h3><div class="sub">تعرض القائمة المفتوحة ما يحتاج قراراً من العمليات فقط. تعارضات الهوية أو الموقع تُفصل لمسار البيانات.</div></div><div class="pill '+(Number(mqs.operations_action||0)?'warn':'ok')+'">'+Number(mqs.operations_action||0)+' عليك</div></div>'+
+   '<div class="caseMeta"><span class="caseTag">ورديات متعددة: '+Number(mqs.multi_shift_same_day||0)+'</span><span class="caseTag">تكرار/تغطية محتملة: '+Number(mqs.duplicate_or_coverage||0)+'</span>'+
+     (Number(mqs.suggested_independent_shifts||0)?'<span class="caseTag">مرشح ورديات مستقلة: '+Number(mqs.suggested_independent_shifts||0)+'</span>':'')+
+     (Number(mqs.suggested_coverage||0)?'<span class="caseTag">مرشح تغطية: '+Number(mqs.suggested_coverage||0)+'</span>':'')+
+     (Number(mqs.suggested_duplicate||0)?'<span class="caseTag">مرشح تكرار: '+Number(mqs.suggested_duplicate||0)+'</span>':'')+
+   '</div>'+
+   '<div class="gapItems" style="margin-top:9px">'+(multiItems||'<div class="gapItem">لا توجد قرارات ورديات معلقة على العمليات.</div>')+'</div>'+
+   (Number(mqs.data_review||0)?'<details style="margin-top:9px"><summary class="caseBtn">حالات مسار البيانات '+Number(mqs.data_review||0)+'</summary><div class="gapItems" style="margin-top:9px">'+dataItems+'</div></details>':'')+
+   '</div>';
  const tq=S.timeConflicts||{},tqs=tq.summary||{},tGroups=tq.groups||[];
  const fmtTime=v=>v?String(v).slice(0,5):'—';
  const timeItems=tGroups.map(g=>{
@@ -849,6 +860,8 @@ function shiftDurationHours(start,end){
 
 function multiAssignmentModal(g){
  const rows=g.rows||[];
+ const suggested=g.suggested_resolution||'NEEDS_REVIEW';
+ const suggestedLabel=({INDEPENDENT_SHIFTS:'ورديات مستقلة',COVERAGE:'تغطية',COVERAGE_REVIEW:'تغطية محتملة',DUPLICATE_REVIEW:'صف مكرر محتمل'}[suggested]||'مراجعة يدوية');
  const rowCards=rows.map((r,i)=>{
    const sg=r.shift_suggestion||{};
    let start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
@@ -867,6 +880,7 @@ function multiAssignmentModal(g){
  modal(
   '<h3>معالجة الورديات / التغطية</h3>'+
   '<div class="notice"><b>'+esc(g.guard_name||'')+'</b> — '+esc(g.raw_site||'')+'<br>المصدر: '+esc(g.source_file_name||'')+'<br>ظهر الموظف في أكثر من صف. النظام لن يدمج الصفوف تلقائياً حتى يتم تحديد معناها التشغيلي.</div>'+
+  (suggested!=='NEEDS_REVIEW'?'<div class="notice"><b>اقتراح النظام: '+esc(suggestedLabel)+'</b><br>'+esc(g.suggestion_reason||'')+'<br>الاقتراح لا يعتمد تلقائياً؛ القرار النهائي لك.</div>':'')+
   '<div class="field"><label>ما معنى ظهور الصفوف المتعددة؟</label><select id="maType"><option value="INDEPENDENT_SHIFTS">ورديات مستقلة صحيحة</option><option value="COVERAGE">أحد الصفوف تغطية</option><option value="DUPLICATE">صف مكرر بالخطأ</option></select></div>'+
   '<div id="maCoverageBox" class="field hidden" style="margin-top:9px"><label>أي صف يمثل التغطية؟</label><select id="maCoverageRow">'+rowOptions+'</select></div>'+
   '<div id="maKeepBox" class="field hidden" style="margin-top:9px"><label>أي صف هو السجل الصحيح الذي سيبقى؟</label><select id="maKeepRow">'+rowOptions+'</select></div>'+
@@ -874,6 +888,16 @@ function multiAssignmentModal(g){
   '<div id="maRule" class="notice" style="margin-top:10px">سيتم فصل كل صف إلى وردية زمنية مستقلة. يمنع الحفظ إذا تداخلت الفترات فعلياً في نفس التاريخ.</div>'+
   '<div class="modal-actions"><button id="maSave" class="btn primary">اعتماد المعالجة</button><button id="maCancel" class="btn ghost">إلغاء</button></div>'
  );
+ if(suggested==='INDEPENDENT_SHIFTS')$('maType').value='INDEPENDENT_SHIFTS';
+ else if(suggested==='COVERAGE'||suggested==='COVERAGE_REVIEW'){
+   $('maType').value='COVERAGE';
+   const shortest=rows.slice().sort((a,b)=>Number(a.working_dates||0)-Number(b.working_dates||0))[0];
+   if(shortest&&$('maCoverageRow'))$('maCoverageRow').value=shortest.legacy_row_id;
+ }else if(suggested==='DUPLICATE_REVIEW'){
+   $('maType').value='DUPLICATE';
+   const longest=rows.slice().sort((a,b)=>Number(b.working_dates||0)-Number(a.working_dates||0))[0];
+   if(longest&&$('maKeepRow'))$('maKeepRow').value=longest.legacy_row_id;
+ }
  const sync=()=>{
    const t=$('maType').value;
    $('maCoverageBox').classList.toggle('hidden',t!=='COVERAGE');
