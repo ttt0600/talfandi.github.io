@@ -483,11 +483,14 @@ function drawGaps(){
    const shortReview=r.short_duration_review
      ?'<div class="notice" style="margin-top:6px"><b>فترة عمل قصيرة وبيانات ناقصة:</b> لا يفترض النظام أنها كاش. حددي الواقع التشغيلي: موظف، تغطية كاش، أو إحالة للموارد البشرية.</div>'
      :'';
-   const cashBtn=r.triage_category==='CASH_EXPLICIT'
+   const strongConfirm=r.strong_employee_suggestion&&r.suggested_employee_ref
+     ?'<button class="caseBtn ok triageConfirmEmployee" data-row="'+esc(r.representative_legacy_row_id)+'" data-ref="'+esc(r.suggested_employee_ref)+'" data-name="'+esc(r.suggested_employee_name||'')+'" data-site="'+esc(r.site_code||'')+'">تأكيد '+esc(r.suggested_employee_name||'الموظف')+'</button>'
+     :'';
+   const cashBtn=strongConfirm+(r.triage_category==='CASH_EXPLICIT'
      ?'<button class="caseBtn primary triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تأكيد كاش</button><button class="caseBtn triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ليس كاش / ربط بموظف</button>'
      :r.triage_category==='COVERAGE_RELIEF'
        ?'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط كموظف بديل</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تغطية كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>'
-       :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>';
+       :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>');
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.full_name||'')+'</b><div class="sub">'+esc(r.site_name||'بدون موقع')+' · '+esc(triageLabel(r.triage_category))+'</div></div><span class="pill">'+Number(r.source_rows_count||1)+' صف</span></div>'+
      '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+strongEmp+shortReview+
      '<div class="caseMeta">'+id4+shift+workDays+'</div>'+
@@ -498,6 +501,8 @@ function drawGaps(){
    '<div class="caseActions" style="margin-top:8px">'+
      '<button class="caseBtn triageFilter '+(triageCat==='ALL'?'primary':'')+'" data-cat="ALL">الأولوية الآن</button>'+
      '<button class="caseBtn triageFilter '+(triageCat==='WORKER_LINK'?'primary':'')+'" data-cat="WORKER_LINK">ربط موظف '+Number(its.worker_link||0)+'</button>'+
+     (Number(its.strong_employee_suggestions||0)?'<button class="caseBtn triageFilter '+(triageCat==='STRONG_EMPLOYEE'?'primary':'')+'" data-cat="STRONG_EMPLOYEE">مرشح موظف قوي '+Number(its.strong_employee_suggestions||0)+'</button>':'')+
+     (Number(its.short_duration_review||0)?'<button class="caseBtn triageFilter '+(triageCat==='SHORT_REVIEW'?'primary':'')+'" data-cat="SHORT_REVIEW">فترات قصيرة '+Number(its.short_duration_review||0)+'</button>':'')+
      '<button class="caseBtn triageFilter '+(triageCat==='COVERAGE_RELIEF'?'primary':'')+'" data-cat="COVERAGE_RELIEF">بدلاء / تغطيات '+Number(its.coverage_relief||0)+'</button>'+
      '<button class="caseBtn triageFilter '+(triageCat==='CASH_EXPLICIT'?'primary':'')+'" data-cat="CASH_EXPLICIT">كاش صريح '+Number(its.cash_explicit||0)+'</button>'+
    '</div>'+
@@ -603,6 +608,21 @@ function wireIdentityTriageActions(){
  document.querySelectorAll('.triageFilter').forEach(b=>b.onclick=()=>loadIdentityTriage(b.dataset.cat||'ALL'));
  document.querySelectorAll('.triageOpen').forEach(b=>b.onclick=()=>openTriageResolution(b.dataset.row,'default'));
  document.querySelectorAll('.triageCash').forEach(b=>b.onclick=()=>openTriageResolution(b.dataset.row,'cash'));
+ document.querySelectorAll('.triageConfirmEmployee').forEach(b=>b.onclick=async()=>{
+   const rowId=b.dataset.row,employeeRef=b.dataset.ref,employeeName=b.dataset.name,siteCode=b.dataset.site;
+   if(!rowId||!employeeRef)return;
+   if(!await confirmUI('تأكيد ربط الحارس','سيتم ربط بيانات التحضير بالموظف <b>'+esc(employeeName)+'</b> ('+esc(employeeRef)+'). لا يتم هذا الربط تلقائياً؛ هذا تأكيد منك على أن الشخص هو نفسه.','تأكيد الربط'))return;
+   try{
+     const d=await fast('resolveReconciliation',{payload:{
+       legacy_row_id:rowId,
+       issue_code:'ASSIGNMENT_IDENTITY_GAP',
+       resolution_type:'LINK_PRIMARY',
+       employee_ref:employeeRef,
+       site_code:siteCode||null
+     }},12000);
+     toast(d.message||'تم ربط الحارس');await gaps();
+   }catch(e){toast(e.message,true)}
+ });
  document.querySelectorAll('.triageHR').forEach(b=>b.onclick=async()=>{
    const rowId=b.dataset.row;if(!rowId)return;
    if(!await confirmUI('إحالة الحالة للموارد البشرية','سيتم اعتبار قرار العمليات مكتملًا من ناحية نوع الحالة، وتنتقل مهمة ربط الموظف للموارد البشرية. ستبقى الحالة مانعاً للإقفال حتى اعتماد الربط.','إحالة للموارد البشرية'))return;
