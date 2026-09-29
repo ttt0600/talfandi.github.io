@@ -476,13 +476,16 @@ function drawGaps(){
  const triageItems=itRows.slice(0,20).map(r=>{
    const id4=r.source_identity_last4?'<span class="caseTag">هوية **'+esc(r.source_identity_last4)+'</span>':'';
    const shift=(r.shift_start_time&&r.shift_end_time)?'<span class="caseTag">وردية '+esc(String(r.shift_start_time).slice(0,5))+'–'+esc(String(r.shift_end_time).slice(0,5))+'</span>':'';
+   const strongEmp=r.strong_employee_suggestion&&r.suggested_employee_ref
+     ?'<div class="notice" style="margin-top:6px"><b>مرشح موظف قوي:</b> '+esc(r.suggested_employee_name||'')+' · '+esc(r.suggested_employee_ref)+' — يحتاج تأكيد فقط.</div>'
+     :'';
    const cashBtn=r.triage_category==='CASH_EXPLICIT'
      ?'<button class="caseBtn primary triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تأكيد كاش</button><button class="caseBtn triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ليس كاش / ربط بموظف</button>'
      :r.triage_category==='COVERAGE_RELIEF'
        ?'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط كموظف بديل</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تغطية كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>'
        :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>';
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.full_name||'')+'</b><div class="sub">'+esc(r.site_name||'بدون موقع')+' · '+esc(triageLabel(r.triage_category))+'</div></div><span class="pill">'+Number(r.source_rows_count||1)+' صف</span></div>'+
-     '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+
+     '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+strongEmp+
      '<div class="caseMeta">'+id4+shift+'</div>'+
      '<div class="caseActions">'+cashBtn+'</div></div>';
  }).join('');
@@ -494,7 +497,11 @@ function drawGaps(){
      '<button class="caseBtn triageFilter '+(triageCat==='COVERAGE_RELIEF'?'primary':'')+'" data-cat="COVERAGE_RELIEF">بدلاء / تغطيات '+Number(its.coverage_relief||0)+'</button>'+
      '<button class="caseBtn triageFilter '+(triageCat==='CASH_EXPLICIT'?'primary':'')+'" data-cat="CASH_EXPLICIT">كاش صريح '+Number(its.cash_explicit||0)+'</button>'+
    '</div>'+
-   ((Number(its.waiting_hr||0)||Number(its.waiting_masterdata||0))?'<div class="caseMeta" style="margin-top:7px"><span class="caseTag">أُحيلت للموارد البشرية: '+Number(its.waiting_hr||0)+'</span><span class="caseTag">بانتظار بيانات المواقع: '+Number(its.waiting_masterdata||0)+'</span></div>':'')+
+   ((Number(its.strong_employee_suggestions||0)||Number(its.waiting_hr||0)||Number(its.waiting_masterdata||0))?'<div class="caseMeta" style="margin-top:7px">'+
+     (Number(its.strong_employee_suggestions||0)?'<span class="caseTag">مرشح موظف قوي: '+Number(its.strong_employee_suggestions||0)+'</span>':'')+
+     (Number(its.waiting_hr||0)?'<span class="caseTag">أُحيلت للموارد البشرية: '+Number(its.waiting_hr||0)+'</span>':'')+
+     (Number(its.waiting_masterdata||0)?'<span class="caseTag">بانتظار بيانات المواقع: '+Number(its.waiting_masterdata||0)+'</span>':'')+
+   '</div>':'')+
    '<div class="notice" style="margin-top:9px">الهدف هنا تهيئة كشف التحضير للعمل اليومي والإقفال، وليس تحويل موظفة العمليات إلى مدخلة بيانات موارد بشرية. إذا لم يكن الحارس موظفاً نظامياً يمكن تصنيفه كتغطية كاش دون اختراع رقم وظيفي.</div>'+
    '<div class="gapItems" style="margin-top:9px">'+(triageItems||'<div class="gapItem">لا توجد حالات في هذا التصنيف.</div>')+'</div>'+
    (itRows.length>20?'<div class="sub" style="margin-top:7px">يظهر أول 20 حالة فقط لتبسيط العمل. استخدمي التصنيفات أعلاه للمتابعة على دفعات.</div>':'')+
