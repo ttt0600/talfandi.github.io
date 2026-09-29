@@ -664,7 +664,8 @@ function reconciliationModal(r,openMode='default'){
   '<div id="rqHint" class="notice" style="margin-top:10px">إذا كان الموظف ظاهراً في ورديتين، اختاري «وردية إضافية» أو «تغطية» حسب الواقع. النظام يمنع التداخل الزمني الفعلي.</div>'+
   '<div class="modal-actions"><button id="rqSave" class="btn primary">اعتماد التصحيح</button><button id="rqHR" class="btn secondary">إحالة للموارد البشرية</button><button id="rqMDM" class="btn gold">إحالة لبيانات المواقع</button><button id="rqCancel" class="btn ghost">إلغاء</button></div>'
  );
- if(Number(r.site_candidate_count||0)===1&&r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
+ if(r.linked_site_code)$('rqSite').value=r.linked_site_code;
+ else if(Number(r.site_candidate_count||0)===1&&r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
  document.querySelectorAll('.rqEmpCandidate').forEach(b=>b.onclick=()=>{$('rqEmpRef').value=b.dataset.ref||'';$('rqEmpName').value=b.dataset.name||''});
  document.querySelectorAll('.rqShiftChip').forEach(b=>b.onclick=()=>{$('rqStart').value=b.dataset.start||'';$('rqEnd').value=b.dataset.end||''});
  if($('rqCashWorker'))$('rqCashWorker').onchange=()=>{
