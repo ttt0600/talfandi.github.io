@@ -206,7 +206,7 @@ function activeOn(a,date){
  const c=cycleContext(),s=cleanDate(a.start_date)||c.start,e=cleanDate(a.end_date)||c.end;
  if(date<s||date>e)return false;
  if(a.assignment_type==='CASH_COVERAGE'){
-   return (a.days||[]).some(function(x){return cleanDate(x.date)===date});
+   return (a.days||[]).some(function(x){return cleanDate(x.date)===date&&x.status==='CASH'});
  }
  return true;
 }
