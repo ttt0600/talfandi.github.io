@@ -205,7 +205,7 @@ async function exceptionLookup(q){
  try{
    const d=await fast('roster',{period:period(),q},8000),rows=(d.rows||[]).slice(0,20);
    if(!rows.length){box.innerHTML='<div class="empty" style="min-height:70px">لا توجد نتيجة مطابقة.</div>';return}
-   box.innerHTML=rows.map(a=>'<div class="person exceptionPick" data-id="'+esc(a.id)+'"><div><div class="name">'+esc(a.full_name)+'</div><div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="pill ok">P</span><button class="btn secondary exceptionEdit" data-id="'+esc(a.id)+'">تغيير الحالة</button></div></div>').join('');
+   box.innerHTML=rows.map(a=>'<div class="person exceptionPick" data-id="'+esc(a.id)+'"><div><div class="name">'+esc(a.full_name)+'</div><div class="meta">'+esc(a.assignment_type==='CASH_COVERAGE'?'حارس تغطية كاش':(a.employee_ref||'بدون رقم وظيفي'))+' · '+esc(a.site_name||'بدون موقع')+'</div></div><div style="display:flex;gap:6px;align-items:center"><span class="pill ok">P</span><button class="btn secondary exceptionEdit" data-id="'+esc(a.id)+'">تغيير الحالة</button></div></div>').join('');
    document.querySelectorAll('.exceptionEdit').forEach(b=>b.onclick=()=>{
      const a=rows.find(x=>String(x.id)===String(b.dataset.id));if(!a)return;
      dayModal({...a,assignment_id:a.id,status:'P'},work(),async()=>{await refreshDay(true);const s=$('exceptionSearch');if(s){s.value='';exceptionLookup('')}})
@@ -216,11 +216,11 @@ async function exceptionLookup(q){
 function sites(){const all=S.day?.sites||[];$('mainView').innerHTML='<div class="sectionHead"><div><h2>المواقع</h2><div class="sub">بحث سريع في اليوم المحدد.</div></div></div><div class="card viewCard"><input id="siteSearch" class="search" placeholder="بحث بالعميل أو المشروع أو الموقع"></div><div id="allSites" class="siteGrid" style="margin-top:10px"></div>';const draw=()=>{const q=$('siteSearch').value.trim().toLowerCase(),a=all.filter(s=>!q||[s.site_name,s.project_name,s.client_name].some(v=>String(v||'').toLowerCase().includes(q)));$('allSites').innerHTML=a.map(siteCard).join('')||'<div class="card empty">لا توجد نتائج</div>';wireSites()};$('siteSearch').oninput=draw;draw()}
 async function openSite(k){if(k==='__MISSING__'){S.tab='gaps';return gaps()}S.site=k;$('mainView').innerHTML='<div class="card empty" style="min-height:160px"><div><span class="loading"></span><div style="margin-top:8px">جاري تحميل الموقع فقط...</div></div></div>';try{S.siteData=await fast('site',{period:period(),date:work(),site_code:k},10000);if(S.site===k)siteDetail()}catch(e){toast(e.message,true);render()}}
 function classifyLocalException(e){
- const st=e.status||'P';
+ const st=e.status||'P',cashGuard=e.assignment_type==='CASH_COVERAGE';
  if(['A','W','R','S'].includes(st)){e.exception_level='action';e.exception_reason=STATUS[st]||st;return e}
- if(['SUB','CASH'].includes(st)&&!String(e.replacement_employee_ref||'').trim()&&!String(e.replacement_name||'').trim()){e.exception_level='action';e.exception_reason='تغطية بدون تحديد المنفذ';return e}
+ if(!cashGuard&&['SUB','CASH'].includes(st)&&!String(e.replacement_employee_ref||'').trim()&&!String(e.replacement_name||'').trim()){e.exception_level='action';e.exception_reason='تغطية بدون تحديد المنفذ';return e}
  if(st==='CASH'&&(e.cash_amount===null||e.cash_amount===undefined||e.cash_amount==='')){e.exception_level='action';e.exception_reason='تغطية كاش بدون مبلغ';return e}
- if(['T','AL','SK','O','OTHER','SUB','CASH'].includes(st)){e.exception_level='review';e.exception_reason=st==='SUB'||st==='CASH'?'تغطية مسجلة تحتاج مراجعة داخلية':STATUS[st]||st;return e}
+ if(['T','AL','SK','O','OTHER','SUB','CASH'].includes(st)){e.exception_level='review';e.exception_reason=st==='CASH'?'تغطية كاش تحتاج مراجعة مالية':st==='SUB'?'تغطية مسجلة تحتاج مراجعة داخلية':STATUS[st]||st;return e}
  e.status='P';e.exception_level='complete';e.exception_reason=null;return e
 }
 
@@ -257,10 +257,12 @@ function normalizeExceptionForEdit(row){
 function caseTransitionModal(caseId,action){
  const row=[...(S.issues?.action_rows||[]),...(S.issues?.review_rows||[]),...(S.issues?.closed_rows||[]),...(S.siteData?.employees||[])].find(x=>x.case_id===caseId)||{};
  const lane=laneLabel(row.review_lane);
- const canEdit=action==='SUBMIT_REVIEW'&&!!row.assignment_id;
+ const canEdit=!!row.assignment_id&&(action==='SUBMIT_REVIEW'||(action==='CLOSE'&&row.review_lane==='FINANCE'&&row.status_code==='CASH'));
  const noteRequired=action==='RETURN';
  const helper=action==='SUBMIT_REVIEW'
    ?'<div class="notice" style="margin-top:10px"><b>قبل الإرسال:</b> يمكنك تعديل الحالة أو التفاصيل أولاً، أو الرجوع بدون إرسال. لن تنتقل الحالة للمراجعة إلا بعد الضغط على «إرسال للمراجعة».</div>'
+   :action==='CLOSE'&&row.review_lane==='FINANCE'&&row.status_code==='CASH'
+   ?'<div class="notice" style="margin-top:10px"><b>المراجعة المالية:</b> تأكدي من مبلغ تغطية الكاش قبل الاعتماد. يمكنك تعديل المبلغ من زر «تعديل الحالة» ثم اعتماد الإغلاق.</div>'
    :action==='RETURN'
    ?'<div class="notice" style="margin-top:10px"><b>إعادة للتعديل:</b> ستعود الحالة إلى «قيد المعالجة» ولن تعتبر معتمدة حتى يعاد إرسالها للمراجعة.</div>'
    :'';
