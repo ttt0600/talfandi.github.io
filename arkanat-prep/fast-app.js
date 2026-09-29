@@ -448,7 +448,7 @@ function drawGaps(){
  };
  const sec=(title,sub,count,rows,cls)=>'<div class="card gapCard '+(cls||'')+'"><div class="sectionHead"><div><h3>'+esc(title)+'</h3><div class="sub">'+esc(sub)+'</div></div><div class="pill '+(cls||'')+'">'+Number(count||0)+'</div></div><div class="gapItems">'+(rows.length?rows.slice(0,50).map(row).join(''):'<div class="gapItem">لا توجد حالات</div>')+(rows.length>50?'<div class="gapItem">+ '+(rows.length-50)+' حالات أخرى</div>':'')+'</div></div>';
  const rq=S.recon||{},rs=rq.summary||{},rr=rq.rows||[],ms=rq.multi_assignment_summary||{};
- const issueLabel=x=>({EMPLOYEE_NOT_FOUND:'الموظف غير مربوط',EMPLOYEE_AMBIGUOUS:'اسم موظف ملتبس',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'الموقع يحتاج تحديداً',MULTI_ROW_REVIEW:'صفوف متعددة تحتاج تصنيفاً'}[x]||x||'مراجعة بيانات');
+ const issueLabel=x=>({EMPLOYEE_NOT_FOUND:'الموظف غير مربوط',EMPLOYEE_AMBIGUOUS:'اسم موظف ملتبس',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'الموقع يحتاج تحديداً',MULTI_ROW_REVIEW:'صفوف متعددة تحتاج تصنيفاً',HR_PENDING:'بانتظار الموارد البشرية',MASTERDATA_PENDING:'بانتظار اعتماد بيانات الموقع'}[x]||x||'مراجعة بيانات');
  const reconItems=rr.map(r=>{
    const suggested=[r.employee_name_candidate,r.site_name_candidate].filter(Boolean).join(' · ');
    const shift=r.shift_suggestion?.ok?(r.shift_suggestion.start_time+'–'+r.shift_suggestion.end_time):'';
@@ -465,6 +465,8 @@ function drawGaps(){
      '<span class="caseTag">موقع غير مربوط: '+Number(rs.site_not_mapped||0)+'</span>'+
      '<span class="caseTag">موقع ملتبس: '+Number(rs.site_ambiguous||0)+'</span>'+
      '<span class="caseTag">صفوف متعددة: '+Number(rs.multi_row_review||0)+'</span>'+
+     '<span class="caseTag">بانتظار الموارد البشرية: '+Number(rs.hr_pending||0)+'</span>'+
+     '<span class="caseTag">بانتظار بيانات المواقع: '+Number(rs.masterdata_pending||0)+'</span>'+
    '</div>'+
    ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
    '<div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></div>';
@@ -518,7 +520,7 @@ function wireReconActions(){
 }
 
 function reconciliationModal(r){
- const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية'};
+ const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية',HR_PENDING:'الحالة محالة للموارد البشرية وما زالت تمنع الإقفال',MASTERDATA_PENDING:'الموقع محال لمراجعة البيانات المرجعية وما زال يمنع الإقفال'};
  let siteOpts='<option value="">اختاري الموقع الصحيح</option>';
  const seen=new Set();
  (S.ctx?.sites||[]).forEach(s=>{seen.add(s.site_code);siteOpts+='<option value="'+esc(s.site_code)+'">'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>'});
