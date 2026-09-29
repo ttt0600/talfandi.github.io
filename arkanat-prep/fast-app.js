@@ -569,17 +569,31 @@ function drawGaps(){
    (Number(mqs.data_review||0)?'<details style="margin-top:9px"><summary class="caseBtn">حالات مسار البيانات '+Number(mqs.data_review||0)+'</summary><div class="gapItems" style="margin-top:9px">'+dataItems+'</div></details>':'')+
    '</div>';
  const tq=S.timeConflicts||{},tqs=tq.summary||{},tGroups=tq.groups||[];
+ const tOps=tGroups.filter(g=>g.owner_lane!=='DATA_REVIEW'),tData=tGroups.filter(g=>g.owner_lane==='DATA_REVIEW');
  const fmtTime=v=>v?String(v).slice(0,5):'—';
- const timeItems=tGroups.map(g=>{
+ const timeItems=tOps.map(g=>{
    const left=esc(g.assignment_a_site||g.site_a_name||'موقع 1')+' · '+esc(fmtTime(g.assignment_a_start))+'–'+esc(fmtTime(g.assignment_a_end));
    const right=esc(g.assignment_b_site||g.site_b_name||'موقع 2')+' · '+esc(fmtTime(g.assignment_b_start))+'–'+esc(fmtTime(g.assignment_b_end));
+   const kind=({CROSS_SITE_OVERLAP:'موقعان مختلفان',SAME_SITE_OVERLAP:'تداخل داخل الموقع'}[g.conflict_kind]||'تعارض زمني');
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(g.employee_name||g.employee_ref||'')+'</b><div class="sub">'+left+' ↔ '+right+'</div></div><span class="guardStatus bad">'+Number(g.conflict_dates||0)+' يوم</span></div>'+
+     '<div class="notice" style="margin:7px 0"><b>'+esc(kind)+'</b><br>'+esc(g.conflict_reason||'يوجد تداخل زمني فعلي يحتاج تصحيحاً تشغيلياً.')+'</div>'+
      '<div class="caseActions"><button class="caseBtn conflictOpenAssignment" data-a="'+esc(g.assignment_a)+'">فتح التكليف الأول</button><button class="caseBtn conflictOpenAssignment" data-a="'+esc(g.assignment_b)+'">فتح التكليف الثاني</button></div></div>';
  }).join('');
- const timeCard='<div class="card gapCard '+(Number(tqs.groups||0)?'critical':'complete')+'" style="margin-top:10px">'+
-   '<div class="sectionHead"><div><h3>تعارض زمني مؤكد</h3><div class="sub">هذه ليست مجرد صفوف مكررة؛ فترات العمل نفسها تتداخل زمنياً. يجب تعديل أحد التكليفين قبل إقفال الدورة.</div></div><div class="pill '+(Number(tqs.groups||0)?'bad':'ok')+'">'+Number(tqs.groups||0)+'</div></div>'+
-   '<div class="caseMeta"><span class="caseTag">موظفون متأثرون: '+Number(tqs.employees||0)+'</span><span class="caseTag">أيام تعارض: '+Number(tqs.conflict_dates||0)+'</span></div>'+
-   '<div class="gapItems" style="margin-top:9px">'+(timeItems||'<div class="gapItem">لا توجد تعارضات زمنية مؤكدة لهذه المنطقة.</div>')+'</div></div>';
+ const timeDataItems=tData.map(g=>{
+   const left=esc(g.assignment_a_site||g.site_a_name||'موقع')+' · '+esc(fmtTime(g.assignment_a_start))+'–'+esc(fmtTime(g.assignment_a_end));
+   return '<div class="gapItem"><b>'+esc(g.employee_name||g.employee_ref||'')+'</b><div class="sub">'+left+'</div><div class="notice" style="margin:7px 0"><b>تكليف مكرر — مسار بيانات</b><br>'+esc(g.conflict_reason||'التكليفان متطابقان ويحتاجان دمجاً/تنظيفاً في البيانات.')+'</div></div>';
+ }).join('');
+ const timeCard='<div class="card gapCard '+(Number(tqs.operations_groups||0)?'critical':'complete')+'" style="margin-top:10px">'+
+   '<div class="sectionHead"><div><h3>التعارضات الزمنية</h3><div class="sub">تعرض القائمة المفتوحة فقط التعارضات التي تحتاج قراراً من العمليات. التكليفات المتطابقة تُنقل لمسار تنظيف البيانات.</div></div><div class="pill '+(Number(tqs.operations_groups||0)?'bad':'ok')+'">'+Number(tqs.operations_groups||0)+' عليك</div></div>'+
+   '<div class="caseMeta">'+
+     '<span class="caseTag">موقعان مختلفان: '+Number(tqs.cross_site||0)+'</span>'+
+     '<span class="caseTag">تداخل داخل الموقع: '+Number(tqs.same_site_overlap||0)+'</span>'+
+     '<span class="caseTag">أيام تعارض تشغيلي: '+Number(tqs.conflict_dates||0)+'</span>'+
+     (Number(tqs.duplicate_assignment||0)?'<span class="caseTag">تكليفات مكررة - بيانات: '+Number(tqs.duplicate_assignment||0)+'</span>':'')+
+   '</div>'+
+   '<div class="gapItems" style="margin-top:9px">'+(timeItems||'<div class="gapItem">لا توجد تعارضات زمنية تحتاج قراراً من العمليات.</div>')+'</div>'+
+   (Number(tqs.data_review||0)?'<details style="margin-top:9px"><summary class="caseBtn">تكليفات متطابقة في مسار البيانات '+Number(tqs.data_review||0)+'</summary><div class="gapItems" style="margin-top:9px">'+timeDataItems+'</div></details>':'')+
+   '</div>';
  const ord=S.opsReadiness||{},opsBlocked=ord.status==='BLOCKED';
  const opsHandoffDone=!!ord.operations_submitted_at;
  const opsCard='<div class="card '+(opsBlocked?'attention':'complete')+'" style="margin-bottom:10px">'+
