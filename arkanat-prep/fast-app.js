@@ -368,13 +368,13 @@ function drawRoster(){
    const needs= S.ctx?.cycle_state==='future' && (
      !a.site_code || a.work_days_per_week===null || a.work_days_per_week===undefined ||
      a.daily_hours===null || a.daily_hours===undefined ||
-     (!a.shift_code&&!a.shift_detail&&!a.shift_start_text)
+     (!a.shift_code&&!a.shift_detail&&!a.shift_start_text&&!a.shift_start_time)
    );
    if(needs)incomplete++;
    const d=document.createElement('div');d.className='person'+(S.employee?.id===a.id?' active':'');
    d.innerHTML='<div class="name">'+esc(a.full_name)+(needs?' <span class="pill warn" style="font-size:9px">ناقص التخطيط</span>':'')+'</div>'+
      '<div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+
-     (a.assignment_type==='RELIEF_FIXED'?' · بديل راحة ثابت':a.assignment_type==='TEMP_COVERAGE'?' · تغطية مؤقتة':'')+'</div>';
+     (a.assignment_type==='RELIEF_FIXED'?' · بديل راحة ثابت':a.assignment_type==='TEMP_COVERAGE'?' · تغطية مؤقتة':a.assignment_type==='EXTRA_SHIFT'?' · وردية إضافية':'')+'</div>';
    d.onclick=()=>loadEmployee(a.id);l.appendChild(d)
  });
  const pr=$('planningReadiness');
@@ -410,8 +410,8 @@ function futureAssignment(){
  '<div class="field"><label>ساعات العمل اليومية</label><div class="card" style="padding:10px">'+esc(dailyHours)+'</div></div>'+
  '<div class="field"><label>الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_code||'غير محددة')+'</div></div>'+
  '<div class="field"><label>وصف الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_detail||'غير محدد')+'</div></div>'+
- '<div class="field"><label>بداية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_start_text||'غير محددة')+'</div></div>'+
- '<div class="field"><label>نهاية الوردية</label><div class="card" style="padding:10px">'+esc(a.shift_end_text||'غير محددة')+'</div></div>'+
+ '<div class="field"><label>بداية الوردية</label><div class="card" style="padding:10px">'+esc(String(a.shift_start_time||a.shift_start_text||'غير محددة').slice(0,5))+'</div></div>'+
+ '<div class="field"><label>نهاية الوردية</label><div class="card" style="padding:10px">'+esc(String(a.shift_end_time||a.shift_end_text||'غير محددة').slice(0,5))+(a.shift_end_next_day?' · اليوم التالي':'')+'</div></div>'+
  '<div class="field"><label>تاريخ المباشرة بالموقع</label><div class="card" style="padding:10px">'+esc(String(a.start_date||S.ctx.cycle_start).slice(0,10))+'</div></div>'+
  '<div class="field"><label>تاريخ نهاية التوزيع</label><div class="card" style="padding:10px">'+esc(String(a.end_date||S.ctx.cycle_end).slice(0,10))+'</div></div>'+
  '</div>'+
