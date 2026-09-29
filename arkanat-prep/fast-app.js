@@ -428,7 +428,7 @@ async function gaps(){
  try{
    const [issues,recon,multiRecon,timeConflicts,readiness]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
-     fast('reconciliationQueue',{period:period(),limit:120},12000),
+     fast('reconciliationQueue',{period:period(),limit:200},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
      fast('readiness',{period:period()},10000)
@@ -449,7 +449,7 @@ function drawGaps(){
  };
  const sec=(title,sub,count,rows,cls)=>'<div class="card gapCard '+(cls||'')+'"><div class="sectionHead"><div><h3>'+esc(title)+'</h3><div class="sub">'+esc(sub)+'</div></div><div class="pill '+(cls||'')+'">'+Number(count||0)+'</div></div><div class="gapItems">'+(rows.length?rows.slice(0,50).map(row).join(''):'<div class="gapItem">لا توجد حالات</div>')+(rows.length>50?'<div class="gapItem">+ '+(rows.length-50)+' حالات أخرى</div>':'')+'</div></div>';
  const rq=S.recon||{},rs=rq.summary||{},rr=rq.rows||[],ms=rq.multi_assignment_summary||{};
- const issueLabel=x=>({EMPLOYEE_NOT_FOUND:'الموظف غير مربوط',EMPLOYEE_AMBIGUOUS:'اسم موظف ملتبس',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'الموقع يحتاج تحديداً',MULTI_ROW_REVIEW:'صفوف متعددة تحتاج تصنيفاً',HR_PENDING:'بانتظار الموارد البشرية',MASTERDATA_PENDING:'بانتظار اعتماد بيانات الموقع'}[x]||x||'مراجعة بيانات');
+ const issueLabel=x=>({EMPLOYEE_NOT_FOUND:'الموظف غير مربوط',EMPLOYEE_AMBIGUOUS:'اسم موظف ملتبس',ASSIGNMENT_IDENTITY_GAP:'التكليف بلا رقم وظيفي معتمد',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'الموقع يحتاج تحديداً',MULTI_ROW_REVIEW:'صفوف متعددة تحتاج تصنيفاً',HR_PENDING:'بانتظار الموارد البشرية',MASTERDATA_PENDING:'بانتظار اعتماد بيانات الموقع'}[x]||x||'مراجعة بيانات');
  const reconItems=rr.map(r=>{
    const suggested=[r.employee_name_candidate,r.site_name_candidate].filter(Boolean).join(' · ');
    const shift=r.shift_suggestion?.ok?(r.shift_suggestion.start_time+'–'+r.shift_suggestion.end_time):'';
@@ -462,7 +462,8 @@ function drawGaps(){
  const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
    '<div class="sectionHead"><div><h3>تصحيح بيانات التحضير</h3><div class="sub">يعرض فقط الصفوف التي لا يمكن اعتمادها آلياً. لا يلزم إعادة إدخال التحضير الصحيح.</div></div><div class="pill '+(Number(rs.total||0)?'warn':'ok')+'">'+Number(rs.total||0)+'</div></div>'+
    '<div class="caseMeta">'+
-     '<span class="caseTag">موظف غير مربوط: '+Number(rs.employee_not_found||0)+'</span>'+
+     '<span class="caseTag">تكليف بلا رقم وظيفي: '+Number(rs.assignment_identity_gap||0)+'</span>'+
+     '<span class="caseTag">موظف غير موجود: '+Number(rs.employee_not_found||0)+'</span>'+
      '<span class="caseTag">موقع غير مربوط: '+Number(rs.site_not_mapped||0)+'</span>'+
      '<span class="caseTag">موقع ملتبس: '+Number(rs.site_ambiguous||0)+'</span>'+
      '<span class="caseTag">صفوف متعددة: '+Number(rs.multi_row_review||0)+'</span>'+
@@ -532,7 +533,7 @@ function wireReconActions(){
 }
 
 function reconciliationModal(r){
- const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية',HR_PENDING:'الحالة محالة للموارد البشرية وما زالت تمنع الإقفال',MASTERDATA_PENDING:'الموقع محال لمراجعة البيانات المرجعية وما زال يمنع الإقفال'};
+ const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',ASSIGNMENT_IDENTITY_GAP:'التكليف موجود في التحضير لكنه غير مربوط برقم وظيفي معتمد',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية',HR_PENDING:'الحالة محالة للموارد البشرية وما زالت تمنع الإقفال',MASTERDATA_PENDING:'الموقع محال لمراجعة البيانات المرجعية وما زال يمنع الإقفال'};
  let siteOpts='<option value="">اختاري الموقع الصحيح</option>';
  const candidates=r.site_candidates||[],seen=new Set();
  if(candidates.length){
