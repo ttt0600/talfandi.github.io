@@ -560,7 +560,9 @@ function reconciliationModal(r){
  let cashWorkerOpts='<option value="">حارس كاش جديد / غير مسجل سابقاً</option>';
  cashCandidates.forEach(c=>cashWorkerOpts+='<option value="'+esc(c.coverage_worker_id)+'">'+esc(c.display_name)+(c.mobile_last4?' · جوال **'+esc(c.mobile_last4):'')+(c.national_id_last4?' · هوية **'+esc(c.national_id_last4):'')+'</option>');
  const cashSignal=(r.cash_coverage_candidate_level&&r.cash_coverage_candidate_level!=='NONE')
-   ?'<div class="notice" style="margin-top:10px"><b>تنبيه تشغيلي:</b> '+esc(r.cash_coverage_candidate_reason||'قد تكون الحالة حارس تغطية كاش.')+'<br>هذا مجرد مؤشر من ملف التحضير، وليس تصنيفاً تلقائياً. اختاري «حارس تغطية كاش» فقط إذا كانت الحالة كذلك فعلياً.</div>'
+   ?'<div class="notice" style="margin-top:10px"><b>تنبيه تشغيلي:</b> '+esc(r.cash_coverage_candidate_reason||'قد تكون الحالة حارس تغطية كاش.')+
+     (r.source_identity_last4?'<br>هوية موجودة في المصدر تنتهي بـ **'+esc(r.source_identity_last4):'')+
+     '<br>هذا مجرد مؤشر من ملف التحضير، وليس تصنيفاً تلقائياً. اختاري «حارس تغطية كاش» فقط إذا كانت الحالة كذلك فعلياً.</div>'
    :'';
  const sg=r.shift_suggestion||{};
  const start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
@@ -586,7 +588,7 @@ function reconciliationModal(r){
       '<div class="field"><label>سجل حارس كاش سابق</label><select id="rqCashWorker">'+cashWorkerOpts+'</select></div>'+
       '<div class="field"><label>اسم حارس الكاش *</label><input id="rqCashName" value="'+esc(r.guard_name||'')+'"></div>'+
       '<div class="field"><label>الجوال — اختياري</label><input id="rqCashMobile" inputmode="numeric" placeholder="إن كان متاحاً"></div>'+
-      '<div class="field"><label>آخر 4 من الهوية — اختياري</label><input id="rqCashIdLast4" inputmode="numeric" maxlength="4" placeholder="إن كانت متاحة"></div>'+
+      '<div class="field"><label>آخر 4 من الهوية — اختياري</label><input id="rqCashIdLast4" inputmode="numeric" maxlength="4" value="'+esc(r.source_identity_last4||'')+'" placeholder="إن كانت متاحة"></div>'+
       '<div class="field"><label>مبلغ الكاش — اختياري الآن</label><input id="rqCashAmount" type="number" min="0" step="0.01" placeholder="يستكمل من المالية إذا لم يكن معروفاً"></div>'+
     '</div>'+
   '</div>'+
