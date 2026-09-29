@@ -431,7 +431,7 @@ async function gaps(){
  try{
    const [issues,recon,multiRecon,timeConflicts,readiness,identityTriage]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
-     fast('reconciliationQueue',{period:period(),limit:200},12000),
+     fast('reconciliationQueue',{period:period(),limit:50},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
      fast('readiness',{period:period()},10000),
@@ -575,21 +575,20 @@ async function loadIdentityTriage(category){
    drawGaps();
  }catch(e){toast(e.message,true)}
 }
-function triageRowDetail(rowId){
- return (S.recon?.rows||[]).find(x=>String(x.legacy_row_id)===String(rowId))||null;
+async function openTriageResolution(rowId,mode='default'){
+ if(!rowId)return;
+ try{
+   const cached=(S.recon?.rows||[]).find(x=>String(x.legacy_row_id)===String(rowId));
+   if(cached)return reconciliationModal(cached,mode);
+   const d=await fast('reconciliationRow',{legacy_row_id:rowId},10000);
+   if(d?.row)return reconciliationModal(d.row,mode);
+   toast('تعذر تحميل تفاصيل الحالة.',true);
+ }catch(e){toast(e.message,true)}
 }
 function wireIdentityTriageActions(){
  document.querySelectorAll('.triageFilter').forEach(b=>b.onclick=()=>loadIdentityTriage(b.dataset.cat||'ALL'));
- document.querySelectorAll('.triageOpen').forEach(b=>b.onclick=()=>{
-   const r=triageRowDetail(b.dataset.row);
-   if(r)return reconciliationModal(r);
-   toast('تعذر فتح تفاصيل هذه الحالة من القائمة الحالية. أعيدي تحميل الصفحة.',true);
- });
- document.querySelectorAll('.triageCash').forEach(b=>b.onclick=()=>{
-   const r=triageRowDetail(b.dataset.row);
-   if(r)return reconciliationModal(r,'cash');
-   toast('تعذر فتح تفاصيل هذه الحالة من القائمة الحالية. أعيدي تحميل الصفحة.',true);
- });
+ document.querySelectorAll('.triageOpen').forEach(b=>b.onclick=()=>openTriageResolution(b.dataset.row,'default'));
+ document.querySelectorAll('.triageCash').forEach(b=>b.onclick=()=>openTriageResolution(b.dataset.row,'cash'));
 }
 
 
