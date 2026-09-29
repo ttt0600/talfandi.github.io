@@ -555,13 +555,17 @@ function drawGaps(){
    '</div>'+
    '<div class="sub" style="margin-top:7px">الحضور الافتراضي P لا يعد نقصاً ولا يمنع الإقفال؛ المنع يقتصر على الحالات التي تحتاج قراراً أو تصحيحاً.</div></div>';
  $('mainView').innerHTML=
-  '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
-  readinessCard+triageCard+reconCard+multiCard+timeCard+
-  (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
+  '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">الأولوية للعمل التشغيلي الفعلي. الحضور المعتاد لا يحتاج إدخالاً فردياً.</div></div></div>'+
+  readinessCard+
+  (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ هذه حالة طبيعية وليست استثناءً.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList" style="margin-top:10px">'+
-    sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
+    sec('تحتاج إجراء الآن','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
     sec('بانتظار المراجعة','إجازات واستئذانات وتغطيات وأحداث تم تسجيلها وتحتاج اعتماد المسار المختص.',c.needs_review,review,'warn')+
-    sec('مشكلات البيانات اليومية','رقم وظيفي أو موقع غير مربوط، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
+  '</div>'+
+  '<div class="sectionHead" style="margin-top:16px"><div><h2>تهيئة وإقفال الدورة</h2><div class="sub">تظهر هنا فقط مشكلات البيانات والورديات التي تمنع الإقفال أو تحتاج قراراً. لا يعاد إدخال التحضير الصحيح.</div></div></div>'+
+  triageCard+timeCard+multiCard+reconCard+
+  '<div class="gapList" style="margin-top:10px">'+
+    sec('مشكلات البيانات اليومية','هوية حارس أو موقع غير محسوم، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
  wireCaseActions();wireReconActions();wireIdentityTriageActions();wireMultiReconActions();wireTimeConflictActions();
