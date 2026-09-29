@@ -2,7 +2,7 @@
 (function(){
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const STATUS_PRINT={P:'P',OFF:'OFF',A:'A',T:'T',AL:'AL',SK:'SK',S:'S',W:'W',R:'R',O:'O',SUB:'C',CASH:'C',OTHER:'-'};
-const CP={sites:[],guards:[],coverageEvents:[],site:null,filename:'',mode:'client',period:'',ctx:null,periods:[]};
+const CP={sites:[],guards:[],coverageEvents:[],dataQuality:{},site:null,filename:'',mode:'client',period:'',ctx:null,periods:[]};
 const $p=function(id){return document.getElementById(id)};
 const escp=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]})};
 const safeName=function(s){return String(s||'').replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim()};
@@ -97,7 +97,7 @@ function periodOptionText(p){
 }
 async function loadPrintPeriod(period,preferSite){
  if(!period)return;
- CP.period=period;CP.ctx=null;CP.sites=[];CP.guards=[];CP.coverageEvents=[];CP.site=null;CP.filename='';
+ CP.period=period;CP.ctx=null;CP.sites=[];CP.guards=[];CP.coverageEvents=[];CP.dataQuality={};CP.site=null;CP.filename='';
  $p('cpClient').innerHTML='<option value="">جاري تحميل العملاء...</option>';
  $p('cpProject').innerHTML='<option value="">—</option>';
  $p('cpSite').innerHTML='<option value="">—</option>';
@@ -170,7 +170,7 @@ function fillSites(prefer,load){
  if(load&&$p('cpSite').value)loadSelectedSite();else emptyStage();
 }
 function emptyStage(){
- CP.site=null;CP.guards=[];CP.coverageEvents=[];CP.filename='';$p('cpPrint').disabled=true;$p('cpProgress').textContent='';$p('cpNotice').style.display='none';
+ CP.site=null;CP.guards=[];CP.coverageEvents=[];CP.dataQuality={};CP.filename='';$p('cpPrint').disabled=true;$p('cpProgress').textContent='';$p('cpNotice').style.display='none';
  $p('cpStage').innerHTML='<div class="cp-empty"><div><b>اختاري العميل ثم المشروع ثم الموقع</b><div style="margin-top:7px">سيتم تجهيز التايم شيت للموقع المحدد فقط.</div></div></div>';
 }
 
@@ -187,6 +187,7 @@ async function loadSelectedSite(){
   const d=await api(action,{period:ctx.period,site_code:code},15000);
   CP.guards=d.guards||[];
   CP.coverageEvents=CP.mode==='internal'?(d.coverage_events||[]):[];
+  CP.dataQuality=d.data_quality||{};
   if(d.site)CP.site=Object.assign({},s,{
     code:d.site.site_code||code,site_name:d.site.site_name||s.site_name,
     project_code:d.site.project_code||s.project_code,project_name:d.site.project_name||s.project_name,
@@ -214,6 +215,7 @@ function dayEntry(a,date){
  const d=(a.days||[]).find(function(x){return cleanDate(x.date)===date});
  if(d)return d;
  if(a.assignment_type==='CASH_COVERAGE')return null;
+ if(a.source_kind==='reference'&&!a.source_backed)return null;
  return {date:date,status:'P',shift_code:a.shift_code||null,_default_present:true};
 }
 function shiftHours(code){const m=String(code||'').match(/(8|12)$/);return m?Number(m[1]):null}
@@ -307,9 +309,13 @@ function finalBlock(m){
  const banner=CP.mode==='internal'
   ?'<div class="cp-internal-banner">تايم شيت داخلي للمراجعة بين العمليات والموارد البشرية والمالية — يتبع الدورة الداخلية ويعرض الحضور والتغطيات وساعات العمل الإضافية والحالات الاستثنائية، ولا يرسل للعميل.</div>'
   :'<div class="cp-client-block">كشف العميل يغطي الشهر الميلادي من يوم 1 حتى آخر يوم في الشهر لإثبات الحضور والتنفيذ والاعتماد، ولا يتضمن بيانات الرواتب أو مبالغ التغطية أو الملاحظات الداخلية.</div>';
+ const dq=CP.dataQuality||{};
+ const syncLabel=dq.latest_source_imported_at?new Date(dq.latest_source_imported_at).toLocaleString('ar-SA',{timeZone:'Asia/Riyadh'}):'—';
  const internalImpact=CP.mode==='internal'
   ?'<div class="cp-kpis" style="margin-top:1.2mm"><div class="cp-kpi"><b>غياب للحسم</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>انسحاب للحسم</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>تغطية كاش</b><strong>'+m.cash_total.toFixed(2)+'</strong></div><div class="cp-kpi"><b>ساعات عمل إضافية</b><strong>'+m.overtime_total.toFixed(1)+'</strong></div></div>'+
-   '<div class="cp-legend"><span>مراجعة HR: <b>'+m.hr_cases+'</b></span><span>مراجعة المالية: <b>'+m.finance_cases+'</b></span><span>مراجعة العمليات: <b>'+m.operations_cases+'</b></span><span>مفتوح/قيد المعالجة: <b>'+m.open_cases+'</b></span><span>بانتظار المراجعة: <b>'+m.review_cases+'</b></span><span>مغلق: <b>'+m.closed_cases+'</b></span></div>'
+   '<div class="cp-legend"><span>حالات استثنائية HR: <b>'+m.hr_cases+'</b></span><span>مراجعة المالية: <b>'+m.finance_cases+'</b></span><span>استثناءات العمليات: <b>'+m.operations_cases+'</b></span><span>مفتوح/قيد المعالجة: <b>'+m.open_cases+'</b></span><span>بانتظار المراجعة: <b>'+m.review_cases+'</b></span><span>مغلق: <b>'+m.closed_cases+'</b></span></div>'+
+   '<div class="cp-legend"><span>مرتبط بالمصدر: <b>'+Number(dq.source_backed_assignments||0)+'/'+Number(dq.active_assignments||CP.guards.length)+'</b></span><span>هويات غير محسومة: <b>'+Number(dq.unresolved_identity||0)+'</b></span><span>EMP-X مؤقت: <b>'+Number(dq.temporary_aliases||0)+'</b></span><span>قرار هوية على العمليات: <b>'+Number(dq.identity_operations_action||0)+'</b></span><span>ربط هوية لدى HR: <b>'+Number(dq.identity_hr_link||0)+'</b></span><span>آخر مزامنة: <b>'+escp(syncLabel)+'</b></span></div>'+
+   (dq.latest_source_file?'<div class="cp-small" style="margin-top:1mm">مصدر التحضير: '+escp(dq.latest_source_file)+'</div>':'')
   :'';
  return '<div class="cp-final">'+banner+'<div class="cp-kpis"><div class="cp-kpi"><b>الحضور</b><strong>'+m.present+'</strong></div><div class="cp-kpi"><b>الغياب</b><strong>'+m.abs+'</strong></div><div class="cp-kpi"><b>الانسحاب</b><strong>'+m.withdraw+'</strong></div><div class="cp-kpi"><b>التغطيات</b><strong>'+m.coverage+'</strong></div></div>'+
  internalImpact+
@@ -415,7 +421,7 @@ function closeClientPrint(){
 async function openClientPrint(){
  ensureShell();
  const sh=$p('clientPrintShell');sh.classList.add('open');sh.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
- CP.mode='client';CP.period='';CP.ctx=null;CP.sites=[];CP.guards=[];CP.site=null;
+ CP.mode='client';CP.period='';CP.ctx=null;CP.sites=[];CP.guards=[];CP.dataQuality={};CP.site=null;
  $p('cpModeClient').classList.add('active');$p('cpModeInternal').classList.remove('active');
  $p('cpPeriodLabel').textContent='شهر العميل للطباعة';
  $p('cpModeNote').textContent='تايم شيت العميل يغطي الشهر الميلادي كاملاً من يوم 1 حتى آخر يوم في الشهر، ولا يعرض التفاصيل المالية أو ملاحظات العمل الداخلية.';
