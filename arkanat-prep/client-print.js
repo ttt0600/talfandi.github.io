@@ -202,10 +202,19 @@ async function loadSelectedSite(){
  }
 }
 
-function activeOn(a,date){const c=cycleContext(),s=cleanDate(a.start_date)||c.start,e=cleanDate(a.end_date)||c.end;return date>=s&&date<=e}
+function activeOn(a,date){
+ const c=cycleContext(),s=cleanDate(a.start_date)||c.start,e=cleanDate(a.end_date)||c.end;
+ if(date<s||date>e)return false;
+ if(a.assignment_type==='CASH_COVERAGE'){
+   return (a.days||[]).some(function(x){return cleanDate(x.date)===date});
+ }
+ return true;
+}
 function dayEntry(a,date){
  const d=(a.days||[]).find(function(x){return cleanDate(x.date)===date});
- return d||{date:date,status:'P',shift_code:a.shift_code||null,_default_present:true};
+ if(d)return d;
+ if(a.assignment_type==='CASH_COVERAGE')return null;
+ return {date:date,status:'P',shift_code:a.shift_code||null,_default_present:true};
 }
 function shiftHours(code){const m=String(code||'').match(/(8|12)$/);return m?Number(m[1]):null}
 function workHours(a,d){if(!d)return 0;if(d.worked_hours!==null&&d.worked_hours!==undefined&&d.worked_hours!=='')return Number(d.worked_hours)||0;if(['P','SUB','CASH'].includes(d.status))return shiftHours(d.shift_code||a.shift_code)||0;return 0}
@@ -238,7 +247,9 @@ function metrics(ds){
    if(e.workflow_status==='CLOSED')z.closed_cases++;
   });
  });
+ const printedAssignments=new Set(CP.guards.map(function(a){return String(a.id||'')}));
  CP.coverageEvents.forEach(function(e){
+   if(e.replacement_assignment_id&&printedAssignments.has(String(e.replacement_assignment_id)))return;
    const q=Number(e.quantity||1);
    z.coverage+=q;
    z.cash_total+=Number(e.cash_amount||0);
@@ -261,7 +272,8 @@ function guardRow(a,idx,ds){
   if(e&&['P','SUB','CASH'].includes(st))worked++;hours+=workHours(a,e);
  });
  const fourth=CP.mode==='internal'?(a.shift_code||'—'):(a.job_title||'حارس أمن');
- return '<tr><td>'+(idx+1)+'</td><td class="cp-name">'+escp(a.full_name||'')+'</td><td>'+escp(a.employee_ref||'—')+'</td><td>'+escp(fourth)+'</td>'+cells+'<td><b>'+worked+'</b></td><td><b>'+(hours||'')+'</b></td></tr>';
+ const employeeLabel=a.assignment_type==='CASH_COVERAGE'?'كاش':(a.employee_ref||'—');
+ return '<tr><td>'+(idx+1)+'</td><td class="cp-name">'+escp(a.full_name||'')+'</td><td>'+escp(employeeLabel)+'</td><td>'+escp(fourth)+'</td>'+cells+'<td><b>'+worked+'</b></td><td><b>'+(hours||'')+'</b></td></tr>';
 }
 
 function cols(ds){
