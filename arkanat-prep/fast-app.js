@@ -479,8 +479,8 @@ function drawGaps(){
    const cashBtn=r.triage_category==='CASH_EXPLICIT'
      ?'<button class="caseBtn primary triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تأكيد كاش</button><button class="caseBtn triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ليس كاش / ربط بموظف</button>'
      :r.triage_category==='COVERAGE_RELIEF'
-       ?'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط كموظف بديل</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تغطية كاش</button>'
-       :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button>';
+       ?'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط كموظف بديل</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تغطية كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>'
+       :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>';
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.full_name||'')+'</b><div class="sub">'+esc(r.site_name||'بدون موقع')+' · '+esc(triageLabel(r.triage_category))+'</div></div><span class="pill">'+Number(r.source_rows_count||1)+' صف</span></div>'+
      '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+
      '<div class="caseMeta">'+id4+shift+'</div>'+
@@ -494,6 +494,7 @@ function drawGaps(){
      '<button class="caseBtn triageFilter '+(triageCat==='COVERAGE_RELIEF'?'primary':'')+'" data-cat="COVERAGE_RELIEF">بدلاء / تغطيات '+Number(its.coverage_relief||0)+'</button>'+
      '<button class="caseBtn triageFilter '+(triageCat==='CASH_EXPLICIT'?'primary':'')+'" data-cat="CASH_EXPLICIT">كاش صريح '+Number(its.cash_explicit||0)+'</button>'+
    '</div>'+
+   ((Number(its.waiting_hr||0)||Number(its.waiting_masterdata||0))?'<div class="caseMeta" style="margin-top:7px"><span class="caseTag">أُحيلت للموارد البشرية: '+Number(its.waiting_hr||0)+'</span><span class="caseTag">بانتظار بيانات المواقع: '+Number(its.waiting_masterdata||0)+'</span></div>':'')+
    '<div class="notice" style="margin-top:9px">الهدف هنا تهيئة كشف التحضير للعمل اليومي والإقفال، وليس تحويل موظفة العمليات إلى مدخلة بيانات موارد بشرية. إذا لم يكن الحارس موظفاً نظامياً يمكن تصنيفه كتغطية كاش دون اختراع رقم وظيفي.</div>'+
    '<div class="gapItems" style="margin-top:9px">'+(triageItems||'<div class="gapItem">لا توجد حالات في هذا التصنيف.</div>')+'</div>'+
    (itRows.length>20?'<div class="sub" style="margin-top:7px">يظهر أول 20 حالة فقط لتبسيط العمل. استخدمي التصنيفات أعلاه للمتابعة على دفعات.</div>':'')+
@@ -546,7 +547,7 @@ function drawGaps(){
    '<div class="sectionHead"><div><h3>جاهزية إقفال الدورة</h3><div class="sub">'+(blocked?'لا يمكن إقفال التايم شيت حتى معالجة الموانع التالية.':'الدورة جاهزة للإقفال من ناحية البيانات التشغيلية الحالية.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
    '<div class="caseMeta">'+
      '<span class="caseTag">بيانات معلقة: '+Number(rd.data_blockers||0)+'</span>'+
-     '<span class="caseTag">تكليف بلا رقم وظيفي: '+Number(rd.unmatched_assignment_identity||0)+'</span>'+
+     '<span class="caseTag">هوية حارس غير محسومة: '+Number(rd.unmatched_assignment_identity||0)+'</span>'+
      '<span class="caseTag">ورديات متعددة: '+Number(rd.multi_assignment_groups||0)+'</span>'+
      '<span class="caseTag">تعارضات زمنية: '+Number(rd.time_conflict_groups||0)+'</span>'+
      '<span class="caseTag">تغطيات مفتوحة: '+Number(rd.open_coverage_cases||0)+'</span>'+
@@ -589,6 +590,14 @@ function wireIdentityTriageActions(){
  document.querySelectorAll('.triageFilter').forEach(b=>b.onclick=()=>loadIdentityTriage(b.dataset.cat||'ALL'));
  document.querySelectorAll('.triageOpen').forEach(b=>b.onclick=()=>openTriageResolution(b.dataset.row,'default'));
  document.querySelectorAll('.triageCash').forEach(b=>b.onclick=()=>openTriageResolution(b.dataset.row,'cash'));
+ document.querySelectorAll('.triageHR').forEach(b=>b.onclick=async()=>{
+   const rowId=b.dataset.row;if(!rowId)return;
+   if(!await confirmUI('إحالة الحالة للموارد البشرية','سيتم اعتبار قرار العمليات مكتملًا من ناحية نوع الحالة، وتنتقل مهمة ربط الموظف للموارد البشرية. ستبقى الحالة مانعاً للإقفال حتى اعتماد الربط.','إحالة للموارد البشرية'))return;
+   try{
+     const d=await fast('resolveReconciliation',{payload:{legacy_row_id:rowId,issue_code:'ASSIGNMENT_IDENTITY_GAP',resolution_type:'SEND_HR'}},12000);
+     toast(d.message||'تمت الإحالة');await gaps();
+   }catch(e){toast(e.message,true)}
+ });
 }
 
 
