@@ -522,9 +522,18 @@ function wireReconActions(){
 function reconciliationModal(r){
  const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية',HR_PENDING:'الحالة محالة للموارد البشرية وما زالت تمنع الإقفال',MASTERDATA_PENDING:'الموقع محال لمراجعة البيانات المرجعية وما زال يمنع الإقفال'};
  let siteOpts='<option value="">اختاري الموقع الصحيح</option>';
- const seen=new Set();
- (S.ctx?.sites||[]).forEach(s=>{seen.add(s.site_code);siteOpts+='<option value="'+esc(s.site_code)+'">'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>'});
+ const candidates=r.site_candidates||[],seen=new Set();
+ if(candidates.length){
+   siteOpts+='<optgroup label="المواقع المرشحة من ملف التحضير">';
+   candidates.forEach(s=>{seen.add(s.site_code);siteOpts+='<option value="'+esc(s.site_code)+'">'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+(s.site_name||s.site_code))+'</option>'});
+   siteOpts+='</optgroup>';
+ }
+ siteOpts+='<optgroup label="جميع مواقع المنطقة">';
+ (S.ctx?.sites||[]).forEach(s=>{if(!seen.has(s.site_code)){seen.add(s.site_code);siteOpts+='<option value="'+esc(s.site_code)+'">'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>'}});
+ siteOpts+='</optgroup>';
  if(r.site_code_candidate&&!seen.has(r.site_code_candidate))siteOpts+='<option value="'+esc(r.site_code_candidate)+'">'+esc(r.site_name_candidate||r.site_code_candidate)+'</option>';
+ const empCandidates=r.employee_candidates||[];
+ const empCandidateHtml=empCandidates.length?'<div class="sub" style="margin-top:6px">مرشحون من قاعدة الموظفين:</div><div class="caseActions">'+empCandidates.slice(0,8).map(e=>'<button type="button" class="caseBtn rqEmpCandidate" data-ref="'+esc(e.employee_ref)+'" data-name="'+esc(e.full_name)+'">'+esc(e.full_name)+' · '+esc(e.employee_ref)+'</button>').join('')+'</div>':'';
  const sg=r.shift_suggestion||{};
  const start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
  modal(
@@ -534,10 +543,10 @@ function reconciliationModal(r){
     '<div class="field"><label>الاسم في ملف التحضير</label><input value="'+esc(r.guard_name||'')+'" disabled></div>'+
     '<div class="field"><label>الموقع في ملف التحضير</label><input value="'+esc(r.raw_site||'')+'" disabled></div>'+
   '</div>'+
-  '<div class="field" style="margin-top:10px"><label>البحث عن الموظف الصحيح</label><input id="rqEmpSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="rqEmpSug" class="suggestions hidden"></div></div>'+
+  '<div class="field" style="margin-top:10px"><label>البحث عن الموظف الصحيح</label><input id="rqEmpSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="rqEmpSug" class="suggestions hidden"></div>'+empCandidateHtml+'</div>'+
   '<div class="grid2" style="margin-top:10px">'+
-    '<div class="field"><label>الرقم الوظيفي</label><input id="rqEmpRef" value="'+esc(r.employee_ref_candidate||'')+'" placeholder="اختاري من البحث"></div>'+
-    '<div class="field"><label>اسم الموظف المعتمد</label><input id="rqEmpName" value="'+esc(r.employee_name_candidate||'')+'" disabled></div>'+
+    '<div class="field"><label>الرقم الوظيفي</label><input id="rqEmpRef" value="'+esc(Number(r.employee_candidate_count||0)===1?(r.employee_ref_candidate||''):'')+'" placeholder="اختاري من البحث"></div>'+
+    '<div class="field"><label>اسم الموظف المعتمد</label><input id="rqEmpName" value="'+esc(Number(r.employee_candidate_count||0)===1?(r.employee_name_candidate||''):'')+'" disabled></div>'+
     '<div class="field"><label>الموقع الصحيح</label><select id="rqSite">'+siteOpts+'</select></div>'+
     '<div class="field"><label>تصنيف الصف</label><select id="rqType"><option value="LINK_PRIMARY">تكليف أساسي</option><option value="LINK_EXTRA_SHIFT">وردية إضافية</option><option value="LINK_COVERAGE">تغطية</option><option value="IGNORE_DUPLICATE">صف مكرر</option></select></div>'+
     '<div class="field"><label>بداية الوردية</label><input id="rqStart" type="time" value="'+esc(start)+'"></div>'+
@@ -546,7 +555,8 @@ function reconciliationModal(r){
   '<div id="rqHint" class="notice" style="margin-top:10px">إذا كان الموظف ظاهراً في ورديتين، اختاري «وردية إضافية» أو «تغطية» حسب الواقع. النظام يمنع التداخل الزمني الفعلي.</div>'+
   '<div class="modal-actions"><button id="rqSave" class="btn primary">اعتماد التصحيح</button><button id="rqHR" class="btn secondary">إحالة للموارد البشرية</button><button id="rqMDM" class="btn gold">إحالة لبيانات المواقع</button><button id="rqCancel" class="btn ghost">إلغاء</button></div>'
  );
- if(r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
+ if(Number(r.site_candidate_count||0)===1&&r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
+ document.querySelectorAll('.rqEmpCandidate').forEach(b=>b.onclick=()=>{$('rqEmpRef').value=b.dataset.ref||'';$('rqEmpName').value=b.dataset.name||''});
  if(r.same_name_site_rows>1)$('rqType').value='LINK_EXTRA_SHIFT';
  const updateHint=()=>{
    const t=$('rqType').value,h=$('rqHint');
