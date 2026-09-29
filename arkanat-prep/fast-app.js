@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,identityTriage:null,triageCategory:'ALL',seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -133,7 +133,7 @@ function normalizeWorkDate(){
  return false;
 }
 async function bootstrap(){
- if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;
+ if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;S.identityTriage=null;
  const cached=readCache();
  if(cached){S.ctx=cached.ctx;S.day=cached.day;$('workDate').value=cached.date||work();applyCtx();render();$('saveState').textContent='عرض سريع · جاري التحقق من آخر البيانات...'}
  else{S.ctx=null;S.day=null;loading();$('saveState').textContent='جاري تحميل البيانات...'}
@@ -429,14 +429,15 @@ function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
-   const [issues,recon,multiRecon,timeConflicts,readiness]=await Promise.all([
+   const [issues,recon,multiRecon,timeConflicts,readiness,identityTriage]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
      fast('reconciliationQueue',{period:period(),limit:200},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
-     fast('readiness',{period:period()},10000)
+     fast('readiness',{period:period()},10000),
+     fast('identityTriage',{period:period(),category:'ALL',limit:40},12000)
    ]);
-   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.identityTriage=identityTriage;S.triageCategory='ALL';drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -469,7 +470,35 @@ function drawGaps(){
        ((cashLevel==='HIGH'||cashLevel==='MEDIUM')?'<button class="caseBtn rqCashQuick" data-row="'+esc(r.legacy_row_id)+'">تصنيف التغطية</button>':'')+
      '</div></div>';
  }).join('');
- const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
+ const it=S.identityTriage||{},its=it.summary||{},itRows=it.rows||[],triageCat=S.triageCategory||'ALL';
+ const triageLabel=c=>({WORKER_LINK:'حارس يحتاج ربط بموظف',COVERAGE_RELIEF:'بديل / تغطية',CASH_EXPLICIT:'كاش مذكور في المصدر'}[c]||c);
+ const triageActionText=c=>c==='CASH_EXPLICIT'?'تأكيد تغطية كاش':c==='COVERAGE_RELIEF'?'ربط / تصنيف الحارس':'ربط الحارس';
+ const triageItems=itRows.slice(0,20).map(r=>{
+   const id4=r.source_identity_last4?'<span class="caseTag">هوية **'+esc(r.source_identity_last4)+'</span>':'';
+   const shift=(r.shift_start_time&&r.shift_end_time)?'<span class="caseTag">وردية '+esc(String(r.shift_start_time).slice(0,5))+'–'+esc(String(r.shift_end_time).slice(0,5))+'</span>':'';
+   const cashBtn=r.triage_category==='CASH_EXPLICIT'
+     ?'<button class="caseBtn primary triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تأكيد كاش</button><button class="caseBtn triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ليس كاش / ربط بموظف</button>'
+     :r.triage_category==='COVERAGE_RELIEF'
+       ?'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط كموظف بديل</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تغطية كاش</button>'
+       :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button>';
+   return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.full_name||'')+'</b><div class="sub">'+esc(r.site_name||'بدون موقع')+' · '+esc(triageLabel(r.triage_category))+'</div></div><span class="pill">'+Number(r.source_rows_count||1)+' صف</span></div>'+
+     '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+
+     '<div class="caseMeta">'+id4+shift+'</div>'+
+     '<div class="caseActions">'+cashBtn+'</div></div>';
+ }).join('');
+ const triageCard='<div class="card gapCard '+(Number(its.total||0)?'attention':'complete')+'" style="margin-bottom:10px">'+
+   '<div class="sectionHead"><div><h3>تهيئة بيانات الحراس من ملفات التحضير</h3><div class="sub">المطلوب من العمليات قرار قصير فقط. لا تعيدي إدخال الحضور الصحيح ولا بيانات الشهر من جديد.</div></div><div class="pill '+(Number(its.total||0)?'warn':'ok')+'">'+Number(its.total||0)+'</div></div>'+
+   '<div class="caseActions" style="margin-top:8px">'+
+     '<button class="caseBtn triageFilter '+(triageCat==='ALL'?'primary':'')+'" data-cat="ALL">الأولوية الآن</button>'+
+     '<button class="caseBtn triageFilter '+(triageCat==='WORKER_LINK'?'primary':'')+'" data-cat="WORKER_LINK">ربط موظف '+Number(its.worker_link||0)+'</button>'+
+     '<button class="caseBtn triageFilter '+(triageCat==='COVERAGE_RELIEF'?'primary':'')+'" data-cat="COVERAGE_RELIEF">بدلاء / تغطيات '+Number(its.coverage_relief||0)+'</button>'+
+     '<button class="caseBtn triageFilter '+(triageCat==='CASH_EXPLICIT'?'primary':'')+'" data-cat="CASH_EXPLICIT">كاش صريح '+Number(its.cash_explicit||0)+'</button>'+
+   '</div>'+
+   '<div class="notice" style="margin-top:9px">الهدف هنا تهيئة كشف التحضير للعمل اليومي والإقفال، وليس تحويل موظفة العمليات إلى مدخلة بيانات موارد بشرية. إذا لم يكن الحارس موظفاً نظامياً يمكن تصنيفه كتغطية كاش دون اختراع رقم وظيفي.</div>'+
+   '<div class="gapItems" style="margin-top:9px">'+(triageItems||'<div class="gapItem">لا توجد حالات في هذا التصنيف.</div>')+'</div>'+
+   (itRows.length>20?'<div class="sub" style="margin-top:7px">يظهر أول 20 حالة فقط لتبسيط العمل. استخدمي التصنيفات أعلاه للمتابعة على دفعات.</div>':'')+
+ '</div>';
+  const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
    '<div class="sectionHead"><div><h3>تصحيح بيانات التحضير</h3><div class="sub">يعرض فقط الصفوف التي لا يمكن اعتمادها آلياً. لا يلزم إعادة إدخال التحضير الصحيح.</div></div><div class="pill '+(Number(rs.total||0)?'warn':'ok')+'">'+Number(rs.total||0)+'</div></div>'+
    '<div class="caseMeta">'+
      '<span class="caseTag">تكليف بلا رقم وظيفي: '+Number(rs.assignment_identity_gap||0)+'</span>'+
@@ -483,7 +512,7 @@ function drawGaps(){
      '<span class="caseTag">مؤشر تغطية/بديل: '+Number(rs.cash_candidate_medium||0)+'</span>'+
    '</div>'+
    ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
-   '<div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></div>';
+   '<details style="margin-top:9px"><summary class="caseBtn">عرض التفاصيل الفنية للصفوف</summary><div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></details></div>';
  const mq=S.multiRecon||{},mqs=mq.summary||{},mGroups=mq.groups||[];
  const patternLabel=p=>({MULTI_SHIFT_SAME_DAY:'وردية ثانية في اليوم نفسه',DUPLICATE_OR_COVERAGE:'تكرار أو تغطية محتملة'}[p]||p||'مراجعة');
  const multiItems=mGroups.map(g=>{
@@ -526,7 +555,7 @@ function drawGaps(){
    '<div class="sub" style="margin-top:7px">الحضور الافتراضي P لا يعد نقصاً ولا يمنع الإقفال؛ المنع يقتصر على الحالات التي تحتاج قراراً أو تصحيحاً.</div></div>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
-  readinessCard+reconCard+multiCard+timeCard+
+  readinessCard+triageCard+reconCard+multiCard+timeCard+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList" style="margin-top:10px">'+
     sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
@@ -534,7 +563,33 @@ function drawGaps(){
     sec('مشكلات البيانات اليومية','رقم وظيفي أو موقع غير مربوط، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
- wireCaseActions();wireReconActions();wireMultiReconActions();wireTimeConflictActions();
+ wireCaseActions();wireReconActions();wireIdentityTriageActions();wireMultiReconActions();wireTimeConflictActions();
+}
+
+
+async function loadIdentityTriage(category){
+ const cat=category||'ALL';
+ try{
+   S.triageCategory=cat;
+   S.identityTriage=await fast('identityTriage',{period:period(),category:cat,limit:60},12000);
+   drawGaps();
+ }catch(e){toast(e.message,true)}
+}
+function triageRowDetail(rowId){
+ return (S.recon?.rows||[]).find(x=>String(x.legacy_row_id)===String(rowId))||null;
+}
+function wireIdentityTriageActions(){
+ document.querySelectorAll('.triageFilter').forEach(b=>b.onclick=()=>loadIdentityTriage(b.dataset.cat||'ALL'));
+ document.querySelectorAll('.triageOpen').forEach(b=>b.onclick=()=>{
+   const r=triageRowDetail(b.dataset.row);
+   if(r)return reconciliationModal(r);
+   toast('تعذر فتح تفاصيل هذه الحالة من القائمة الحالية. أعيدي تحميل الصفحة.',true);
+ });
+ document.querySelectorAll('.triageCash').forEach(b=>b.onclick=()=>{
+   const r=triageRowDetail(b.dataset.row);
+   if(r)return reconciliationModal(r,'cash');
+   toast('تعذر فتح تفاصيل هذه الحالة من القائمة الحالية. أعيدي تحميل الصفحة.',true);
+ });
 }
 
 
