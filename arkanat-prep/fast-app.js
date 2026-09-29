@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,identityTriage:null,triageCategory:'OPS_ACTION',seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,opsReadiness:null,identityTriage:null,triageCategory:'OPS_ACTION',seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -95,7 +95,7 @@ function syncContextUi(){
    pb.disabled=future;
    pb.title=future?'طباعة التايم شيت التشغيلي تتاح عند بدء الفترة الفعلية.':'';
  }
- const sb=$('submitBtn');if(sb){sb.textContent='إقفال التايم شيت الداخلي';sb.disabled=future;sb.title=future?'لا يمكن إقفال دورة مستقبلية قبل بدءها.':''}
+ const sb=$('submitBtn');if(sb){sb.textContent='اعتماد / إقفال الدورة';sb.disabled=future;sb.title=future?'لا يمكن اعتماد دورة مستقبلية قبل بدءها.':''}
 }
 
 function tabUI(){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===S.tab));syncContextUi()}
@@ -133,7 +133,7 @@ function normalizeWorkDate(){
  return false;
 }
 async function bootstrap(){
- if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;S.identityTriage=null;
+ if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;S.opsReadiness=null;S.identityTriage=null;
  const cached=readCache();
  if(cached){S.ctx=cached.ctx;S.day=cached.day;$('workDate').value=cached.date||work();applyCtx();render();$('saveState').textContent='عرض سريع · جاري التحقق من آخر البيانات...'}
  else{S.ctx=null;S.day=null;loading();$('saveState').textContent='جاري تحميل البيانات...'}
@@ -429,15 +429,16 @@ function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
-   const [issues,recon,multiRecon,timeConflicts,readiness,identityTriage]=await Promise.all([
+   const [issues,recon,multiRecon,timeConflicts,readiness,opsReadiness,identityTriage]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
      fast('reconciliationQueue',{period:period(),limit:50},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
      fast('readiness',{period:period()},10000),
+     fast('operationsReadiness',{period:period()},10000),
      fast('identityTriage',{period:period(),category:'OPS_ACTION',limit:40},12000)
    ]);
-   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.identityTriage=identityTriage;S.triageCategory='OPS_ACTION';drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.opsReadiness=opsReadiness;S.identityTriage=identityTriage;S.triageCategory='OPS_ACTION';drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -563,9 +564,28 @@ function drawGaps(){
    '<div class="sectionHead"><div><h3>تعارض زمني مؤكد</h3><div class="sub">هذه ليست مجرد صفوف مكررة؛ فترات العمل نفسها تتداخل زمنياً. يجب تعديل أحد التكليفين قبل إقفال الدورة.</div></div><div class="pill '+(Number(tqs.groups||0)?'bad':'ok')+'">'+Number(tqs.groups||0)+'</div></div>'+
    '<div class="caseMeta"><span class="caseTag">موظفون متأثرون: '+Number(tqs.employees||0)+'</span><span class="caseTag">أيام تعارض: '+Number(tqs.conflict_dates||0)+'</span></div>'+
    '<div class="gapItems" style="margin-top:9px">'+(timeItems||'<div class="gapItem">لا توجد تعارضات زمنية مؤكدة لهذه المنطقة.</div>')+'</div></div>';
- const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
+ const ord=S.opsReadiness||{},opsBlocked=ord.status==='BLOCKED';
+ const opsHandoffDone=!!ord.operations_submitted_at;
+ const opsCard='<div class="card '+(opsBlocked?'attention':'complete')+'" style="margin-bottom:10px">'+
+   '<div class="sectionHead"><div><h3>مسؤولية العمليات في الدورة</h3><div class="sub">'+
+     (opsBlocked
+       ?'تبقى حالات تحتاج قراراً تشغيلياً قبل أن تسلّم العمليات عملها.'
+       :'لا توجد موانع تشغيلية حالية. يمكن اعتماد وتسليم أعمال العمليات حتى لو بقيت أعمال تخص الموارد البشرية أو البيانات المرجعية.')+
+   '</div></div><div class="pill '+(opsBlocked?'warn':'ok')+'">'+
+     (opsBlocked?Number(ord.blocker_count||0)+' متبقي':(opsHandoffDone?'تم التسليم سابقاً':'جاهز للتسليم'))+
+   '</div></div>'+
+   '<div class="caseMeta">'+
+     '<span class="caseTag">قرارات الحراس: '+Number(ord.operations_action||0)+'</span>'+
+     '<span class="caseTag">ورديات متعددة: '+Number(ord.multi_assignment_groups||0)+'</span>'+
+     '<span class="caseTag">تعارضات زمنية: '+Number(ord.time_conflict_groups||0)+'</span>'+
+     '<span class="caseTag">تغطيات مفتوحة: '+Number(ord.open_coverage_cases||0)+'</span>'+
+     '<span class="caseTag">حالات تشغيلية مفتوحة: '+Number(ord.open_operations_cases||0)+'</span>'+
+   '</div>'+
+   (Number(ord.hr_link_pending||0)?'<div class="sub" style="margin-top:7px">يوجد '+Number(ord.hr_link_pending||0)+' حالة ربط موظف في مسار الموارد البشرية؛ لا تدخل ضمن مسؤولية الإقفال التشغيلي لموظفة العمليات.</div>':'')+
+ '</div>';
+  const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
  const readinessCard='<div class="card '+(blocked?'attention critical':'complete')+'" style="margin-bottom:10px">'+
-   '<div class="sectionHead"><div><h3>جاهزية إقفال الدورة</h3><div class="sub">'+(blocked?'لا يمكن إقفال التايم شيت حتى معالجة الموانع التالية.':'الدورة جاهزة للإقفال من ناحية البيانات التشغيلية الحالية.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
+   '<div class="sectionHead"><div><h3>الإقفال النهائي للدورة</h3><div class="sub">'+(blocked?'الإقفال النهائي ما زال ينتظر معالجة جميع المسارات المختصة، وليس العمليات وحدها.':'جميع المسارات مكتملة والدورة جاهزة للإقفال النهائي.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
    '<div class="caseMeta">'+
      '<span class="caseTag">مطلوب من العمليات: '+Number(its.operations_action||0)+'</span>'+
      '<span class="caseTag">ربط موظفين - الموارد البشرية: '+Number(its.hr_link_pending||0)+'</span>'+
@@ -584,7 +604,7 @@ function drawGaps(){
     sec('بانتظار المراجعة','إجازات واستئذانات وتغطيات وأحداث تم تسجيلها وتحتاج اعتماد المسار المختص.',c.needs_review,review,'warn')+
   '</div>'+
   '<div class="sectionHead" style="margin-top:16px"><div><h2>تهيئة وإقفال الدورة</h2><div class="sub">تظهر هنا فقط مشكلات البيانات والورديات التي تمنع الإقفال أو تحتاج قراراً. لا يعاد إدخال التحضير الصحيح.</div></div></div>'+
-  readinessCard+triageCard+timeCard+multiCard+reconCard+
+  opsCard+readinessCard+triageCard+timeCard+multiCard+reconCard+
   '<div class="gapList" style="margin-top:10px">'+
     sec('مشكلات البيانات اليومية','هوية حارس أو موقع غير محسوم، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
@@ -1132,13 +1152,31 @@ $('printBtn').onclick=()=>{if(!S.ctx)return toast('انتظري اكتمال ا�
 $('submitBtn').onclick=async()=>{
  if(!S.ctx)return toast('انتظري اكتمال التحميل',true);
  try{
-   const rd=await fast('readiness',{period:period()},10000);S.readiness=rd;
-   if(rd.status==='BLOCKED'){
+   const [ord,rd]=await Promise.all([
+     fast('operationsReadiness',{period:period()},10000),
+     fast('readiness',{period:period()},10000)
+   ]);
+   S.opsReadiness=ord;S.readiness=rd;
+
+   if(ord.status==='BLOCKED'){
      S.tab='gaps';tabUI();await gaps();
-     return toast('لا يمكن الإقفال الآن: يوجد '+Number(rd.blocker_count||0)+' مانع يحتاج معالجة. تم فتح شاشة الاستثناءات.',true);
+     return toast('تبقى على العمليات '+Number(ord.blocker_count||0)+' حالة تحتاج قراراً قبل التسليم. تم فتح الاستثناءات.',true);
    }
-   if(!await confirmUI('إقفال التايم شيت الداخلي','لا توجد موانع تشغيلية معلقة. سيتم إقفال دورة '+monthLabel(period())+'.','إقفال الدورة'))return;
-   const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)
+
+   if(rd.status==='READY'){
+     if(!await confirmUI('الإقفال النهائي للدورة','اكتملت مسؤولية العمليات وجميع مسارات البيانات الأخرى. سيتم إقفال دورة '+monthLabel(period())+' نهائياً.','إقفال نهائي'))return;
+     const d=await fast('submit',{period:period()},12000);
+     toast(d.message||'تم الإقفال النهائي');await refreshDay(true);return;
+   }
+
+   const hr=Number(ord.hr_link_pending||0),other=Math.max(0,Number(rd.blocker_count||0)-hr);
+   const body='مسؤولية العمليات مكتملة. سيتم اعتماد وتسليم أعمال العمليات لهذه الدورة، بينما يبقى الإقفال النهائي بانتظار المسارات المختصة.'+
+     (hr?'<br><b>ربط موظفين لدى الموارد البشرية:</b> '+hr:'')+
+     (other?'<br><b>موانع أخرى خارج الإقفال التشغيلي:</b> '+other:'');
+   if(!await confirmUI('اعتماد وتسليم أعمال العمليات',body,'اعتماد وتسليم'))return;
+   const d=await fast('operationsHandoff',{period:period()},12000);
+   toast(d.message||'تم تسليم أعمال العمليات');
+   S.tab='gaps';tabUI();await gaps();
  }catch(e){toast(e.message,true)}
 };
 $('exportBtn').onclick=exportCsv;
