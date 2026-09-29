@@ -431,7 +431,7 @@ async function gaps(){
  try{
    const [issues,recon,multiRecon,timeConflicts,readiness,opsReadiness,identityTriage]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
-     fast('reconciliationQueue',{period:period(),limit:50},12000),
+     fast('reconciliationQueue',{period:period(),limit:20},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
      fast('readiness',{period:period()},10000),
@@ -484,7 +484,7 @@ function drawGaps(){
    const shortReview=r.short_duration_review
      ?'<div class="notice" style="margin-top:6px"><b>فترة عمل قصيرة وبيانات ناقصة:</b> لا يفترض النظام أنها كاش. حددي الواقع التشغيلي: موظف، تغطية كاش، أو إحالة للموارد البشرية.</div>'
      :'';
-   const strongConfirm=r.strong_employee_suggestion&&r.suggested_employee_ref
+   const strongConfirm=r.triage_category==='WORKER_LINK'&&r.strong_employee_suggestion&&r.suggested_employee_ref
      ?'<button class="caseBtn ok triageConfirmEmployee" data-row="'+esc(r.representative_legacy_row_id)+'" data-ref="'+esc(r.suggested_employee_ref)+'" data-name="'+esc(r.suggested_employee_name||'')+'" data-site="'+esc(r.site_code||'')+'">تأكيد '+esc(r.suggested_employee_name||'الموظف')+'</button>'
      :'';
    const cashBtn=strongConfirm+(r.triage_category==='CASH_EXPLICIT'
@@ -521,8 +521,9 @@ function drawGaps(){
    '<div class="gapItems" style="margin-top:9px">'+(triageItems||'<div class="gapItem">لا توجد حالات في هذا التصنيف.</div>')+'</div>'+
    (itRows.length>20?'<div class="sub" style="margin-top:7px">يظهر أول 20 حالة فقط لتبسيط العمل. استخدمي التصنيفات أعلاه للمتابعة على دفعات.</div>':'')+
  '</div>';
-  const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
-   '<div class="sectionHead"><div><h3>تصحيح بيانات التحضير</h3><div class="sub">يعرض فقط الصفوف التي لا يمكن اعتمادها آلياً. لا يلزم إعادة إدخال التحضير الصحيح.</div></div><div class="pill '+(Number(rs.total||0)?'warn':'ok')+'">'+Number(rs.total||0)+'</div></div>'+
+  const reconCard='<details class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'" style="margin-top:10px">'+
+   '<summary class="sectionHead" style="cursor:pointer"><div><h3>تفاصيل المطابقة الفنية</h3><div class="sub">للمراجعة عند الحاجة فقط؛ لا تمثل قائمة العمل اليومية لموظفة العمليات.</div></div><div class="pill '+(Number(rs.total||0)?'warn':'ok')+'">'+Number(rs.total||0)+'</div></summary>'+
+   '<div style="padding-top:4px">'+
    '<div class="caseMeta">'+
      '<span class="caseTag">تكليف بلا رقم وظيفي: '+Number(rs.assignment_identity_gap||0)+'</span>'+
      '<span class="caseTag">موظف غير موجود: '+Number(rs.employee_not_found||0)+'</span>'+
@@ -535,7 +536,7 @@ function drawGaps(){
      '<span class="caseTag">مؤشر تغطية/بديل: '+Number(rs.cash_candidate_medium||0)+'</span>'+
    '</div>'+
    ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
-   '<details style="margin-top:9px"><summary class="caseBtn">عرض التفاصيل الفنية للصفوف</summary><div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></details></div>';
+   '<details style="margin-top:9px"><summary class="caseBtn">عرض الصفوف الفنية المحملة</summary><div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></details></div></details>';
  const mq=S.multiRecon||{},mqs=mq.summary||{},mGroups=mq.groups||[];
  const patternLabel=p=>({MULTI_SHIFT_SAME_DAY:'وردية ثانية في اليوم نفسه',DUPLICATE_OR_COVERAGE:'تكرار أو تغطية محتملة'}[p]||p||'مراجعة');
  const multiItems=mGroups.map(g=>{
