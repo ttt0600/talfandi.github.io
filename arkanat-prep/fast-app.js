@@ -582,8 +582,6 @@ async function loadIdentityTriage(category){
 async function openTriageResolution(rowId,mode='default'){
  if(!rowId)return;
  try{
-   const cached=(S.recon?.rows||[]).find(x=>String(x.legacy_row_id)===String(rowId));
-   if(cached)return reconciliationModal(cached,mode);
    const d=await fast('reconciliationRow',{legacy_row_id:rowId},10000);
    if(d?.row)return reconciliationModal(d.row,mode);
    toast('تعذر تحميل تفاصيل الحالة.',true);
@@ -629,7 +627,16 @@ function reconciliationModal(r,openMode='default'){
  siteOpts+='</optgroup>';
  if(r.site_code_candidate&&!seen.has(r.site_code_candidate))siteOpts+='<option value="'+esc(r.site_code_candidate)+'">'+esc(r.site_name_candidate||r.site_code_candidate)+'</option>';
  const empCandidates=r.employee_candidates||[];
- const empCandidateHtml=empCandidates.length?'<div class="sub" style="margin-top:6px">مرشحون من قاعدة الموظفين:</div><div class="caseActions">'+empCandidates.slice(0,8).map(e=>'<button type="button" class="caseBtn rqEmpCandidate" data-ref="'+esc(e.employee_ref)+'" data-name="'+esc(e.full_name)+'">'+esc(e.full_name)+' · '+esc(e.employee_ref)+'</button>').join('')+'</div>':'';
+ const fuzzyCandidates=(r.fuzzy_employee_candidates||[]).filter(e=>!empCandidates.some(x=>x.employee_ref===e.employee_ref));
+ const empCandidateHtml=(empCandidates.length||fuzzyCandidates.length)
+   ?'<div class="sub" style="margin-top:6px">مرشحون من قاعدة الموظفين — اختاري فقط إذا كان الشخص هو نفسه:</div><div class="caseActions">'+
+     empCandidates.slice(0,8).map(e=>'<button type="button" class="caseBtn primary rqEmpCandidate" data-ref="'+esc(e.employee_ref)+'" data-name="'+esc(e.full_name)+'">'+esc(e.full_name)+' · '+esc(e.employee_ref)+'</button>').join('')+
+     fuzzyCandidates.slice(0,5).map(e=>{
+       const flags=[e.same_site?'نفس الموقع':'',e.same_project?'نفس المشروع':'',e.employee_status||''].filter(Boolean).join(' · ');
+       return '<button type="button" class="caseBtn rqEmpCandidate" data-ref="'+esc(e.employee_ref)+'" data-name="'+esc(e.full_name)+'">'+esc(e.full_name)+' · '+esc(e.employee_ref)+(flags?' · '+esc(flags):'')+'</button>';
+     }).join('')+
+     '</div>'
+   :'';
  const cashCandidates=r.cash_worker_candidates||[];
  let cashWorkerOpts='<option value="">حارس كاش جديد / غير مسجل سابقاً</option>';
  cashCandidates.forEach(c=>cashWorkerOpts+='<option value="'+esc(c.coverage_worker_id)+'">'+esc(c.display_name)+(c.mobile_last4?' · جوال **'+esc(c.mobile_last4):'')+(c.national_id_last4?' · هوية **'+esc(c.national_id_last4):'')+'</option>');
