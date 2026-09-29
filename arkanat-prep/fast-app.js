@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,identityTriage:null,triageCategory:'ALL',seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,identityTriage:null,triageCategory:'OPS_ACTION',seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -435,9 +435,9 @@ async function gaps(){
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
      fast('timeConflictQueue',{period:period(),limit:40},12000),
      fast('readiness',{period:period()},10000),
-     fast('identityTriage',{period:period(),category:'ALL',limit:40},12000)
+     fast('identityTriage',{period:period(),category:'OPS_ACTION',limit:40},12000)
    ]);
-   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.identityTriage=identityTriage;S.triageCategory='ALL';drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;S.identityTriage=identityTriage;S.triageCategory='OPS_ACTION';drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -496,15 +496,15 @@ function drawGaps(){
      '<div class="caseMeta">'+id4+shift+workDays+'</div>'+
      '<div class="caseActions">'+cashBtn+'</div></div>';
  }).join('');
- const triageCard='<div class="card gapCard '+(Number(its.total||0)?'attention':'complete')+'" style="margin-bottom:10px">'+
-   '<div class="sectionHead"><div><h3>تهيئة بيانات الحراس من ملفات التحضير</h3><div class="sub">المطلوب من العمليات قرار قصير فقط. لا تعيدي إدخال الحضور الصحيح ولا بيانات الشهر من جديد.</div></div><div class="pill '+(Number(its.total||0)?'warn':'ok')+'">'+Number(its.total||0)+'</div></div>'+
+ const triageCard='<div class="card gapCard '+(Number(its.operations_action||0)?'attention':'complete')+'" style="margin-bottom:10px">'+
+   '<div class="sectionHead"><div><h3>تهيئة بيانات الحراس من ملفات التحضير</h3><div class="sub">تعرض افتراضياً الحالات التي تحتاج قراراً من العمليات فقط. ربط الموظفين الإداري يبقى في مسار الموارد البشرية.</div></div><div class="pill '+(Number(its.operations_action||0)?'warn':'ok')+'">'+Number(its.operations_action||0)+' عليك</div></div>'+
    '<div class="caseActions" style="margin-top:8px">'+
-     '<button class="caseBtn triageFilter '+(triageCat==='ALL'?'primary':'')+'" data-cat="ALL">الأولوية الآن</button>'+
-     '<button class="caseBtn triageFilter '+(triageCat==='WORKER_LINK'?'primary':'')+'" data-cat="WORKER_LINK">ربط موظف '+Number(its.worker_link||0)+'</button>'+
-     (Number(its.strong_employee_suggestions||0)?'<button class="caseBtn triageFilter '+(triageCat==='STRONG_EMPLOYEE'?'primary':'')+'" data-cat="STRONG_EMPLOYEE">مرشح موظف قوي '+Number(its.strong_employee_suggestions||0)+'</button>':'')+
+     '<button class="caseBtn triageFilter '+(triageCat==='OPS_ACTION'?'primary':'')+'" data-cat="OPS_ACTION">مطلوب من العمليات '+Number(its.operations_action||0)+'</button>'+
+     (Number(its.strong_employee_suggestions||0)?'<button class="caseBtn triageFilter '+(triageCat==='STRONG_EMPLOYEE'?'primary':'')+'" data-cat="STRONG_EMPLOYEE">تأكيد ربط واضح '+Number(its.strong_employee_suggestions||0)+'</button>':'')+
      (Number(its.short_duration_review||0)?'<button class="caseBtn triageFilter '+(triageCat==='SHORT_REVIEW'?'primary':'')+'" data-cat="SHORT_REVIEW">فترات قصيرة '+Number(its.short_duration_review||0)+'</button>':'')+
-     '<button class="caseBtn triageFilter '+(triageCat==='COVERAGE_RELIEF'?'primary':'')+'" data-cat="COVERAGE_RELIEF">بدلاء / تغطيات '+Number(its.coverage_relief||0)+'</button>'+
-     '<button class="caseBtn triageFilter '+(triageCat==='CASH_EXPLICIT'?'primary':'')+'" data-cat="CASH_EXPLICIT">كاش صريح '+Number(its.cash_explicit||0)+'</button>'+
+     (Number(its.coverage_relief||0)?'<button class="caseBtn triageFilter '+(triageCat==='COVERAGE_RELIEF'?'primary':'')+'" data-cat="COVERAGE_RELIEF">بدلاء / تغطيات '+Number(its.coverage_relief||0)+'</button>':'')+
+     (Number(its.cash_explicit||0)?'<button class="caseBtn triageFilter '+(triageCat==='CASH_EXPLICIT'?'primary':'')+'" data-cat="CASH_EXPLICIT">كاش صريح '+Number(its.cash_explicit||0)+'</button>':'')+
+     (Number(its.hr_link_pending||0)?'<button class="caseBtn triageFilter '+(triageCat==='HR_LINK'?'primary':'')+'" data-cat="HR_LINK">مسار الموارد البشرية '+Number(its.hr_link_pending||0)+'</button>':'')+
    '</div>'+
    ((Number(its.strong_employee_suggestions||0)||Number(its.short_duration_review||0)||Number(its.waiting_hr||0)||Number(its.waiting_masterdata||0))?'<div class="caseMeta" style="margin-top:7px">'+
      (Number(its.strong_employee_suggestions||0)?'<span class="caseTag">مرشح موظف قوي: '+Number(its.strong_employee_suggestions||0)+'</span>':'')+
@@ -512,7 +512,11 @@ function drawGaps(){
      (Number(its.waiting_hr||0)?'<span class="caseTag">أُحيلت للموارد البشرية: '+Number(its.waiting_hr||0)+'</span>':'')+
      (Number(its.waiting_masterdata||0)?'<span class="caseTag">بانتظار بيانات المواقع: '+Number(its.waiting_masterdata||0)+'</span>':'')+
    '</div>':'')+
-   '<div class="notice" style="margin-top:9px">الهدف هنا تهيئة كشف التحضير للعمل اليومي والإقفال، وليس تحويل موظفة العمليات إلى مدخلة بيانات موارد بشرية. إذا لم يكن الحارس موظفاً نظامياً يمكن تصنيفه كتغطية كاش دون اختراع رقم وظيفي.</div>'+
+   '<div class="notice" style="margin-top:9px">'+
+     (triageCat==='HR_LINK'
+       ?'<b>هذا مسار بيانات الموارد البشرية.</b> تظهر الحالات هنا للشفافية فقط؛ لا يلزم موظفة العمليات معالجة كل اسم. إذا كانت تعرف الموظف يقيناً يمكنها ربطه، وإلا تُحال للموارد البشرية.'
+       :'<b>المطلوب من العمليات:</b> حسم نوع الحالة فقط عندما يكون لها أثر تشغيلي: بديل/تغطية، فترة قصيرة غير واضحة، كاش فعلي، أو تأكيد ربط واضح. بقية ربط الموظفين ليس عملاً يومياً على العمليات.')+
+   '</div>'+
    '<div class="gapItems" style="margin-top:9px">'+(triageItems||'<div class="gapItem">لا توجد حالات في هذا التصنيف.</div>')+'</div>'+
    (itRows.length>20?'<div class="sub" style="margin-top:7px">يظهر أول 20 حالة فقط لتبسيط العمل. استخدمي التصنيفات أعلاه للمتابعة على دفعات.</div>':'')+
  '</div>';
@@ -563,14 +567,15 @@ function drawGaps(){
  const readinessCard='<div class="card '+(blocked?'attention critical':'complete')+'" style="margin-bottom:10px">'+
    '<div class="sectionHead"><div><h3>جاهزية إقفال الدورة</h3><div class="sub">'+(blocked?'لا يمكن إقفال التايم شيت حتى معالجة الموانع التالية.':'الدورة جاهزة للإقفال من ناحية البيانات التشغيلية الحالية.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
    '<div class="caseMeta">'+
-     '<span class="caseTag">بيانات معلقة: '+Number(rd.data_blockers||0)+'</span>'+
-     '<span class="caseTag">هوية حارس غير محسومة: '+Number(rd.unmatched_assignment_identity||0)+'</span>'+
+     '<span class="caseTag">مطلوب من العمليات: '+Number(its.operations_action||0)+'</span>'+
+     '<span class="caseTag">ربط موظفين - الموارد البشرية: '+Number(its.hr_link_pending||0)+'</span>'+
+     '<span class="caseTag">بيانات أخرى معلقة: '+Number(rd.data_blockers||0)+'</span>'+
      '<span class="caseTag">ورديات متعددة: '+Number(rd.multi_assignment_groups||0)+'</span>'+
      '<span class="caseTag">تعارضات زمنية: '+Number(rd.time_conflict_groups||0)+'</span>'+
      '<span class="caseTag">تغطيات مفتوحة: '+Number(rd.open_coverage_cases||0)+'</span>'+
      '<span class="caseTag">حضور افتراضي P: '+Number(rd.implicit_present_days||0)+'</span>'+
    '</div>'+
-   '<div class="sub" style="margin-top:7px">الحضور الافتراضي P لا يعد نقصاً ولا يمنع الإقفال؛ المنع يقتصر على الحالات التي تحتاج قراراً أو تصحيحاً.</div></div>';
+   '<div class="sub" style="margin-top:7px">الحضور الافتراضي P لا يعد نقصاً. إجمالي موانع الإقفال قد يشمل أعمالاً تخص الموارد البشرية أو البيانات المرجعية؛ شاشة العمليات تعرض افتراضياً ما يحتاج قراراً تشغيلياً فقط.</div></div>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">الأولوية للعمل التشغيلي الفعلي. الحضور المعتاد لا يحتاج إدخالاً فردياً.</div></div></div>'+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ هذه حالة طبيعية وليست استثناءً.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
@@ -589,7 +594,7 @@ function drawGaps(){
 
 
 async function loadIdentityTriage(category){
- const cat=category||'ALL';
+ const cat=category||'OPS_ACTION';
  try{
    S.triageCategory=cat;
    S.identityTriage=await fast('identityTriage',{period:period(),category:cat,limit:60},12000);
