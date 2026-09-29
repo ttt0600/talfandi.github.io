@@ -617,7 +617,8 @@ function drawGaps(){
    (Number(ord.hr_link_pending||0)?'<div class="sub" style="margin-top:7px">يوجد '+Number(ord.hr_link_pending||0)+' حالة ربط موظف في مسار الموارد البشرية؛ لا تدخل ضمن مسؤولية الإقفال التشغيلي لموظفة العمليات.</div>':'')+
  '</div>';
   const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
- const dataLaneCount=Number(rd.data_blockers||0)+Number(mqs.data_review||0)+Number(tqs.data_review||0);
+ const sourceGap=Number(rd.reference_roster_without_source||0);
+ const dataLaneCount=Number(rd.data_blockers||0)+Number(mqs.data_review||0)+Number(tqs.data_review||0)+sourceGap;
  const readinessCard='<details class="card '+(blocked?'attention':'complete')+'" style="margin-bottom:10px">'+
    '<summary class="sectionHead" style="cursor:pointer"><div><h3>الإقفال النهائي للدورة</h3><div class="sub">'+
      (blocked?'للمتابعة الإدارية: ما زالت هناك مسارات خارج العمل التشغيلي اليومي قبل الإقفال النهائي.':'جميع المسارات مكتملة والدورة جاهزة للإقفال النهائي.')+
@@ -626,10 +627,11 @@ function drawGaps(){
      '<span class="caseTag">مسؤولية العمليات الحالية: '+Number(ord.blocker_count||0)+'</span>'+
      '<span class="caseTag">ربط موظفين - الموارد البشرية: '+Number(ord.hr_link_pending||0)+'</span>'+
      '<span class="caseTag">مراجعة/تنظيف بيانات: '+dataLaneCount+'</span>'+
+     (sourceGap?'<span class="caseTag">مرجع نشط بلا مصدر/تحضير: '+sourceGap+'</span>':'')+
      '<span class="caseTag">مجموع مؤشرات الإقفال: '+Number(rd.blocker_count||0)+'</span>'+
      '<span class="caseTag">حضور افتراضي P: '+Number(rd.implicit_present_days||0)+'</span>'+
    '</div>'+
-   '<div class="sub" style="margin-top:7px">عداد الإقفال النهائي مؤشر حوكمة شامل وقد يجمع أنواعاً مختلفة من الموانع؛ لا يمثل قائمة مهام موظفة العمليات. الحضور الافتراضي P لا يعد نقصاً.</div></div></details>';
+   '<div class="sub" style="margin-top:7px">عداد الإقفال النهائي مؤشر حوكمة شامل وقد يجمع أنواعاً مختلفة من الموانع؛ لا يمثل قائمة مهام موظفة العمليات. الحضور الافتراضي P يطبق فقط على تكليف صالح داخل دورته؛ أي مرجع نشط بلا مصدر أو تحضير لا يُحتسب حضوراً تلقائياً.</div></div></details>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">الأولوية للعمل التشغيلي الفعلي. الحضور المعتاد لا يحتاج إدخالاً فردياً.</div></div></div>'+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ هذه حالة طبيعية وليست استثناءً.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
