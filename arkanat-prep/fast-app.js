@@ -617,18 +617,19 @@ function drawGaps(){
    (Number(ord.hr_link_pending||0)?'<div class="sub" style="margin-top:7px">يوجد '+Number(ord.hr_link_pending||0)+' حالة ربط موظف في مسار الموارد البشرية؛ لا تدخل ضمن مسؤولية الإقفال التشغيلي لموظفة العمليات.</div>':'')+
  '</div>';
   const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
- const readinessCard='<div class="card '+(blocked?'attention critical':'complete')+'" style="margin-bottom:10px">'+
-   '<div class="sectionHead"><div><h3>الإقفال النهائي للدورة</h3><div class="sub">'+(blocked?'الإقفال النهائي ما زال ينتظر معالجة جميع المسارات المختصة، وليس العمليات وحدها.':'جميع المسارات مكتملة والدورة جاهزة للإقفال النهائي.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
-   '<div class="caseMeta">'+
-     '<span class="caseTag">مطلوب من العمليات: '+Number(its.operations_action||0)+'</span>'+
-     '<span class="caseTag">ربط موظفين - الموارد البشرية: '+Number(its.hr_link_pending||0)+'</span>'+
-     '<span class="caseTag">بيانات أخرى معلقة: '+Number(rd.data_blockers||0)+'</span>'+
-     '<span class="caseTag">ورديات متعددة: '+Number(rd.multi_assignment_groups||0)+'</span>'+
-     '<span class="caseTag">تعارضات زمنية: '+Number(rd.time_conflict_groups||0)+'</span>'+
-     '<span class="caseTag">تغطيات مفتوحة: '+Number(rd.open_coverage_cases||0)+'</span>'+
+ const dataLaneCount=Number(rd.data_blockers||0)+Number(mqs.data_review||0)+Number(tqs.data_review||0);
+ const readinessCard='<details class="card '+(blocked?'attention':'complete')+'" style="margin-bottom:10px">'+
+   '<summary class="sectionHead" style="cursor:pointer"><div><h3>الإقفال النهائي للدورة</h3><div class="sub">'+
+     (blocked?'للمتابعة الإدارية: ما زالت هناك مسارات خارج العمل التشغيلي اليومي قبل الإقفال النهائي.':'جميع المسارات مكتملة والدورة جاهزة للإقفال النهائي.')+
+   '</div></div><div class="pill '+(blocked?'warn':'ok')+'">'+(blocked?'بانتظار الاستكمال':'جاهز')+'</div></summary>'+
+   '<div style="padding-top:4px"><div class="caseMeta">'+
+     '<span class="caseTag">مسؤولية العمليات الحالية: '+Number(ord.blocker_count||0)+'</span>'+
+     '<span class="caseTag">ربط موظفين - الموارد البشرية: '+Number(ord.hr_link_pending||0)+'</span>'+
+     '<span class="caseTag">مراجعة/تنظيف بيانات: '+dataLaneCount+'</span>'+
+     '<span class="caseTag">مجموع مؤشرات الإقفال: '+Number(rd.blocker_count||0)+'</span>'+
      '<span class="caseTag">حضور افتراضي P: '+Number(rd.implicit_present_days||0)+'</span>'+
    '</div>'+
-   '<div class="sub" style="margin-top:7px">الحضور الافتراضي P لا يعد نقصاً. إجمالي موانع الإقفال قد يشمل أعمالاً تخص الموارد البشرية أو البيانات المرجعية؛ شاشة العمليات تعرض افتراضياً ما يحتاج قراراً تشغيلياً فقط.</div></div>';
+   '<div class="sub" style="margin-top:7px">عداد الإقفال النهائي مؤشر حوكمة شامل وقد يجمع أنواعاً مختلفة من الموانع؛ لا يمثل قائمة مهام موظفة العمليات. الحضور الافتراضي P لا يعد نقصاً.</div></div></details>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">الأولوية للعمل التشغيلي الفعلي. الحضور المعتاد لا يحتاج إدخالاً فردياً.</div></div></div>'+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ هذه حالة طبيعية وليست استثناءً.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
