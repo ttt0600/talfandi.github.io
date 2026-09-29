@@ -453,10 +453,15 @@ function drawGaps(){
  const reconItems=rr.map(r=>{
    const suggested=[r.employee_name_candidate,r.site_name_candidate].filter(Boolean).join(' · ');
    const shift=r.shift_suggestion?.ok?(r.shift_suggestion.start_time+'–'+r.shift_suggestion.end_time):'';
+   const cashLevel=r.cash_coverage_candidate_level||'NONE';
+   const cashHint=cashLevel!=='NONE'
+     ?'<div class="notice" style="margin-top:6px"><b>احتمال تغطية كاش:</b> '+esc(r.cash_coverage_candidate_reason||'بيانات الحارس غير مكتملة وتحتاج تصنيفاً من العمليات.')+'</div>'
+     :'';
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.guard_name||'')+'</b><div class="sub">'+esc(r.raw_site||'بدون موقع')+' · '+esc(issueLabel(r.issue_code))+'</div></div><span class="guardStatus warn">'+esc(r.source_row||'')+'</span></div>'+
      '<div class="sub" style="margin-top:5px">المصدر: '+esc(r.source_file_name||'')+(r.source_sheet?' / '+esc(r.source_sheet):'')+'</div>'+
      (suggested?'<div class="sub">اقتراح: '+esc(suggested)+'</div>':'')+
      (shift?'<div class="sub">وقت مستخرج من المصدر: '+esc(shift)+'</div>':'')+
+     cashHint+
      '<div class="caseActions"><button class="caseBtn primary reconOpen" data-row="'+esc(r.legacy_row_id)+'">معالجة البيانات</button></div></div>';
  }).join('');
  const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
@@ -469,6 +474,8 @@ function drawGaps(){
      '<span class="caseTag">صفوف متعددة: '+Number(rs.multi_row_review||0)+'</span>'+
      '<span class="caseTag">بانتظار الموارد البشرية: '+Number(rs.hr_pending||0)+'</span>'+
      '<span class="caseTag">بانتظار بيانات المواقع: '+Number(rs.masterdata_pending||0)+'</span>'+
+     '<span class="caseTag">مؤشر كاش قوي: '+Number(rs.cash_candidate_high||0)+'</span>'+
+     '<span class="caseTag">مؤشر تغطية/بديل: '+Number(rs.cash_candidate_medium||0)+'</span>'+
    '</div>'+
    ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
    '<div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></div>';
@@ -548,34 +555,60 @@ function reconciliationModal(r){
  if(r.site_code_candidate&&!seen.has(r.site_code_candidate))siteOpts+='<option value="'+esc(r.site_code_candidate)+'">'+esc(r.site_name_candidate||r.site_code_candidate)+'</option>';
  const empCandidates=r.employee_candidates||[];
  const empCandidateHtml=empCandidates.length?'<div class="sub" style="margin-top:6px">مرشحون من قاعدة الموظفين:</div><div class="caseActions">'+empCandidates.slice(0,8).map(e=>'<button type="button" class="caseBtn rqEmpCandidate" data-ref="'+esc(e.employee_ref)+'" data-name="'+esc(e.full_name)+'">'+esc(e.full_name)+' · '+esc(e.employee_ref)+'</button>').join('')+'</div>':'';
+ const cashCandidates=r.cash_worker_candidates||[];
+ let cashWorkerOpts='<option value="">حارس كاش جديد / غير مسجل سابقاً</option>';
+ cashCandidates.forEach(c=>cashWorkerOpts+='<option value="'+esc(c.coverage_worker_id)+'">'+esc(c.display_name)+(c.mobile_last4?' · جوال **'+esc(c.mobile_last4):'')+(c.national_id_last4?' · هوية **'+esc(c.national_id_last4):'')+'</option>');
+ const cashSignal=(r.cash_coverage_candidate_level&&r.cash_coverage_candidate_level!=='NONE')
+   ?'<div class="notice" style="margin-top:10px"><b>تنبيه تشغيلي:</b> '+esc(r.cash_coverage_candidate_reason||'قد تكون الحالة حارس تغطية كاش.')+'<br>هذا مجرد مؤشر من ملف التحضير، وليس تصنيفاً تلقائياً. اختاري «حارس تغطية كاش» فقط إذا كانت الحالة كذلك فعلياً.</div>'
+   :'';
  const sg=r.shift_suggestion||{};
  const start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
  modal(
   '<h3>تصحيح بيانات التحضير</h3>'+
-  '<div class="notice"><b>'+esc(issueNames[r.issue_code]||'حالة تحتاج مراجعة')+'</b><br>المصدر: '+esc(r.source_file_name||'')+' / صف '+esc(r.source_row||'')+'<br>لن يتم تغيير ملف المصدر؛ سيحفظ النظام قرار التصحيح وأثر المراجعة.</div>'+
+  '<div class="notice"><b>'+esc(issueNames[r.issue_code]||'حالة تحتاج مراجعة')+'</b><br>المصدر: '+esc(r.source_file_name||'')+' / صف '+esc(r.source_row||'')+'<br>لن يتم تغيير ملف المصدر؛ سيحفظ النظام قرار التصحيح وأثر المراجعة.</div>'+cashSignal+
   '<div class="grid2">'+
     '<div class="field"><label>الاسم في ملف التحضير</label><input value="'+esc(r.guard_name||'')+'" disabled></div>'+
     '<div class="field"><label>الموقع في ملف التحضير</label><input value="'+esc(r.raw_site||'')+'" disabled></div>'+
   '</div>'+
-  '<div class="field" style="margin-top:10px"><label>البحث عن الموظف الصحيح</label><input id="rqEmpSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="rqEmpSug" class="suggestions hidden"></div>'+empCandidateHtml+'</div>'+
+  '<div id="rqEmpSearchBox" class="field" style="margin-top:10px"><label>البحث عن الموظف الصحيح</label><input id="rqEmpSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="rqEmpSug" class="suggestions hidden"></div>'+empCandidateHtml+'</div>'+
   '<div class="grid2" style="margin-top:10px">'+
-    '<div class="field"><label>الرقم الوظيفي</label><input id="rqEmpRef" value="'+esc(Number(r.employee_candidate_count||0)===1?(r.employee_ref_candidate||''):'')+'" placeholder="اختاري من البحث"></div>'+
-    '<div class="field"><label>اسم الموظف المعتمد</label><input id="rqEmpName" value="'+esc(Number(r.employee_candidate_count||0)===1?(r.employee_name_candidate||''):'')+'" disabled></div>'+
+    '<div id="rqEmpRefBox" class="field"><label>الرقم الوظيفي</label><input id="rqEmpRef" value="'+esc(Number(r.employee_candidate_count||0)===1?(r.employee_ref_candidate||''):'')+'" placeholder="اختاري من البحث"></div>'+
+    '<div id="rqEmpNameBox" class="field"><label>اسم الموظف المعتمد</label><input id="rqEmpName" value="'+esc(Number(r.employee_candidate_count||0)===1?(r.employee_name_candidate||''):'')+'" disabled></div>'+
     '<div class="field"><label>الموقع الصحيح</label><select id="rqSite">'+siteOpts+'</select></div>'+
-    '<div class="field"><label>تصنيف الصف</label><select id="rqType"><option value="LINK_PRIMARY">تكليف أساسي</option><option value="LINK_EXTRA_SHIFT">وردية إضافية</option><option value="LINK_COVERAGE">تغطية</option><option value="IGNORE_DUPLICATE">صف مكرر</option></select></div>'+
+    '<div class="field"><label>تصنيف الصف</label><select id="rqType"><option value="LINK_PRIMARY">تكليف أساسي</option><option value="MARK_CASH_COVERAGE">حارس تغطية كاش</option><option value="LINK_EXTRA_SHIFT">وردية إضافية</option><option value="LINK_COVERAGE">تغطية بحارس موظف</option><option value="IGNORE_DUPLICATE">صف مكرر</option></select></div>'+
     '<div class="field"><label>بداية الوردية</label><input id="rqStart" type="time" value="'+esc(start)+'"></div>'+
     '<div class="field"><label>نهاية الوردية</label><input id="rqEnd" type="time" value="'+esc(end)+'"></div>'+
+  '</div>'+
+  '<div id="rqCashBox" class="hidden" style="margin-top:10px">'+
+    '<div class="notice"><b>حارس تغطية كاش:</b> لا يتطلب رقماً وظيفياً. الاسم والموقع والوردية مطلوبة، والمبلغ يمكن استكماله لاحقاً من المالية. لن يسمح النظام بتداخل ورديتين لنفس حارس الكاش عند إعادة استخدام سجله.</div>'+
+    '<div class="grid2" style="margin-top:8px">'+
+      '<div class="field"><label>سجل حارس كاش سابق</label><select id="rqCashWorker">'+cashWorkerOpts+'</select></div>'+
+      '<div class="field"><label>اسم حارس الكاش *</label><input id="rqCashName" value="'+esc(r.guard_name||'')+'"></div>'+
+      '<div class="field"><label>الجوال — اختياري</label><input id="rqCashMobile" inputmode="numeric" placeholder="إن كان متاحاً"></div>'+
+      '<div class="field"><label>آخر 4 من الهوية — اختياري</label><input id="rqCashIdLast4" inputmode="numeric" maxlength="4" placeholder="إن كانت متاحة"></div>'+
+      '<div class="field"><label>مبلغ الكاش — اختياري الآن</label><input id="rqCashAmount" type="number" min="0" step="0.01" placeholder="يستكمل من المالية إذا لم يكن معروفاً"></div>'+
+    '</div>'+
   '</div>'+
   '<div id="rqHint" class="notice" style="margin-top:10px">إذا كان الموظف ظاهراً في ورديتين، اختاري «وردية إضافية» أو «تغطية» حسب الواقع. النظام يمنع التداخل الزمني الفعلي.</div>'+
   '<div class="modal-actions"><button id="rqSave" class="btn primary">اعتماد التصحيح</button><button id="rqHR" class="btn secondary">إحالة للموارد البشرية</button><button id="rqMDM" class="btn gold">إحالة لبيانات المواقع</button><button id="rqCancel" class="btn ghost">إلغاء</button></div>'
  );
  if(Number(r.site_candidate_count||0)===1&&r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
  document.querySelectorAll('.rqEmpCandidate').forEach(b=>b.onclick=()=>{$('rqEmpRef').value=b.dataset.ref||'';$('rqEmpName').value=b.dataset.name||''});
+ if($('rqCashWorker'))$('rqCashWorker').onchange=()=>{
+   const id=$('rqCashWorker').value;
+   const c=cashCandidates.find(x=>x.coverage_worker_id===id);
+   if(c&&c.display_name)$('rqCashName').value=c.display_name;
+ };
  if(r.same_name_site_rows>1&&r.issue_code!=='ASSIGNMENT_IDENTITY_GAP')$('rqType').value='LINK_EXTRA_SHIFT';
  const updateHint=()=>{
-   const t=$('rqType').value,h=$('rqHint');
+   const t=$('rqType').value,h=$('rqHint'),cash=t==='MARK_CASH_COVERAGE';
+   $('rqCashBox').classList.toggle('hidden',!cash);
+   $('rqEmpSearchBox').classList.toggle('hidden',cash);
+   $('rqEmpRefBox').classList.toggle('hidden',cash);
+   $('rqEmpNameBox').classList.toggle('hidden',cash);
    if(t==='IGNORE_DUPLICATE')h.textContent='سيتم استبعاد هذا الصف كتكرار مؤكد مع إبقاء أثر المراجعة والمصدر.';
-   else if(t==='LINK_COVERAGE')h.textContent='سيحفظ الصف كتغطية مرتبطة بحارس فعلي. يلزم وقت بداية ونهاية، وتبقى التغطية بانتظار استكمال الحارس/الوردية المغطاة إذا لم تكن محددة.';
+   else if(t==='MARK_CASH_COVERAGE')h.textContent='سيتم التعامل مع الحارس كحارس تغطية كاش مستقل عن قاعدة الموظفين. يجب تحديد بداية ونهاية الوردية، وستبقى الحالة مفتوحة للمراجعة المالية حتى اعتماد بيانات الكاش.';
+   else if(t==='LINK_COVERAGE')h.textContent='سيحفظ الصف كتغطية مرتبطة بحارس موظف فعلي. يلزم وقت بداية ونهاية، وتبقى التغطية بانتظار استكمال الحارس/الوردية المغطاة إذا لم تكن محددة.';
    else if(t==='LINK_EXTRA_SHIFT')h.textContent='وردية إضافية صحيحة لنفس الموظف. يجب تحديد وقت البداية والنهاية، وسيتم منع أي تداخل فعلي مع تكليف آخر.';
    else h.textContent='تكليف أساسي. إذا كان الاسم مكرراً في أكثر من صف لن يتم الحفظ دون وقت وردية واضح.';
  };
@@ -604,14 +637,25 @@ function reconciliationModal(r){
      employee_ref:$('rqEmpRef').value.trim()||null,
      site_code:$('rqSite').value||null,
      shift_start:$('rqStart').value||null,
-     shift_end:$('rqEnd').value||null
+     shift_end:$('rqEnd').value||null,
+     coverage_worker_id:$('rqCashWorker')?.value||null,
+     cash_worker_name:$('rqCashName')?.value.trim()||null,
+     cash_worker_mobile:$('rqCashMobile')?.value.trim()||null,
+     cash_worker_id_last4:$('rqCashIdLast4')?.value.trim()||null,
+     cash_amount:$('rqCashAmount')?.value||null
    };
    if(!['IGNORE_DUPLICATE','SEND_HR','SEND_MASTERDATA'].includes(payload.resolution_type)){
-     if(!payload.employee_ref)return toast('اختاري الموظف الصحيح أو أحِيلي الحالة للموارد البشرية.',true);
      if(!payload.site_code)return toast('اختاري الموقع الصحيح أو أحِيلي الحالة لبيانات المواقع.',true);
-     const identityOnly=r.issue_code==='ASSIGNMENT_IDENTITY_GAP'&&payload.resolution_type==='LINK_PRIMARY';
-     if(((!identityOnly&&r.same_name_site_rows>1)||['LINK_EXTRA_SHIFT','LINK_COVERAGE'].includes(payload.resolution_type))&&(!payload.shift_start||!payload.shift_end))
-       return toast('هذه الحالة متعددة الصفوف/الورديات؛ حددي وقت البداية والنهاية.',true);
+     if(payload.resolution_type==='MARK_CASH_COVERAGE'){
+       if(!payload.cash_worker_name)return toast('اسم حارس تغطية الكاش مطلوب.',true);
+       if(!payload.shift_start||!payload.shift_end)return toast('حددي بداية ونهاية وردية حارس تغطية الكاش لمنع التداخل الزمني.',true);
+       if(payload.cash_worker_id_last4&&payload.cash_worker_id_last4.length!==4)return toast('آخر 4 من الهوية يجب أن تكون أربعة أرقام.',true);
+     }else{
+       if(!payload.employee_ref)return toast('اختاري الموظف الصحيح أو أحِيلي الحالة للموارد البشرية.',true);
+       const identityOnly=r.issue_code==='ASSIGNMENT_IDENTITY_GAP'&&payload.resolution_type==='LINK_PRIMARY';
+       if(((!identityOnly&&r.same_name_site_rows>1)||['LINK_EXTRA_SHIFT','LINK_COVERAGE'].includes(payload.resolution_type))&&(!payload.shift_start||!payload.shift_end))
+         return toast('هذه الحالة متعددة الصفوف/الورديات؛ حددي وقت البداية والنهاية.',true);
+     }
    }
    const b=$('rqSave');if(b)b.disabled=true;
    try{
