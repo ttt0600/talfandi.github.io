@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -133,7 +133,7 @@ function normalizeWorkDate(){
  return false;
 }
 async function bootstrap(){
- if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;
+ if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;
  const cached=readCache();
  if(cached){S.ctx=cached.ctx;S.day=cached.day;$('workDate').value=cached.date||work();applyCtx();render();$('saveState').textContent='عرض سريع · جاري التحقق من آخر البيانات...'}
  else{S.ctx=null;S.day=null;loading();$('saveState').textContent='جاري تحميل البيانات...'}
@@ -426,12 +426,13 @@ function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
-   const [issues,recon,multiRecon]=await Promise.all([
+   const [issues,recon,multiRecon,timeConflicts]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
      fast('reconciliationQueue',{period:period(),limit:120},12000),
-     fast('multiAssignmentQueue',{period:period(),limit:60},12000)
+     fast('multiAssignmentQueue',{period:period(),limit:60},12000),
+     fast('timeConflictQueue',{period:period(),limit:40},12000)
    ]);
-   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -483,9 +484,21 @@ function drawGaps(){
    '<div class="sectionHead"><div><h3>الورديات المتعددة والتغطيات المحتملة</h3><div class="sub">الحالات التي ظهر فيها الموظف أكثر من مرة في الموقع نفسه. لا تعتبر خطأ تلقائياً؛ يلزم تحديد وردية إضافية أو تغطية أو تكرار.</div></div><div class="pill '+(Number(mqs.total||0)?'warn':'ok')+'">'+Number(mqs.total||0)+'</div></div>'+
    '<div class="caseMeta"><span class="caseTag">ورديات متعددة: '+Number(mqs.multi_shift_same_day||0)+'</span><span class="caseTag">تكرار/تغطية محتملة: '+Number(mqs.duplicate_or_coverage||0)+'</span></div>'+
    '<div class="gapItems" style="margin-top:9px">'+(multiItems||'<div class="gapItem">لا توجد مجموعات معلقة لهذه المنطقة.</div>')+'</div></div>';
+ const tq=S.timeConflicts||{},tqs=tq.summary||{},tGroups=tq.groups||[];
+ const fmtTime=v=>v?String(v).slice(0,5):'—';
+ const timeItems=tGroups.map(g=>{
+   const left=esc(g.assignment_a_site||g.site_a_name||'موقع 1')+' · '+esc(fmtTime(g.assignment_a_start))+'–'+esc(fmtTime(g.assignment_a_end));
+   const right=esc(g.assignment_b_site||g.site_b_name||'موقع 2')+' · '+esc(fmtTime(g.assignment_b_start))+'–'+esc(fmtTime(g.assignment_b_end));
+   return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(g.employee_name||g.employee_ref||'')+'</b><div class="sub">'+left+' ↔ '+right+'</div></div><span class="guardStatus bad">'+Number(g.conflict_dates||0)+' يوم</span></div>'+
+     '<div class="caseActions"><button class="caseBtn conflictOpenAssignment" data-a="'+esc(g.assignment_a)+'">فتح التكليف الأول</button><button class="caseBtn conflictOpenAssignment" data-a="'+esc(g.assignment_b)+'">فتح التكليف الثاني</button></div></div>';
+ }).join('');
+ const timeCard='<div class="card gapCard '+(Number(tqs.groups||0)?'critical':'complete')+'" style="margin-top:10px">'+
+   '<div class="sectionHead"><div><h3>تعارض زمني مؤكد</h3><div class="sub">هذه ليست مجرد صفوف مكررة؛ فترات العمل نفسها تتداخل زمنياً. يجب تعديل أحد التكليفين قبل إقفال الدورة.</div></div><div class="pill '+(Number(tqs.groups||0)?'bad':'ok')+'">'+Number(tqs.groups||0)+'</div></div>'+
+   '<div class="caseMeta"><span class="caseTag">موظفون متأثرون: '+Number(tqs.employees||0)+'</span><span class="caseTag">أيام تعارض: '+Number(tqs.conflict_dates||0)+'</span></div>'+
+   '<div class="gapItems" style="margin-top:9px">'+(timeItems||'<div class="gapItem">لا توجد تعارضات زمنية مؤكدة لهذه المنطقة.</div>')+'</div></div>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
-  reconCard+multiCard+
+  reconCard+multiCard+timeCard+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList" style="margin-top:10px">'+
     sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
@@ -493,7 +506,7 @@ function drawGaps(){
     sec('مشكلات البيانات اليومية','رقم وظيفي أو موقع غير مربوط، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
- wireCaseActions();wireReconActions();wireMultiReconActions();
+ wireCaseActions();wireReconActions();wireMultiReconActions();wireTimeConflictActions();
 }
 
 
@@ -584,6 +597,14 @@ function reconciliationModal(r){
  $('rqMDM').onclick=()=>submitResolution('SEND_MASTERDATA');
 }
 
+
+
+function wireTimeConflictActions(){
+ document.querySelectorAll('.conflictOpenAssignment').forEach(b=>b.onclick=async()=>{
+   const id=b.dataset.a;if(!id)return;
+   S.tab='month';tabUI();await month();await loadEmployee(id);
+ });
+}
 
 function wireMultiReconActions(){
  document.querySelectorAll('.multiReconOpen').forEach(b=>b.onclick=()=>{
