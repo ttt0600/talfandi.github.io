@@ -423,7 +423,7 @@ function futureAssignment(){
 }
 
 function dayClass(s){return s==='OFF'||s==='O'?'off':['A','W','R','S'].includes(s)?'abs':s==='CASH'?'cash':s?'filled':''}
-function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return;const ds=dates(S.ctx.cycle_start,S.ctx.cycle_end),m=Object.fromEntries((a.days||[]).map(x=>[String(x.date).slice(0,10),x]));let h='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.project_name||'')+' · '+esc(a.site_name||'')+'</div></div><button id="editAssignment" class="btn ghost">تعديل</button></div><div class="quick"><div class="field"><label>من</label><input id="qFrom" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_start+'"></div><div class="field"><label>إلى</label><input id="qTo" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_end+'"></div><div class="field"><label>الحالة</label><select id="qStatus">';['P','OFF','A','T','AL','SK','O'].forEach(c=>h+='<option value="'+c+'">'+STATUS[c]+'</option>');h+='</select></div><button id="qFill" class="btn secondary">تعبئة</button></div><div class="calendar" id="cal"></div>';p.innerHTML=h;ds.forEach(d=>{const e=m[d],b=document.createElement('button');b.className='day '+dayClass(e?.status);b.innerHTML='<div class="n">'+d.slice(8,10)+'/'+d.slice(5,7)+'</div><div class="st">'+(e?esc(STATUS[e.status]||e.status):'—')+'</div>';b.onclick=()=>dayModal({assignment_id:a.id,employee_ref:a.employee_ref,full_name:a.full_name,shift_code:a.shift_code,...e},d,()=>loadEmployee(a.id));$('cal').appendChild(b)});$('editAssignment').onclick=()=>assignmentModal(a);$('qFill').onclick=async()=>{const f=$('qFrom').value,t=$('qTo').value;if(!f||!t||f>t)return toast('تحققي من النطاق',true);const ds=dates(f,t),st=$('qStatus').value;if(!await confirmUI('تعبئة النطاق','سيتم تطبيق '+STATUS[st]+' على '+ds.length+' يوماً.','تطبيق'))return;try{await fast('bulkFill',{assignment_id:a.id,dates:ds,status:st,shift_code:a.shift_code||null},12000);await loadEmployee(a.id);if(ds.includes(work()))refreshDay(false);toast('تمت التعبئة')}catch(e){toast(e.message,true)}}}
+function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return;const ds=dates(S.ctx.cycle_start,S.ctx.cycle_end),m=Object.fromEntries((a.days||[]).map(x=>[String(x.date).slice(0,10),x]));let h='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.project_name||'')+' · '+esc(a.site_name||'')+'</div></div><button id="editAssignment" class="btn ghost">تعديل</button></div><div class="quick"><div class="field"><label>من</label><input id="qFrom" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_start+'"></div><div class="field"><label>إلى</label><input id="qTo" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_end+'"></div><div class="field"><label>الحالة</label><select id="qStatus">';['P','OFF','A','T','AL','SK','O'].forEach(c=>h+='<option value="'+c+'">'+STATUS[c]+'</option>');h+='</select></div><button id="qFill" class="btn secondary">تعبئة</button></div><div class="calendar" id="cal"></div>';p.innerHTML=h;ds.forEach(d=>{const e=m[d],b=document.createElement('button');b.className='day '+dayClass(e?.status);b.innerHTML='<div class="n">'+d.slice(8,10)+'/'+d.slice(5,7)+'</div><div class="st">'+(e?esc(STATUS[e.status]||e.status):'—')+'</div>';b.onclick=()=>dayModal({assignment_id:a.id,employee_ref:a.employee_ref,full_name:a.full_name,shift_code:a.shift_code,assignment_type:a.assignment_type,...e},d,()=>loadEmployee(a.id));$('cal').appendChild(b)});$('editAssignment').onclick=()=>assignmentModal(a);$('qFill').onclick=async()=>{const f=$('qFrom').value,t=$('qTo').value;if(!f||!t||f>t)return toast('تحققي من النطاق',true);const ds=dates(f,t),st=$('qStatus').value;if(!await confirmUI('تعبئة النطاق','سيتم تطبيق '+STATUS[st]+' على '+ds.length+' يوماً.','تطبيق'))return;try{await fast('bulkFill',{assignment_id:a.id,dates:ds,status:st,shift_code:a.shift_code||null},12000);await loadEmployee(a.id);if(ds.includes(work()))refreshDay(false);toast('تمت التعبئة')}catch(e){toast(e.message,true)}}}
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
@@ -778,17 +778,34 @@ function multiAssignmentModal(g){
 
 function dayModal(e,d,done){
  if(!e)return;
+ const isCashGuard=e.assignment_type==='CASH_COVERAGE';
  let st='';
  Object.entries(STATUS).forEach(x=>st+='<option value="'+x[0]+'" '+(e.status===x[0]?'selected':'')+'>'+x[1]+'</option>');
- modal('<h3>'+esc(e.full_name)+' — '+d+'</h3><div class="grid2"><div class="field"><label>حالة الحضور *</label><select id="dStatus">'+st+'</select></div><div class="field"><label>الوردية</label><input id="dShift" value="'+esc(e.shift_code||'')+'"></div></div><div id="coverageFields" class="hidden"><div class="section-title">بيانات التغطية</div><div class="grid2"><div class="field"><label>اسم الحارس البديل</label><input id="replName" value="'+esc(e.replacement_name||'')+'"></div><div class="field"><label>الرقم الوظيفي للحارس البديل</label><input id="replRef" value="'+esc(e.replacement_employee_ref||'')+'"></div><div class="field" id="cashBox"><label>مبلغ تغطية الكاش</label><input id="cash" type="number" min="0" value="'+(e.cash_amount??'')+'"></div></div></div><div class="field" style="margin-top:10px"><label>ملاحظات التشغيل</label><textarea id="dNote" rows="2">'+esc(e.note||'')+'</textarea></div><div class="modal-actions"><button id="saveD" class="btn primary">حفظ</button><button id="cancelD" class="btn ghost">إلغاء</button></div>');
- const cov=()=>{const s=$('dStatus').value,on=s==='SUB'||s==='CASH';$('coverageFields').classList.toggle('hidden',!on);$('cashBox').classList.toggle('hidden',s!=='CASH')};
+ modal('<h3>'+esc(e.full_name)+' — '+d+'</h3>'+
+ (isCashGuard?'<div class="notice"><b>حارس تغطية كاش:</b> هذا السجل يمثل الحارس المنفذ نفسه، لذلك لا يطلب حارساً بديلاً. عند حالة «تغطية كاش» يكفي استكمال المبلغ والملاحظة.</div>':'')+
+ '<div class="grid2"><div class="field"><label>حالة الحضور *</label><select id="dStatus">'+st+'</select></div><div class="field"><label>الوردية</label><input id="dShift" value="'+esc(e.shift_code||'')+'"></div></div>'+
+ '<div id="coverageFields" class="hidden"><div class="section-title">بيانات التغطية</div><div class="grid2">'+
+ '<div class="field" id="replNameBox"><label>اسم الحارس البديل</label><input id="replName" value="'+esc(e.replacement_name||'')+'"></div>'+
+ '<div class="field" id="replRefBox"><label>الرقم الوظيفي للحارس البديل</label><input id="replRef" value="'+esc(e.replacement_employee_ref||'')+'"></div>'+
+ '<div class="field" id="cashBox"><label>مبلغ تغطية الكاش</label><input id="cash" type="number" min="0" step="0.01" value="'+(e.cash_amount??'')+'"></div></div></div>'+
+ '<div class="field" style="margin-top:10px"><label>ملاحظات التشغيل</label><textarea id="dNote" rows="2">'+esc(e.note||'')+'</textarea></div>'+
+ '<div class="modal-actions"><button id="saveD" class="btn primary">حفظ</button><button id="cancelD" class="btn ghost">إلغاء</button></div>');
+ const cov=()=>{
+   const s=$('dStatus').value,on=s==='SUB'||s==='CASH';
+   $('coverageFields').classList.toggle('hidden',!on);
+   $('cashBox').classList.toggle('hidden',s!=='CASH');
+   $('replNameBox').classList.toggle('hidden',isCashGuard);
+   $('replRefBox').classList.toggle('hidden',isCashGuard);
+ };
  $('dStatus').onchange=cov;cov();$('cancelD').onclick=closeModal;
  $('saveD').onclick=async()=>{
   const p={
    assignment_id:e.assignment_id,date:d,status:$('dStatus').value,shift_code:$('dShift').value||null,
-   note:$('dNote').value.trim()||null,replacement_name:$('replName')?.value.trim()||null,
-   replacement_employee_ref:$('replRef')?.value.trim()||null,
-   covered_employee_name:e.full_name||null,covered_employee_ref:e.employee_ref||null,
+   note:$('dNote').value.trim()||null,
+   replacement_name:isCashGuard?null:($('replName')?.value.trim()||null),
+   replacement_employee_ref:isCashGuard?null:($('replRef')?.value.trim()||null),
+   covered_employee_name:isCashGuard?null:(e.full_name||null),
+   covered_employee_ref:isCashGuard?null:(e.employee_ref||null),
    cash_amount:$('cash')?.value||null
   };
   $('saveD').disabled=true;
