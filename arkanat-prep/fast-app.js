@@ -595,14 +595,16 @@ function drawGaps(){
    (Number(tqs.data_review||0)?'<details style="margin-top:9px"><summary class="caseBtn">تكليفات متطابقة في مسار البيانات '+Number(tqs.data_review||0)+'</summary><div class="gapItems" style="margin-top:9px">'+timeDataItems+'</div></details>':'')+
    '</div>';
  const ord=S.opsReadiness||{},opsBlocked=ord.status==='BLOCKED';
- const opsHandoffDone=!!ord.operations_submitted_at;
+ const opsHandoffState=ord.handoff_state||'NOT_SUBMITTED';
+ const opsHandoffDone=opsHandoffState==='CURRENT';
+ const opsHandoffStale=opsHandoffState==='STALE';
  const opsCard='<div class="card '+(opsBlocked?'attention':'complete')+'" style="margin-bottom:10px">'+
    '<div class="sectionHead"><div><h3>مسؤولية العمليات في الدورة</h3><div class="sub">'+
      (opsBlocked
        ?'تبقى حالات تحتاج قراراً تشغيلياً قبل أن تسلّم العمليات عملها.'
        :'لا توجد موانع تشغيلية حالية. يمكن اعتماد وتسليم أعمال العمليات حتى لو بقيت أعمال تخص الموارد البشرية أو البيانات المرجعية.')+
    '</div></div><div class="pill '+(opsBlocked?'warn':'ok')+'">'+
-     (opsBlocked?Number(ord.blocker_count||0)+' متبقي':(opsHandoffDone?'تم التسليم سابقاً':'جاهز للتسليم'))+
+     (opsBlocked?Number(ord.blocker_count||0)+' متبقي':(opsHandoffDone?'تم التسليم':(opsHandoffStale?'يحتاج إعادة اعتماد':'جاهز للتسليم')))+
    '</div></div>'+
    '<div class="caseMeta">'+
      '<span class="caseTag">قرارات الحراس: '+Number(ord.operations_action||0)+'</span>'+
@@ -611,6 +613,7 @@ function drawGaps(){
      '<span class="caseTag">تغطيات مفتوحة: '+Number(ord.open_coverage_cases||0)+'</span>'+
      '<span class="caseTag">حالات تشغيلية مفتوحة: '+Number(ord.open_operations_cases||0)+'</span>'+
    '</div>'+
+   (opsHandoffStale?'<div class="notice" style="margin-top:8px"><b>تغيرت بيانات تشغيلية بعد آخر تسليم.</b> يلزم إعادة اعتماد العمليات بعد مراجعة الحالات الحالية.</div>':'')+
    (Number(ord.hr_link_pending||0)?'<div class="sub" style="margin-top:7px">يوجد '+Number(ord.hr_link_pending||0)+' حالة ربط موظف في مسار الموارد البشرية؛ لا تدخل ضمن مسؤولية الإقفال التشغيلي لموظفة العمليات.</div>':'')+
  '</div>';
   const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
@@ -639,6 +642,13 @@ function drawGaps(){
     sec('مشكلات البيانات اليومية','هوية حارس أو موقع غير محسوم، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
+ const submitButton=$('submitBtn');
+ if(submitButton&&!submitButton.disabled){
+   if(opsBlocked)submitButton.textContent='معالجة متطلبات العمليات';
+   else if(!opsHandoffDone)submitButton.textContent=opsHandoffStale?'إعادة اعتماد العمليات':'اعتماد وتسليم العمليات';
+   else if(!blocked)submitButton.textContent='الإقفال النهائي للدورة';
+   else submitButton.textContent='العمليات مسلّمة — عرض الموانع';
+ }
  wireCaseActions();wireReconActions();wireIdentityTriageActions();wireMultiReconActions();wireTimeConflictActions();
 }
 
@@ -1206,20 +1216,28 @@ $('submitBtn').onclick=async()=>{
      return toast('تبقى على العمليات '+Number(ord.blocker_count||0)+' حالة تحتاج قراراً قبل التسليم. تم فتح الاستثناءات.',true);
    }
 
+   if((ord.handoff_state||'NOT_SUBMITTED')!=='CURRENT'){
+     const hr=Number(ord.hr_link_pending||0);
+     const stale=(ord.handoff_state||'')==='STALE';
+     const body=(stale
+       ?'تغيرت بيانات تشغيلية بعد آخر تسليم. سيتم تسجيل اعتماد جديد لمسؤولية العمليات بعد مراجعة الوضع الحالي.'
+       :'مسؤولية العمليات مكتملة. سيتم اعتماد وتسليم أعمال العمليات لهذه الدورة.')+
+       (hr?'<br><b>ربط موظفين لدى الموارد البشرية:</b> '+hr+' — لا يمنع تسليم العمليات.':'')+
+       (rd.status!=='READY'?'<br>الإقفال النهائي سيبقى بانتظار المسارات الأخرى.':'');
+     if(!await confirmUI(stale?'إعادة اعتماد أعمال العمليات':'اعتماد وتسليم أعمال العمليات',body,stale?'إعادة الاعتماد':'اعتماد وتسليم'))return;
+     const d=await fast('operationsHandoff',{period:period()},12000);
+     toast(d.message||'تم تسليم أعمال العمليات');
+     S.tab='gaps';tabUI();await gaps();return;
+   }
+
    if(rd.status==='READY'){
-     if(!await confirmUI('الإقفال النهائي للدورة','اكتملت مسؤولية العمليات وجميع مسارات البيانات الأخرى. سيتم إقفال دورة '+monthLabel(period())+' نهائياً.','إقفال نهائي'))return;
+     if(!await confirmUI('الإقفال النهائي للدورة','تم اعتماد العمليات واكتملت جميع المسارات الأخرى. سيتم إقفال دورة '+monthLabel(period())+' نهائياً.','إقفال نهائي'))return;
      const d=await fast('submit',{period:period()},12000);
      toast(d.message||'تم الإقفال النهائي');await refreshDay(true);return;
    }
 
-   const hr=Number(ord.hr_link_pending||0),other=Math.max(0,Number(rd.blocker_count||0)-hr);
-   const body='مسؤولية العمليات مكتملة. سيتم اعتماد وتسليم أعمال العمليات لهذه الدورة، بينما يبقى الإقفال النهائي بانتظار المسارات المختصة.'+
-     (hr?'<br><b>ربط موظفين لدى الموارد البشرية:</b> '+hr:'')+
-     (other?'<br><b>موانع أخرى خارج الإقفال التشغيلي:</b> '+other:'');
-   if(!await confirmUI('اعتماد وتسليم أعمال العمليات',body,'اعتماد وتسليم'))return;
-   const d=await fast('operationsHandoff',{period:period()},12000);
-   toast(d.message||'تم تسليم أعمال العمليات');
    S.tab='gaps';tabUI();await gaps();
+   toast('تم تسليم العمليات بالفعل. الإقفال النهائي ينتظر الموارد البشرية أو البيانات المرجعية.',true);
  }catch(e){toast(e.message,true)}
 };
 $('exportBtn').onclick=exportCsv;
