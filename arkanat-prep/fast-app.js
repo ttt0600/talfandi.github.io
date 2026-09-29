@@ -456,7 +456,7 @@ function drawGaps(){
    const shift=r.shift_suggestion?.ok?(r.shift_suggestion.start_time+'–'+r.shift_suggestion.end_time):'';
    const cashLevel=r.cash_coverage_candidate_level||'NONE';
    const cashHint=cashLevel!=='NONE'
-     ?'<div class="notice" style="margin-top:6px"><b>احتمال تغطية كاش:</b> '+esc(r.cash_coverage_candidate_reason||'بيانات الحارس غير مكتملة وتحتاج تصنيفاً من العمليات.')+'</div>'
+     ?'<div class="notice" style="margin-top:6px"><b>'+(cashLevel==='HIGH'?'مؤشر كاش من المصدر:':cashLevel==='MEDIUM'?'مؤشر تغطية/بديل:':'بيانات هوية غير مكتملة:')+'</b> '+esc(r.cash_coverage_candidate_reason||'الحالة تحتاج تصنيفاً من العمليات.')+'</div>'
      :'';
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.guard_name||'')+'</b><div class="sub">'+esc(r.raw_site||'بدون موقع')+' · '+esc(issueLabel(r.issue_code))+'</div></div><span class="guardStatus warn">'+esc(r.source_row||'')+'</span></div>'+
      '<div class="sub" style="margin-top:5px">المصدر: '+esc(r.source_file_name||'')+(r.source_sheet?' / '+esc(r.source_sheet):'')+'</div>'+
@@ -464,7 +464,7 @@ function drawGaps(){
      (shift?'<div class="sub">وقت مستخرج من المصدر: '+esc(shift)+'</div>':'')+
      cashHint+
      '<div class="caseActions"><button class="caseBtn primary reconOpen" data-row="'+esc(r.legacy_row_id)+'">معالجة البيانات</button>'+
-       ((cashLevel==='HIGH'||cashLevel==='MEDIUM')?'<button class="caseBtn rqCashQuick" data-row="'+esc(r.legacy_row_id)+'">قد يكون تغطية كاش</button>':'')+
+       ((cashLevel==='HIGH'||cashLevel==='MEDIUM')?'<button class="caseBtn rqCashQuick" data-row="'+esc(r.legacy_row_id)+'">تصنيف التغطية</button>':'')+
      '</div></div>';
  }).join('');
  const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
