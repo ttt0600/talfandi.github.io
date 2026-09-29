@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -424,8 +424,14 @@ function futureAssignment(){
 function dayClass(s){return s==='OFF'||s==='O'?'off':['A','W','R','S'].includes(s)?'abs':s==='CASH'?'cash':s?'filled':''}
 function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return;const ds=dates(S.ctx.cycle_start,S.ctx.cycle_end),m=Object.fromEntries((a.days||[]).map(x=>[String(x.date).slice(0,10),x]));let h='<div class="person-head"><div><h2>'+esc(a.full_name)+'</h2><div class="sub">'+esc(a.project_name||'')+' · '+esc(a.site_name||'')+'</div></div><button id="editAssignment" class="btn ghost">تعديل</button></div><div class="quick"><div class="field"><label>من</label><input id="qFrom" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_start+'"></div><div class="field"><label>إلى</label><input id="qTo" type="date" min="'+S.ctx.cycle_start+'" max="'+S.ctx.cycle_end+'" value="'+S.ctx.cycle_end+'"></div><div class="field"><label>الحالة</label><select id="qStatus">';['P','OFF','A','T','AL','SK','O'].forEach(c=>h+='<option value="'+c+'">'+STATUS[c]+'</option>');h+='</select></div><button id="qFill" class="btn secondary">تعبئة</button></div><div class="calendar" id="cal"></div>';p.innerHTML=h;ds.forEach(d=>{const e=m[d],b=document.createElement('button');b.className='day '+dayClass(e?.status);b.innerHTML='<div class="n">'+d.slice(8,10)+'/'+d.slice(5,7)+'</div><div class="st">'+(e?esc(STATUS[e.status]||e.status):'—')+'</div>';b.onclick=()=>dayModal({assignment_id:a.id,employee_ref:a.employee_ref,full_name:a.full_name,shift_code:a.shift_code,...e},d,()=>loadEmployee(a.id));$('cal').appendChild(b)});$('editAssignment').onclick=()=>assignmentModal(a);$('qFill').onclick=async()=>{const f=$('qFrom').value,t=$('qTo').value;if(!f||!t||f>t)return toast('تحققي من النطاق',true);const ds=dates(f,t),st=$('qStatus').value;if(!await confirmUI('تعبئة النطاق','سيتم تطبيق '+STATUS[st]+' على '+ds.length+' يوماً.','تطبيق'))return;try{await fast('bulkFill',{assignment_id:a.id,dates:ds,status:st,shift_code:a.shift_code||null},12000);await loadEmployee(a.id);if(ds.includes(work()))refreshDay(false);toast('تمت التعبئة')}catch(e){toast(e.message,true)}}}
 async function gaps(){
- $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات...</div></div>';
- try{S.issues=await fast('issues',{period:period(),date:work()},10000);drawGaps()}
+ $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
+ try{
+   const [issues,recon]=await Promise.all([
+     fast('issues',{period:period(),date:work()},10000),
+     fast('reconciliationQueue',{period:period(),limit:120},12000)
+   ]);
+   S.issues=issues;S.recon=recon;drawGaps()
+ }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
 function drawGaps(){
@@ -439,16 +445,126 @@ function drawGaps(){
     '<div class="caseActions">'+siteBtn+(r.case_id?caseActionsMarkup(r).replace(/^<div class="caseActions">|<\/div>$/g,''):'')+'</div></div>';
  };
  const sec=(title,sub,count,rows,cls)=>'<div class="card gapCard '+(cls||'')+'"><div class="sectionHead"><div><h3>'+esc(title)+'</h3><div class="sub">'+esc(sub)+'</div></div><div class="pill '+(cls||'')+'">'+Number(count||0)+'</div></div><div class="gapItems">'+(rows.length?rows.slice(0,50).map(row).join(''):'<div class="gapItem">لا توجد حالات</div>')+(rows.length>50?'<div class="gapItem">+ '+(rows.length-50)+' حالات أخرى</div>':'')+'</div></div>';
+ const rq=S.recon||{},rs=rq.summary||{},rr=rq.rows||[],ms=rq.multi_assignment_summary||{};
+ const issueLabel=x=>({EMPLOYEE_NOT_FOUND:'الموظف غير مربوط',EMPLOYEE_AMBIGUOUS:'اسم موظف ملتبس',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'الموقع يحتاج تحديداً',MULTI_ROW_REVIEW:'صفوف متعددة تحتاج تصنيفاً'}[x]||x||'مراجعة بيانات');
+ const reconItems=rr.map(r=>{
+   const suggested=[r.employee_name_candidate,r.site_name_candidate].filter(Boolean).join(' · ');
+   const shift=r.shift_suggestion?.ok?(r.shift_suggestion.start_time+'–'+r.shift_suggestion.end_time):'';
+   return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.guard_name||'')+'</b><div class="sub">'+esc(r.raw_site||'بدون موقع')+' · '+esc(issueLabel(r.issue_code))+'</div></div><span class="guardStatus warn">'+esc(r.source_row||'')+'</span></div>'+
+     '<div class="sub" style="margin-top:5px">المصدر: '+esc(r.source_file_name||'')+(r.source_sheet?' / '+esc(r.source_sheet):'')+'</div>'+
+     (suggested?'<div class="sub">اقتراح: '+esc(suggested)+'</div>':'')+
+     (shift?'<div class="sub">وقت مستخرج من المصدر: '+esc(shift)+'</div>':'')+
+     '<div class="caseActions"><button class="caseBtn primary reconOpen" data-row="'+esc(r.legacy_row_id)+'">معالجة البيانات</button></div></div>';
+ }).join('');
+ const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
+   '<div class="sectionHead"><div><h3>تصحيح بيانات التحضير</h3><div class="sub">يعرض فقط الصفوف التي لا يمكن اعتمادها آلياً. لا يلزم إعادة إدخال التحضير الصحيح.</div></div><div class="pill '+(Number(rs.total||0)?'warn':'ok')+'">'+Number(rs.total||0)+'</div></div>'+
+   '<div class="caseMeta">'+
+     '<span class="caseTag">موظف غير مربوط: '+Number(rs.employee_not_found||0)+'</span>'+
+     '<span class="caseTag">موقع غير مربوط: '+Number(rs.site_not_mapped||0)+'</span>'+
+     '<span class="caseTag">موقع ملتبس: '+Number(rs.site_ambiguous||0)+'</span>'+
+     '<span class="caseTag">صفوف متعددة: '+Number(rs.multi_row_review||0)+'</span>'+
+   '</div>'+
+   ((Number(ms.total||0))?'<div class="notice" style="margin-top:9px"><b>فحص الورديات:</b> '+Number(ms.multi_shift_same_day||0)+' حالات ورديات متعددة في اليوم نفسه، '+Number(ms.duplicate_or_coverage||0)+' حالات تكرار/تغطية محتملة، و'+Number(ms.dates_do_not_overlap||0)+' حالات لا تتداخل تواريخها.</div>':'')+
+   '<div class="gapItems" style="margin-top:9px">'+(reconItems||'<div class="gapItem">لا توجد بيانات معلقة لهذه المنطقة.</div>')+'</div></div>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
-  (pending.length?'<div class="card" style="margin-bottom:10px"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
-  '<div class="gapList">'+
+  reconCard+
+  (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
+  '<div class="gapList" style="margin-top:10px">'+
     sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
     sec('بانتظار المراجعة','إجازات واستئذانات وتغطيات وأحداث تم تسجيلها وتحتاج اعتماد المسار المختص.',c.needs_review,review,'warn')+
-    sec('مشكلات البيانات','رقم وظيفي أو موقع غير مربوط، أو تداخل يحتاج تصحيحاً.',c.data_issues,data,'')+
+    sec('مشكلات البيانات اليومية','رقم وظيفي أو موقع غير مربوط، أو تداخل تشغيلي لليوم المحدد.',c.data_issues,data,'')+
     sec('حالات مغلقة','حالات تمت معالجتها واعتمادها، وتبقى محفوظة للرجوع والمراجعة.',c.closed_cases,closed,'ok')+
   '</div>';
- wireCaseActions();
+ wireCaseActions();wireReconActions();
+}
+
+
+function wireReconActions(){
+ document.querySelectorAll('.reconOpen').forEach(b=>b.onclick=()=>{
+   const r=(S.recon?.rows||[]).find(x=>x.legacy_row_id===b.dataset.row);
+   if(r)reconciliationModal(r);
+ });
+}
+
+function reconciliationModal(r){
+ const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية'};
+ let siteOpts='<option value="">اختاري الموقع الصحيح</option>';
+ const seen=new Set();
+ (S.ctx?.sites||[]).forEach(s=>{seen.add(s.site_code);siteOpts+='<option value="'+esc(s.site_code)+'">'+esc((s.client_name||'')+' — '+(s.project_name||'')+' — '+s.site_name)+'</option>'});
+ if(r.site_code_candidate&&!seen.has(r.site_code_candidate))siteOpts+='<option value="'+esc(r.site_code_candidate)+'">'+esc(r.site_name_candidate||r.site_code_candidate)+'</option>';
+ const sg=r.shift_suggestion||{};
+ const start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
+ modal(
+  '<h3>تصحيح بيانات التحضير</h3>'+
+  '<div class="notice"><b>'+esc(issueNames[r.issue_code]||'حالة تحتاج مراجعة')+'</b><br>المصدر: '+esc(r.source_file_name||'')+' / صف '+esc(r.source_row||'')+'<br>لن يتم تغيير ملف المصدر؛ سيحفظ النظام قرار التصحيح وأثر المراجعة.</div>'+
+  '<div class="grid2">'+
+    '<div class="field"><label>الاسم في ملف التحضير</label><input value="'+esc(r.guard_name||'')+'" disabled></div>'+
+    '<div class="field"><label>الموقع في ملف التحضير</label><input value="'+esc(r.raw_site||'')+'" disabled></div>'+
+  '</div>'+
+  '<div class="field" style="margin-top:10px"><label>البحث عن الموظف الصحيح</label><input id="rqEmpSearch" placeholder="الاسم أو الرقم الوظيفي"><div id="rqEmpSug" class="suggestions hidden"></div></div>'+
+  '<div class="grid2" style="margin-top:10px">'+
+    '<div class="field"><label>الرقم الوظيفي</label><input id="rqEmpRef" value="'+esc(r.employee_ref_candidate||'')+'" placeholder="اختاري من البحث"></div>'+
+    '<div class="field"><label>اسم الموظف المعتمد</label><input id="rqEmpName" value="'+esc(r.employee_name_candidate||'')+'" disabled></div>'+
+    '<div class="field"><label>الموقع الصحيح</label><select id="rqSite">'+siteOpts+'</select></div>'+
+    '<div class="field"><label>تصنيف الصف</label><select id="rqType"><option value="LINK_PRIMARY">تكليف أساسي</option><option value="LINK_EXTRA_SHIFT">وردية إضافية</option><option value="LINK_COVERAGE">تغطية</option><option value="IGNORE_DUPLICATE">صف مكرر</option></select></div>'+
+    '<div class="field"><label>بداية الوردية</label><input id="rqStart" type="time" value="'+esc(start)+'"></div>'+
+    '<div class="field"><label>نهاية الوردية</label><input id="rqEnd" type="time" value="'+esc(end)+'"></div>'+
+  '</div>'+
+  '<div id="rqHint" class="notice" style="margin-top:10px">إذا كان الموظف ظاهراً في ورديتين، اختاري «وردية إضافية» أو «تغطية» حسب الواقع. النظام يمنع التداخل الزمني الفعلي.</div>'+
+  '<div class="modal-actions"><button id="rqSave" class="btn primary">اعتماد التصحيح</button><button id="rqHR" class="btn secondary">إحالة للموارد البشرية</button><button id="rqMDM" class="btn gold">إحالة لبيانات المواقع</button><button id="rqCancel" class="btn ghost">إلغاء</button></div>'
+ );
+ if(r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
+ if(r.same_name_site_rows>1)$('rqType').value='LINK_EXTRA_SHIFT';
+ const updateHint=()=>{
+   const t=$('rqType').value,h=$('rqHint');
+   if(t==='IGNORE_DUPLICATE')h.textContent='سيتم استبعاد هذا الصف كتكرار مؤكد مع إبقاء أثر المراجعة والمصدر.';
+   else if(t==='LINK_COVERAGE')h.textContent='سيحفظ الصف كتغطية مرتبطة بحارس فعلي. يلزم وقت بداية ونهاية، وتبقى التغطية بانتظار استكمال الحارس/الوردية المغطاة إذا لم تكن محددة.';
+   else if(t==='LINK_EXTRA_SHIFT')h.textContent='وردية إضافية صحيحة لنفس الموظف. يجب تحديد وقت البداية والنهاية، وسيتم منع أي تداخل فعلي مع تكليف آخر.';
+   else h.textContent='تكليف أساسي. إذا كان الاسم مكرراً في أكثر من صف لن يتم الحفظ دون وقت وردية واضح.';
+ };
+ $('rqType').onchange=updateHint;updateHint();
+ let tm;
+ $('rqEmpSearch').oninput=()=>{clearTimeout(tm);tm=setTimeout(async()=>{
+   const q=$('rqEmpSearch').value.trim(),box=$('rqEmpSug');
+   if(q.length<2){box.classList.add('hidden');return}
+   try{
+     const d=await fast('searchEmployee',{q},8000);box.innerHTML='';
+     (d.rows||[]).slice(0,12).forEach(e=>{
+       const x=document.createElement('div');x.className='suggestion';
+       x.innerHTML='<b>'+esc(e.full_name)+'</b><div class="sub">'+esc(e.employee_id)+(e.job_title?' · '+esc(e.job_title):'')+'</div>';
+       x.onclick=()=>{$('rqEmpRef').value=e.employee_id||'';$('rqEmpName').value=e.full_name||'';box.classList.add('hidden')};
+       box.appendChild(x)
+     });
+     box.classList.toggle('hidden',!(d.rows||[]).length)
+   }catch{}
+ },220)};
+ $('rqCancel').onclick=closeModal;
+ const submitResolution=async(type)=>{
+   const payload={
+     legacy_row_id:r.legacy_row_id,
+     issue_code:r.issue_code,
+     resolution_type:type||$('rqType').value,
+     employee_ref:$('rqEmpRef').value.trim()||null,
+     site_code:$('rqSite').value||null,
+     shift_start:$('rqStart').value||null,
+     shift_end:$('rqEnd').value||null
+   };
+   if(!['IGNORE_DUPLICATE','SEND_HR','SEND_MASTERDATA'].includes(payload.resolution_type)){
+     if(!payload.employee_ref)return toast('اختاري الموظف الصحيح أو أحِيلي الحالة للموارد البشرية.',true);
+     if(!payload.site_code)return toast('اختاري الموقع الصحيح أو أحِيلي الحالة لبيانات المواقع.',true);
+     if((r.same_name_site_rows>1||['LINK_EXTRA_SHIFT','LINK_COVERAGE'].includes(payload.resolution_type))&&(!payload.shift_start||!payload.shift_end))
+       return toast('هذه الحالة متعددة الصفوف/الورديات؛ حددي وقت البداية والنهاية.',true);
+   }
+   const b=$('rqSave');if(b)b.disabled=true;
+   try{
+     const d=await fast('resolveReconciliation',{payload},15000);
+     closeModal();await gaps();toast(d.message||'تم اعتماد التصحيح')
+   }catch(e){toast(e.message,true);if(b)b.disabled=false}
+ };
+ $('rqSave').onclick=()=>submitResolution();
+ $('rqHR').onclick=()=>submitResolution('SEND_HR');
+ $('rqMDM').onclick=()=>submitResolution('SEND_MASTERDATA');
 }
 
 
@@ -490,15 +606,15 @@ function assignmentModal(a=null){
  '<div style="margin-top:12px;font-weight:900">بيانات الدوام بالموقع</div>'+
  '<div class="grid2" style="margin-top:8px">'+
    '<div class="field"><label>المشرف الميداني</label><input id="supervisorName" value="'+esc(a?.supervisor_name||'')+'" placeholder="اسم المشرف"></div>'+
-   '<div class="field"><label>نوع التوزيع</label><select id="atype"><option value="PRIMARY">حارس ثابت</option><option value="RELIEF_FIXED">بديل راحات</option><option value="TEMP_COVERAGE">تغطية مؤقتة</option><option value="OTHER">تكليف آخر</option></select></div>'+
+   '<div class="field"><label>نوع التوزيع</label><select id="atype"><option value="PRIMARY">حارس ثابت</option><option value="RELIEF_FIXED">بديل راحات</option><option value="TEMP_COVERAGE">تغطية مؤقتة</option><option value="EXTRA_SHIFT">وردية إضافية</option><option value="OTHER">تكليف آخر</option></select></div>'+
    '<div class="field"><label>نقطة الحراسة</label><input id="workPointName" value="'+esc(a?.work_point_name||'')+'" placeholder="مثال: بوابة رئيسية، مدخل موظفين، مبنى إداري"></div>'+
    '<div class="field"><label>الراحة الأسبوعية</label><input id="weeklyOffText" value="'+esc(a?.weekly_off_text||'')+'" placeholder="مثال: الجمعة أو الخميس والجمعة"></div>'+
    '<div class="field"><label>أيام العمل أسبوعياً</label><input id="workDays" type="number" min="0" max="7" step="0.5" value="'+esc(a?.work_days_per_week??'')+'" placeholder="كما هو بالمصدر — يترك فارغاً إذا لم يرد"></div>'+
    '<div class="field"><label>ساعات العمل اليومية</label><input id="dailyHours" type="number" min="1" max="24" step="0.5" value="'+esc(a?.daily_hours??'')+'" placeholder="مثال: 8 أو 12 — يترك فارغاً إذا لم يرد بالمصدر"></div>'+
    '<div class="field"><label>الوردية</label><select id="shift">'+sh+'</select></div>'+
    '<div class="field"><label>وصف الوردية</label><input id="shiftDetail" value="'+esc(a?.shift_detail||'')+'" placeholder="مثال: صباح / مساء / بديل راحات"></div>'+
-   '<div class="field"><label>بداية الوردية</label><input id="shiftStartText" value="'+esc(a?.shift_start_text||'')+'" placeholder="مثال: 08:00 أو 8ص"></div>'+
-   '<div class="field"><label>نهاية الوردية</label><input id="shiftEndText" value="'+esc(a?.shift_end_text||'')+'" placeholder="مثال: 16:00 أو 4م"></div>'+
+   '<div class="field"><label>بداية الوردية</label><input id="shiftStartText" type="time" value="'+esc(String(a?.shift_start_time||a?.shift_start_text||'').slice(0,5).match(/^\\d{2}:\\d{2}$/)?.[0]||'')+'"></div>'+
+   '<div class="field"><label>نهاية الوردية</label><input id="shiftEndText" type="time" value="'+esc(String(a?.shift_end_time||a?.shift_end_text||'').slice(0,5).match(/^\\d{2}:\\d{2}$/)?.[0]||'')+'"></div>'+
    '<div class="field"><label>تاريخ المباشرة بالموقع</label><input id="startDate" type="date" value="'+String(a?.start_date||S.ctx.cycle_start).slice(0,10)+'"></div>'+
    '<div class="field"><label>تاريخ نهاية التوزيع</label><input id="endDate" type="date" value="'+String(a?.end_date||S.ctx.cycle_end).slice(0,10)+'"></div>'+
  '</div>'+
@@ -533,6 +649,9 @@ function assignmentModal(a=null){
      h.classList.remove('hidden');
    }else if(t==='RELIEF_FIXED'){
      h.textContent='بديل الراحات حارس فعلي يغطي أيام الراحة بشكل متكرر. إذا لم يحدد المصدر أياماً أو ساعات ثابتة فلا يتم افتراضها.';
+     h.classList.remove('hidden');
+   }else if(t==='EXTRA_SHIFT'){
+     h.textContent='الوردية الإضافية تعني أن الموظف نفسه يعمل فترة زمنية ثانية. يلزم تحديد بداية ونهاية الوردية، ويمنع النظام أي تداخل زمني.';
      h.classList.remove('hidden');
    }else h.classList.add('hidden');
  };
@@ -641,9 +760,24 @@ function assignmentModal(a=null){
      return toast('للتكليف اليدوي الجديد حددي الوردية أو وقت بدايتها.',true);
    if(p.assignment_type==='TEMP_COVERAGE'&&!p.employee_ref)
      return toast('التغطية المؤقتة يجب أن ترتبط بحارس فعلي ذي رقم وظيفي.',true);
+   if(['TEMP_COVERAGE','EXTRA_SHIFT'].includes(p.assignment_type)&&(!p.shift_start_text||!p.shift_end_text))
+     return toast('التغطية أو الوردية الإضافية تتطلب وقت بداية ونهاية واضحاً.',true);
    if(p.start_date&&p.end_date&&p.start_date>p.end_date)return toast('تاريخ البداية يجب أن يسبق تاريخ النهاية',true);
    const btn=$('saveA');btn.disabled=true;
-   try{await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم حفظ توزيع الحارس')}
+   try{
+     if(p.employee_ref&&p.shift_start_text&&p.shift_end_text&&p.start_date&&p.end_date){
+       const cf=await fast('assignmentTimeConflicts',{
+         employee_ref:p.employee_ref,start_date:p.start_date,end_date:p.end_date,
+         start_time:p.shift_start_text,end_time:p.shift_end_text,
+         exclude_assignment_id:a?.id||null
+       },12000);
+       if(Number(cf.overlap_count||0)>0){
+         btn.disabled=false;
+         return toast('لا يمكن الحفظ: يوجد تداخل زمني في '+Number(cf.conflict_dates||0)+' يوم/أيام مع تكليف قائم. عدلي الوقت أو صححي نوع التوزيع.',true);
+       }
+     }
+     await fast('saveAssignment',{payload:p},10000);closeModal();await bootstrap();toast('تم حفظ توزيع الحارس')
+   }
    catch(e){toast(e.message,true);btn.disabled=false}
  }
 }
