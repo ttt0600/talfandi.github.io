@@ -463,7 +463,9 @@ function drawGaps(){
      (suggested?'<div class="sub">اقتراح: '+esc(suggested)+'</div>':'')+
      (shift?'<div class="sub">وقت مستخرج من المصدر: '+esc(shift)+'</div>':'')+
      cashHint+
-     '<div class="caseActions"><button class="caseBtn primary reconOpen" data-row="'+esc(r.legacy_row_id)+'">معالجة البيانات</button></div></div>';
+     '<div class="caseActions"><button class="caseBtn primary reconOpen" data-row="'+esc(r.legacy_row_id)+'">معالجة البيانات</button>'+
+       ((cashLevel==='HIGH'||cashLevel==='MEDIUM')?'<button class="caseBtn rqCashQuick" data-row="'+esc(r.legacy_row_id)+'">قد يكون تغطية كاش</button>':'')+
+     '</div></div>';
  }).join('');
  const reconCard='<div class="card gapCard '+(Number(rs.total||0)?'attention':'complete')+'">'+
    '<div class="sectionHead"><div><h3>تصحيح بيانات التحضير</h3><div class="sub">يعرض فقط الصفوف التي لا يمكن اعتمادها آلياً. لا يلزم إعادة إدخال التحضير الصحيح.</div></div><div class="pill '+(Number(rs.total||0)?'warn':'ok')+'">'+Number(rs.total||0)+'</div></div>'+
@@ -539,9 +541,13 @@ function wireReconActions(){
    const r=(S.recon?.rows||[]).find(x=>x.legacy_row_id===b.dataset.row);
    if(r)reconciliationModal(r);
  });
+ document.querySelectorAll('.rqCashQuick').forEach(b=>b.onclick=()=>{
+   const r=(S.recon?.rows||[]).find(x=>x.legacy_row_id===b.dataset.row);
+   if(r)reconciliationModal(r,'cash');
+ });
 }
 
-function reconciliationModal(r){
+function reconciliationModal(r,openMode='default'){
  const issueNames={EMPLOYEE_NOT_FOUND:'الموظف غير موجود في المطابقة الحالية',EMPLOYEE_AMBIGUOUS:'يوجد أكثر من موظف محتمل',ASSIGNMENT_IDENTITY_GAP:'التكليف موجود في التحضير لكنه غير مربوط برقم وظيفي معتمد',SITE_NOT_MAPPED:'الموقع غير مربوط',SITE_AMBIGUOUS:'اسم الموقع يقابل أكثر من موقع',MULTI_ROW_REVIEW:'الموظف ظاهر بأكثر من صف/وردية',HR_PENDING:'الحالة محالة للموارد البشرية وما زالت تمنع الإقفال',MASTERDATA_PENDING:'الموقع محال لمراجعة البيانات المرجعية وما زال يمنع الإقفال'};
  let siteOpts='<option value="">اختاري الموقع الصحيح</option>';
  const candidates=r.site_candidates||[],seen=new Set();
@@ -566,6 +572,12 @@ function reconciliationModal(r){
    :'';
  const sg=r.shift_suggestion||{};
  const start=sg.ok?sg.start_time:'',end=sg.ok?sg.end_time:'';
+ const siteShifts=r.site_shift_candidates||[];
+ const shiftChips=siteShifts.length
+   ?'<div class="sub" style="margin-top:8px">ورديات مستخدمة في الموقع — اختاري لتعبئة الوقت:</div><div class="caseActions">'+
+     siteShifts.map(s=>'<button type="button" class="caseBtn rqShiftChip" data-start="'+esc(s.start_time)+'" data-end="'+esc(s.end_time)+'">'+esc(s.start_time)+'–'+esc(s.end_time)+(s.usage_count?' · '+Number(s.usage_count):'')+'</button>').join('')+
+     '</div>'
+   :'';
  modal(
   '<h3>تصحيح بيانات التحضير</h3>'+
   '<div class="notice"><b>'+esc(issueNames[r.issue_code]||'حالة تحتاج مراجعة')+'</b><br>المصدر: '+esc(r.source_file_name||'')+' / صف '+esc(r.source_row||'')+'<br>لن يتم تغيير ملف المصدر؛ سيحفظ النظام قرار التصحيح وأثر المراجعة.</div>'+cashSignal+
@@ -581,7 +593,7 @@ function reconciliationModal(r){
     '<div class="field"><label>تصنيف الصف</label><select id="rqType"><option value="LINK_PRIMARY">تكليف أساسي</option><option value="MARK_CASH_COVERAGE">حارس تغطية كاش</option><option value="LINK_EXTRA_SHIFT">وردية إضافية</option><option value="LINK_COVERAGE">تغطية بحارس موظف</option><option value="IGNORE_DUPLICATE">صف مكرر</option></select></div>'+
     '<div class="field"><label>بداية الوردية</label><input id="rqStart" type="time" value="'+esc(start)+'"></div>'+
     '<div class="field"><label>نهاية الوردية</label><input id="rqEnd" type="time" value="'+esc(end)+'"></div>'+
-  '</div>'+
+  '</div>'+shiftChips+
   '<div id="rqCashBox" class="hidden" style="margin-top:10px">'+
     '<div class="notice"><b>حارس تغطية كاش:</b> لا يتطلب رقماً وظيفياً. الاسم والموقع والوردية مطلوبة، والمبلغ يمكن استكماله لاحقاً من المالية. لن يسمح النظام بتداخل ورديتين لنفس حارس الكاش عند إعادة استخدام سجله.</div>'+
     '<div class="grid2" style="margin-top:8px">'+
@@ -597,12 +609,14 @@ function reconciliationModal(r){
  );
  if(Number(r.site_candidate_count||0)===1&&r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
  document.querySelectorAll('.rqEmpCandidate').forEach(b=>b.onclick=()=>{$('rqEmpRef').value=b.dataset.ref||'';$('rqEmpName').value=b.dataset.name||''});
+ document.querySelectorAll('.rqShiftChip').forEach(b=>b.onclick=()=>{$('rqStart').value=b.dataset.start||'';$('rqEnd').value=b.dataset.end||''});
  if($('rqCashWorker'))$('rqCashWorker').onchange=()=>{
    const id=$('rqCashWorker').value;
    const c=cashCandidates.find(x=>x.coverage_worker_id===id);
    if(c&&c.display_name)$('rqCashName').value=c.display_name;
  };
  if(r.same_name_site_rows>1&&r.issue_code!=='ASSIGNMENT_IDENTITY_GAP')$('rqType').value='LINK_EXTRA_SHIFT';
+ if(openMode==='cash')$('rqType').value='MARK_CASH_COVERAGE';
  const updateHint=()=>{
    const t=$('rqType').value,h=$('rqHint'),cash=t==='MARK_CASH_COVERAGE';
    $('rqCashBox').classList.toggle('hidden',!cash);
