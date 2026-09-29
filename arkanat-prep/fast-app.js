@@ -505,6 +505,7 @@ function drawGaps(){
    '<div class="sectionHead"><div><h3>جاهزية إقفال الدورة</h3><div class="sub">'+(blocked?'لا يمكن إقفال التايم شيت حتى معالجة الموانع التالية.':'الدورة جاهزة للإقفال من ناحية البيانات التشغيلية الحالية.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
    '<div class="caseMeta">'+
      '<span class="caseTag">بيانات معلقة: '+Number(rd.data_blockers||0)+'</span>'+
+     '<span class="caseTag">تكليف بلا رقم وظيفي: '+Number(rd.unmatched_assignment_identity||0)+'</span>'+
      '<span class="caseTag">ورديات متعددة: '+Number(rd.multi_assignment_groups||0)+'</span>'+
      '<span class="caseTag">تعارضات زمنية: '+Number(rd.time_conflict_groups||0)+'</span>'+
      '<span class="caseTag">تغطيات مفتوحة: '+Number(rd.open_coverage_cases||0)+'</span>'+
@@ -570,7 +571,7 @@ function reconciliationModal(r){
  );
  if(Number(r.site_candidate_count||0)===1&&r.site_code_candidate)$('rqSite').value=r.site_code_candidate;
  document.querySelectorAll('.rqEmpCandidate').forEach(b=>b.onclick=()=>{$('rqEmpRef').value=b.dataset.ref||'';$('rqEmpName').value=b.dataset.name||''});
- if(r.same_name_site_rows>1)$('rqType').value='LINK_EXTRA_SHIFT';
+ if(r.same_name_site_rows>1&&r.issue_code!=='ASSIGNMENT_IDENTITY_GAP')$('rqType').value='LINK_EXTRA_SHIFT';
  const updateHint=()=>{
    const t=$('rqType').value,h=$('rqHint');
    if(t==='IGNORE_DUPLICATE')h.textContent='سيتم استبعاد هذا الصف كتكرار مؤكد مع إبقاء أثر المراجعة والمصدر.';
@@ -608,7 +609,8 @@ function reconciliationModal(r){
    if(!['IGNORE_DUPLICATE','SEND_HR','SEND_MASTERDATA'].includes(payload.resolution_type)){
      if(!payload.employee_ref)return toast('اختاري الموظف الصحيح أو أحِيلي الحالة للموارد البشرية.',true);
      if(!payload.site_code)return toast('اختاري الموقع الصحيح أو أحِيلي الحالة لبيانات المواقع.',true);
-     if((r.same_name_site_rows>1||['LINK_EXTRA_SHIFT','LINK_COVERAGE'].includes(payload.resolution_type))&&(!payload.shift_start||!payload.shift_end))
+     const identityOnly=r.issue_code==='ASSIGNMENT_IDENTITY_GAP'&&payload.resolution_type==='LINK_PRIMARY';
+     if(((!identityOnly&&r.same_name_site_rows>1)||['LINK_EXTRA_SHIFT','LINK_COVERAGE'].includes(payload.resolution_type))&&(!payload.shift_start||!payload.shift_end))
        return toast('هذه الحالة متعددة الصفوف/الورديات؛ حددي وقت البداية والنهاية.',true);
    }
    const b=$('rqSave');if(b)b.disabled=true;
