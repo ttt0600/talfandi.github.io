@@ -1,7 +1,7 @@
 
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/arkanat-prep-fast';
 const $=id=>document.getElementById(id);
-let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,seq:0};
+let S={token:localStorage.getItem('arkPrepToken')||'',region:localStorage.getItem('arkPrepRegion')||'',ctx:null,day:null,tab:'today',site:null,siteData:null,roster:[],employee:null,issues:null,recon:null,multiRecon:null,timeConflicts:null,readiness:null,seq:0};
 const STATUS={P:'حضور',OFF:'راحة أسبوعية',A:'غياب',T:'استئذان',AL:'إجازة سنوية',SK:'إجازة مرضية',S:'إيقاف',W:'انسحاب',R:'استقالة',O:'إجازة رسمية',SUB:'تغطية',CASH:'تغطية كاش',OTHER:'حالة أخرى'};
 const SHIFTS=[['D8','وردية صباحية — 8 ساعات'],['E8','وردية مسائية — 8 ساعات'],['N8','وردية ليلية — 8 ساعات'],['D12','وردية نهارية — 12 ساعة'],['N12','وردية ليلية — 12 ساعة'],['OTHER','وردية أخرى']];
 const EX=new Set(['A','T','AL','SK','S','W','R','O','SUB','CASH','OTHER']);
@@ -133,7 +133,7 @@ function normalizeWorkDate(){
  return false;
 }
 async function bootstrap(){
- if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;
+ if(!S.token)return showLogin();const q=++S.seq;S.site=null;S.siteData=null;S.roster=[];S.employee=null;S.issues=null;S.recon=null;S.multiRecon=null;S.timeConflicts=null;S.readiness=null;
  const cached=readCache();
  if(cached){S.ctx=cached.ctx;S.day=cached.day;$('workDate').value=cached.date||work();applyCtx();render();$('saveState').textContent='عرض سريع · جاري التحقق من آخر البيانات...'}
  else{S.ctx=null;S.day=null;loading();$('saveState').textContent='جاري تحميل البيانات...'}
@@ -426,13 +426,14 @@ function attendance(){const a=S.employee,p=$('attendancePanel');if(!a||!p)return
 async function gaps(){
  $('mainView').innerHTML='<div class="card empty" style="min-height:150px"><span class="loading"></span><div style="margin-top:8px">جاري تحميل الاستثناءات وتصحيح البيانات...</div></div>';
  try{
-   const [issues,recon,multiRecon,timeConflicts]=await Promise.all([
+   const [issues,recon,multiRecon,timeConflicts,readiness]=await Promise.all([
      fast('issues',{period:period(),date:work()},10000),
      fast('reconciliationQueue',{period:period(),limit:120},12000),
      fast('multiAssignmentQueue',{period:period(),limit:60},12000),
-     fast('timeConflictQueue',{period:period(),limit:40},12000)
+     fast('timeConflictQueue',{period:period(),limit:40},12000),
+     fast('readiness',{period:period()},10000)
    ]);
-   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;drawGaps()
+   S.issues=issues;S.recon=recon;S.multiRecon=multiRecon;S.timeConflicts=timeConflicts;S.readiness=readiness;drawGaps()
  }
  catch(e){$('mainView').innerHTML='<div class="card empty">'+esc(e.message)+'</div>';toast(e.message,true)}
 }
@@ -498,9 +499,20 @@ function drawGaps(){
    '<div class="sectionHead"><div><h3>تعارض زمني مؤكد</h3><div class="sub">هذه ليست مجرد صفوف مكررة؛ فترات العمل نفسها تتداخل زمنياً. يجب تعديل أحد التكليفين قبل إقفال الدورة.</div></div><div class="pill '+(Number(tqs.groups||0)?'bad':'ok')+'">'+Number(tqs.groups||0)+'</div></div>'+
    '<div class="caseMeta"><span class="caseTag">موظفون متأثرون: '+Number(tqs.employees||0)+'</span><span class="caseTag">أيام تعارض: '+Number(tqs.conflict_dates||0)+'</span></div>'+
    '<div class="gapItems" style="margin-top:9px">'+(timeItems||'<div class="gapItem">لا توجد تعارضات زمنية مؤكدة لهذه المنطقة.</div>')+'</div></div>';
+ const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
+ const readinessCard='<div class="card '+(blocked?'attention critical':'complete')+'" style="margin-bottom:10px">'+
+   '<div class="sectionHead"><div><h3>جاهزية إقفال الدورة</h3><div class="sub">'+(blocked?'لا يمكن إقفال التايم شيت حتى معالجة الموانع التالية.':'الدورة جاهزة للإقفال من ناحية البيانات التشغيلية الحالية.')+'</div></div><div class="pill '+(blocked?'bad':'ok')+'">'+(blocked?Number(rd.blocker_count||0)+' مانع':'جاهز')+'</div></div>'+
+   '<div class="caseMeta">'+
+     '<span class="caseTag">بيانات معلقة: '+Number(rd.data_blockers||0)+'</span>'+
+     '<span class="caseTag">ورديات متعددة: '+Number(rd.multi_assignment_groups||0)+'</span>'+
+     '<span class="caseTag">تعارضات زمنية: '+Number(rd.time_conflict_groups||0)+'</span>'+
+     '<span class="caseTag">تغطيات مفتوحة: '+Number(rd.open_coverage_cases||0)+'</span>'+
+     '<span class="caseTag">حضور افتراضي P: '+Number(rd.implicit_present_days||0)+'</span>'+
+   '</div>'+
+   '<div class="sub" style="margin-top:7px">الحضور الافتراضي P لا يعد نقصاً ولا يمنع الإقفال؛ المنع يقتصر على الحالات التي تحتاج قراراً أو تصحيحاً.</div></div>';
  $('mainView').innerHTML=
   '<div class="sectionHead"><div><h2>الحالات الاستثنائية</h2><div class="sub">تعرض هذه الصفحة الحالات التي تحتاج متابعة أو اعتماداً فقط؛ الحضور المعتاد لا يظهر هنا.</div></div></div>'+
-  reconCard+multiCard+timeCard+
+  readinessCard+reconCard+multiCard+timeCard+
   (pending.length?'<div class="card" style="margin:10px 0"><div class="sectionHead"><div><h3>قيد العمل اليومي</h3><div class="sub">يوجد '+pending.length+' موظفاً بانتظار التحضير اليوم؛ لا يدخلون ضمن عداد الاستثناءات.</div></div><div class="pill">'+pending.length+'</div></div></div>':'')+
   '<div class="gapList" style="margin-top:10px">'+
     sec('تحتاج إجراء','غياب، انسحاب، استقالة، إيقاف أو تغطية غير مكتملة.',c.action_now,action,'bad')+
@@ -923,7 +935,18 @@ $('period').onchange=async()=>{$('workDate').value=period()+'-01';S.employee=nul
 $('workDate').onchange=async()=>{normalizeWorkDate();S.site=null;S.siteData=null;S.issues=null;await refreshDay(true)};
 $('logoutBtn').onclick=()=>{localStorage.removeItem('arkPrepToken');localStorage.removeItem('arkPrepRegion');for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&k.startsWith('arkPrepCache:'))sessionStorage.removeItem(k)}S.token='';S.region='';S.ctx=null;S.day=null;showLogin()};
 $('printBtn').onclick=()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(window.openClientPrint)return window.openClientPrint();toast('خدمة الطباعة ما زالت قيد التهيئة',true)};
-$('submitBtn').onclick=async()=>{if(!S.ctx)return toast('انتظري اكتمال التحميل',true);if(!await confirmUI('إقفال التايم شيت الداخلي','سيتم فحص سجلات الحضور والحقول الأساسية قبل الإقفال.','ابدأ الفحص'))return;try{const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)}catch(e){toast(e.message,true)}};
+$('submitBtn').onclick=async()=>{
+ if(!S.ctx)return toast('انتظري اكتمال التحميل',true);
+ try{
+   const rd=await fast('readiness',{period:period()},10000);S.readiness=rd;
+   if(rd.status==='BLOCKED'){
+     S.tab='gaps';tabUI();await gaps();
+     return toast('لا يمكن الإقفال الآن: يوجد '+Number(rd.blocker_count||0)+' مانع يحتاج معالجة. تم فتح شاشة الاستثناءات.',true);
+   }
+   if(!await confirmUI('إقفال التايم شيت الداخلي','لا توجد موانع تشغيلية معلقة. سيتم إقفال دورة '+monthLabel(period())+'.','إقفال الدورة'))return;
+   const d=await fast('submit',{period:period()},12000);toast(d.message||'تم الإقفال');await refreshDay(true)
+ }catch(e){toast(e.message,true)}
+};
 $('exportBtn').onclick=exportCsv;
 
 const d=ry();initPeriodOptions(d.slice(0,7));$('workDate').value=d;syncContextUi();
