@@ -484,6 +484,9 @@ function drawGaps(){
    const shortReview=r.short_duration_review
      ?'<div class="notice" style="margin-top:6px"><b>فترة عمل قصيرة وبيانات ناقصة:</b> لا يفترض النظام أنها كاش. حددي الواقع التشغيلي: موظف، تغطية كاش، أو إحالة للموارد البشرية.</div>'
      :'';
+   const cashWordNote=r.cash_note_uncertain
+     ?'<div class="notice" style="margin-top:6px"><b>ملاحظة المصدر تتضمن كلمة «كاش»:</b> هذا لا يكفي وحده لتصنيف الحارس كتغطية كاش؛ قد تكون إشارة إلى صرف أو تسليم نقدي. حددي نوع الحالة حسب الواقع التشغيلي.</div>'
+     :'';
    const strongConfirm=r.triage_category==='WORKER_LINK'&&r.strong_employee_suggestion&&r.suggested_employee_ref
      ?'<button class="caseBtn ok triageConfirmEmployee" data-row="'+esc(r.representative_legacy_row_id)+'" data-ref="'+esc(r.suggested_employee_ref)+'" data-name="'+esc(r.suggested_employee_name||'')+'" data-site="'+esc(r.site_code||'')+'">تأكيد '+esc(r.suggested_employee_name||'الموظف')+'</button>'
      :'';
@@ -493,7 +496,7 @@ function drawGaps(){
        ?'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط كموظف بديل</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">تغطية كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>'
        :'<button class="caseBtn primary triageOpen" data-row="'+esc(r.representative_legacy_row_id)+'">ربط بموظف</button><button class="caseBtn triageCash" data-row="'+esc(r.representative_legacy_row_id)+'">حارس كاش</button><button class="caseBtn triageHR" data-row="'+esc(r.representative_legacy_row_id)+'">إحالة للموارد البشرية</button>');
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(r.full_name||'')+'</b><div class="sub">'+esc(r.site_name||'بدون موقع')+' · '+esc(triageLabel(r.triage_category))+'</div></div><span class="pill">'+Number(r.source_rows_count||1)+' صف</span></div>'+
-     '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+strongEmp+shortReview+
+     '<div class="sub" style="margin-top:5px">'+esc(r.triage_reason||'')+'</div>'+strongEmp+cashWordNote+shortReview+
      '<div class="caseMeta">'+id4+shift+workDays+'</div>'+
      '<div class="caseActions">'+cashBtn+'</div></div>';
  }).join('');
@@ -510,6 +513,7 @@ function drawGaps(){
    ((Number(its.strong_employee_suggestions||0)||Number(its.short_duration_review||0)||Number(its.waiting_hr||0)||Number(its.waiting_masterdata||0))?'<div class="caseMeta" style="margin-top:7px">'+
      (Number(its.strong_employee_suggestions||0)?'<span class="caseTag">مرشح موظف قوي: '+Number(its.strong_employee_suggestions||0)+'</span>':'')+
      (Number(its.short_duration_review||0)?'<span class="caseTag">فترات قصيرة تحتاج تصنيف: '+Number(its.short_duration_review||0)+'</span>':'')+
+     (Number(its.cash_note_uncertain||0)?'<span class="caseTag">ملاحظات كاش غير حاسمة: '+Number(its.cash_note_uncertain||0)+'</span>':'')+
      (Number(its.waiting_hr||0)?'<span class="caseTag">أُحيلت للموارد البشرية: '+Number(its.waiting_hr||0)+'</span>':'')+
      (Number(its.waiting_masterdata||0)?'<span class="caseTag">بانتظار بيانات المواقع: '+Number(its.waiting_masterdata||0)+'</span>':'')+
    '</div>':'')+
