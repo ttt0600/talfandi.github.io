@@ -329,8 +329,9 @@ function guardRow(e){
  const c=level==='action'||level==='review'?'exception':'';
  const reason=e.exception_reason?'<div class="guardMeta"><b>'+(level==='action'?'يحتاج إجراء: ':level==='review'?'يحتاج مراجعة: ':'')+'</b>'+esc(e.exception_reason)+'</div>':'';
  const scls=level==='action'?'bad':level==='review'?'warn':'ok';
+ const identityLabel=e.assignment_type==='CASH_COVERAGE'?'حارس تغطية كاش':(e.employee_ref||'بدون رقم وظيفي');
  return '<div class="guardRow '+c+'">'+
-  '<div class="guardMain"><div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(e.employee_ref||'بدون رقم وظيفي')+' · '+esc(e.shift_code||'وردية غير محددة')+(e.status_source==='DEFAULT_PRESENT'?' · حضور افتراضي':'')+'</div>'+reason+caseMetaMarkup(e)+'</div>'+
+  '<div class="guardMain"><div><div class="guardName">'+esc(e.full_name)+'</div><div class="guardMeta">'+esc(identityLabel)+' · '+esc(e.shift_code||'وردية غير محددة')+(e.status_source==='DEFAULT_PRESENT'?' · حضور افتراضي':'')+'</div>'+reason+caseMetaMarkup(e)+'</div>'+
   '<button class="guardStatus '+scls+' editDay" data-a="'+e.assignment_id+'">'+esc(STATUS[e.status]||e.status||'حاضر')+'</button></div>'+
   caseActionsMarkup(e)+
   '</div>';
@@ -374,7 +375,7 @@ function drawRoster(){
    const d=document.createElement('div');d.className='person'+(S.employee?.id===a.id?' active':'');
    d.innerHTML='<div class="name">'+esc(a.full_name)+(needs?' <span class="pill warn" style="font-size:9px">ناقص التخطيط</span>':'')+'</div>'+
      '<div class="meta">'+esc(a.employee_ref||'بدون رقم وظيفي')+' · '+esc(a.site_name||'بدون موقع')+
-     (a.assignment_type==='RELIEF_FIXED'?' · بديل راحة ثابت':a.assignment_type==='TEMP_COVERAGE'?' · تغطية مؤقتة':a.assignment_type==='EXTRA_SHIFT'?' · وردية إضافية':'')+'</div>';
+     (a.assignment_type==='RELIEF_FIXED'?' · بديل راحة ثابت':a.assignment_type==='TEMP_COVERAGE'?' · تغطية مؤقتة':a.assignment_type==='EXTRA_SHIFT'?' · وردية إضافية':a.assignment_type==='CASH_COVERAGE'?' · تغطية كاش':'')+'</div>';
    d.onclick=()=>loadEmployee(a.id);l.appendChild(d)
  });
  const pr=$('planningReadiness');
@@ -404,7 +405,7 @@ function futureAssignment(){
  '<div class="field"><label>الموقع</label><div class="card" style="padding:10px">'+esc(a.site_name||'غير محدد')+'</div></div>'+
  '<div class="field"><label>نقطة العمل</label><div class="card" style="padding:10px">'+esc(a.work_point_name||'غير محددة')+'</div></div>'+
  '<div class="field"><label>المشرف</label><div class="card" style="padding:10px">'+esc(a.supervisor_name||'غير محدد')+'</div></div>'+
- '<div class="field"><label>نوع التوزيع</label><div class="card" style="padding:10px">'+esc(a.assignment_type||'PRIMARY')+'</div></div>'+
+ '<div class="field"><label>نوع التوزيع</label><div class="card" style="padding:10px">'+esc(a.assignment_type==='CASH_COVERAGE'?'حارس تغطية كاش':a.assignment_type==='EXTRA_SHIFT'?'وردية إضافية':a.assignment_type==='TEMP_COVERAGE'?'تغطية مؤقتة':a.assignment_type==='RELIEF_FIXED'?'بديل راحات':a.assignment_type||'PRIMARY')+'</div></div>'+
  '<div class="field"><label>أيام العمل أسبوعياً</label><div class="card" style="padding:10px">'+esc(workDays)+'</div></div>'+
  '<div class="field"><label>الراحة الأسبوعية</label><div class="card" style="padding:10px">'+esc(a.weekly_off_text||'غير محددة')+'</div></div>'+
  '<div class="field"><label>ساعات العمل اليومية</label><div class="card" style="padding:10px">'+esc(dailyHours)+'</div></div>'+
