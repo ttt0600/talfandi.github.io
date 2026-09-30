@@ -227,6 +227,7 @@ async function openDetail(cp){
         kpi('اكتمال الصور',pct(s.photo_rate),'')+
         kpi('جودة الموقع',pct(s.good_location_rate),'')+
       '</div>'+
+      '<h4 class="detail-title">المواقع الفعلية المستخرجة من هذا QR</h4><div class="sub">قد يمثل QR الواحد أكثر من موقع حراسة فعلي، لذلك تُعرض جميع Virtual Points المتعلمة منه.</div>'+detailGeography(geoPoints)+
       detailShadow(x.shadow)+
       '<h4 class="detail-title">بصمات أجهزة مرتبطة بأكثر من هوية</h4><div class="sub">هذا القسم يوضح البصمة الواحدة فعلياً ومن استخدمها؛ وهو أدق من التجميع الخام على مستوى QR.</div>'+devicePatterns(devices)+
       '<h4 class="detail-title">أكثر الأشخاص ظهوراً</h4><div class="people-grid">'+
