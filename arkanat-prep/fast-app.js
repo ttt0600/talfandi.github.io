@@ -644,16 +644,21 @@ function drawGaps(){
    '</div><div class="gapItems" style="margin-top:9px">'+(sourceFilesMarkup||'<div class="gapItem">لا توجد مصادر تحضير حالية لهذه المنطقة.</div>')+'</div></div></details>';
  const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
  const sourceGap=Number(rd.reference_roster_without_source||0);
- const dataLaneCount=Number(rd.data_blockers||0)+Number(mqs.data_review||0)+Number(tqs.data_review||0)+sourceGap;
+ const sourceSemanticFinal=Number(rd.source_semantic_issue_files||0);
+ const finalHrLinks=Number(rd.identity_hr_link_pending??ord.hr_link_pending??0);
+ const finalOpsActions=Number(rd.identity_operations_action??ord.operations_action??0);
+ const dataLaneCount=Number(rd.data_blockers||0)+Number(mqs.data_review||0)+Number(tqs.data_review||0)+sourceGap+sourceSemanticFinal;
  const readinessCard='<details class="card '+(blocked?'attention':'complete')+'" style="margin-bottom:10px">'+
    '<summary class="sectionHead" style="cursor:pointer"><div><h3>الإقفال النهائي للدورة</h3><div class="sub">'+
      (blocked?'للمتابعة الإدارية: ما زالت هناك مسارات خارج العمل التشغيلي اليومي قبل الإقفال النهائي.':'جميع المسارات مكتملة والدورة جاهزة للإقفال النهائي.')+
    '</div></div><div class="pill '+(blocked?'warn':'ok')+'">'+(blocked?'بانتظار الاستكمال':'جاهز')+'</div></summary>'+
    '<div style="padding-top:4px"><div class="caseMeta">'+
      '<span class="caseTag">مسؤولية العمليات الحالية: '+Number(ord.blocker_count||0)+'</span>'+
-     '<span class="caseTag">ربط موظفين - الموارد البشرية: '+Number(ord.hr_link_pending||0)+'</span>'+
+     '<span class="caseTag">قرارات عمليات - هوية/تغطية: '+finalOpsActions+'</span>'+
+     '<span class="caseTag">ربط موظفين - الموارد البشرية: '+finalHrLinks+'</span>'+
      '<span class="caseTag">مراجعة/تنظيف بيانات: '+dataLaneCount+'</span>'+
      (sourceGap?'<span class="caseTag">مرجع نشط بلا مصدر/تحضير: '+sourceGap+'</span>':'')+
+     (sourceSemanticFinal?'<span class="caseTag">خلل دلالي بالمصدر: '+sourceSemanticFinal+'</span>':'')+
      '<span class="caseTag">مجموع مؤشرات الإقفال: '+Number(rd.blocker_count||0)+'</span>'+
      '<span class="caseTag">حضور افتراضي P: '+Number(rd.implicit_present_days||0)+'</span>'+
    '</div>'+
