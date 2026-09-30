@@ -619,22 +619,28 @@ function drawGaps(){
  '</div>';
   const si=S.sourceIntegrity||{},sis=si.summary||{},siFiles=si.files||[];
  const sourceMismatch=Number(sis.count_mismatch_files||0);
+ const sourceSemantic=Number(sis.semantic_issue_files||0);
+ const sourceIssueFiles=sourceMismatch+sourceSemantic;
  const sourceFilesMarkup=siFiles.map(f=>{
-   const ok=!!f.rows_reconciled&&!!f.days_reconciled;
+   const ok=!!f.rows_reconciled&&!!f.days_reconciled&&f.semantic_reconciled!==false;
    const dt=f.source_updated_at?new Date(f.source_updated_at).toLocaleString('ar-SA',{timeZone:'Asia/Riyadh'}):'—';
    return '<div class="gapItem"><div class="guardMain"><div><b>'+esc(f.source_file_name||'مصدر التحضير')+'</b><div class="sub">'+esc(f.source_sheet||'')+' · آخر مزامنة '+esc(dt)+'</div></div><span class="guardStatus '+(ok?'ok':'bad')+'">'+(ok?'متطابق':'فرق تحميل')+'</span></div>'+
      '<div class="caseMeta"><span class="caseTag">الصفوف '+Number(f.actual_rows||0)+'/'+Number(f.expected_rows||0)+'</span><span class="caseTag">الأيام '+Number(f.actual_days||0)+'/'+Number(f.expected_days||0)+'</span>'+
      (Number(f.pending_hr_rows||0)?'<span class="caseTag">HR '+Number(f.pending_hr_rows||0)+'</span>':'')+
      (Number(f.pending_masterdata_rows||0)?'<span class="caseTag">Master Data '+Number(f.pending_masterdata_rows||0)+'</span>':'')+
      (Number(f.unmatched_rows||0)?'<span class="caseTag">غير مربوط '+Number(f.unmatched_rows||0)+'</span>':'')+
+     (Number(f.severe_name_conflict_rows||0)?'<span class="caseTag">تعارض اسم/موظف '+Number(f.severe_name_conflict_rows||0)+'</span>':'')+
+     (Number(f.merged_people_assignments||0)?'<span class="caseTag">دمج أشخاص '+Number(f.merged_people_assignments||0)+'</span>':'')+
      '</div></div>';
  }).join('');
- const sourceIntegrityCard='<details class="card '+(sourceMismatch?'attention critical':'complete')+'" style="margin-bottom:10px">'+
-   '<summary class="sectionHead" style="cursor:pointer"><div><h3>سلامة مصادر التحضير</h3><div class="sub">فحص آلي يثبت أن جميع صفوف وأيام ملفات التحضير المحملة مطابقة للنسخة التشغيلية داخل النظام.</div></div><div class="pill '+(sourceMismatch?'bad':'ok')+'">'+(sourceMismatch?sourceMismatch+' ملف يحتاج مزامنة':'المصادر متطابقة')+'</div></summary>'+
+ const sourceIntegrityCard='<details class="card '+(sourceIssueFiles?'attention critical':'complete')+'" style="margin-bottom:10px">'+
+   '<summary class="sectionHead" style="cursor:pointer"><div><h3>سلامة مصادر التحضير</h3><div class="sub">فحص آلي للصفوف والأيام، مع كشف الربط الدلالي الخاطئ ودمج أكثر من شخص في تكليف واحد.</div></div><div class="pill '+(sourceIssueFiles?'bad':'ok')+'">'+(sourceIssueFiles?sourceIssueFiles+' ملف يحتاج مراجعة':'المصادر سليمة')+'</div></summary>'+
    '<div style="padding-top:4px"><div class="caseMeta"><span class="caseTag">الملفات: '+Number(sis.files||0)+'</span><span class="caseTag">الصفوف: '+Number(sis.rows_actual||0)+'/'+Number(sis.rows_expected||0)+'</span><span class="caseTag">الأيام: '+Number(sis.days_actual||0)+'/'+Number(sis.days_expected||0)+'</span>'+
      (Number(sis.pending_hr_rows||0)?'<span class="caseTag">مراجعة HR: '+Number(sis.pending_hr_rows||0)+'</span>':'')+
      (Number(sis.pending_masterdata_rows||0)?'<span class="caseTag">Master Data: '+Number(sis.pending_masterdata_rows||0)+'</span>':'')+
      (Number(sis.unmatched_rows||0)?'<span class="caseTag">غير مربوط: '+Number(sis.unmatched_rows||0)+'</span>':'')+
+     (Number(sis.severe_name_conflict_rows||0)?'<span class="caseTag">تعارض اسم/موظف: '+Number(sis.severe_name_conflict_rows||0)+'</span>':'')+
+     (Number(sis.merged_people_assignments||0)?'<span class="caseTag">تكليفات مدمجة: '+Number(sis.merged_people_assignments||0)+'</span>':'')+
    '</div><div class="gapItems" style="margin-top:9px">'+(sourceFilesMarkup||'<div class="gapItem">لا توجد مصادر تحضير حالية لهذه المنطقة.</div>')+'</div></div></details>';
  const rd=S.readiness||{},blocked=rd.status==='BLOCKED';
  const sourceGap=Number(rd.reference_roster_without_source||0);
