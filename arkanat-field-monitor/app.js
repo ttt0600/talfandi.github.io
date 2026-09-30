@@ -1,6 +1,9 @@
 const API='https://dbxvfrkkocfwjumvoaha.supabase.co/functions/v1/field-monitoring-dashboard';
 const app=document.getElementById('app');
 let hours=24;
+let geoRegion='';
+let geoCity='';
+let lastDashboard=null;
 
 const names={
   LOCATION_MISMATCH:'عدم تطابق الموقع — إشارة قديمة',
@@ -77,7 +80,61 @@ function shadowPanel(sh){
     semanticGroup('الموقع',l,'location')+semanticGroup('الحركة',m,'movement')+
   '</section>';
 }
+
+function geoStatusName(v){return v==='ESTABLISHED'?'مثبت':v==='PROVISIONAL'?'مؤقت':v==='EMERGING'?'ناشئ':v||'—'}
+function geoOptions(items,key,selected){
+  return '<option value="">الكل</option>'+[...new Set((items||[]).map(x=>x[key]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'ar')).map(v=>'<option value="'+esc(v)+'"'+(v===selected?' selected':'')+'>'+esc(v)+'</option>').join('');
+}
+function geoPointCards(points){
+  if(!points.length)return '<div class="sub geo-empty">لا توجد مواقع مطابقة للفلاتر الحالية.</div>';
+  return '<div class="geo-points">'+points.slice(0,60).map(p=>
+    '<article class="geo-card">'+
+      '<div class="geo-card-head"><div><span class="tag '+(p.virtual_point_status==='ESTABLISHED'?'ok':'')+'">'+esc(geoStatusName(p.virtual_point_status))+'</span><h4>'+esc(p.city_name||'غير محدد')+' — '+esc(p.region_name||'')+'</h4></div><b>'+esc(p.virtual_point_id)+'</b></div>'+
+      '<div class="geo-line"><span>QR: '+esc(p.checkpoint_code||'—')+'</span><span>'+n(p.scan_count)+' مسحة</span><span>'+n(p.active_days)+' يوم نشاط</span></div>'+
+      '<div class="geo-line"><span>'+esc(p.governorate_name||p.locality_name||'')+'</span><span>P95 '+esc(p.p95_radius_m==null?'—':Math.round(Number(p.p95_radius_m))+'م')+'</span><span>Geofence '+esc(p.recommended_geofence_m==null?'—':Math.round(Number(p.recommended_geofence_m))+'م')+'</span></div>'+
+      (p.maps_url?'<a class="geo-map-link" href="'+esc(p.maps_url)+'" target="_blank" rel="noopener">فتح الموقع على الخريطة</a>':'')+
+    '</article>'
+  ).join('')+(points.length>60?'<div class="sub geo-more">يظهر أول 60 موقعاً من '+n(points.length)+' موقعاً مطابقاً.</div>':'')+'</div>';
+}
+function geoDistribution(items){
+  const a=(items||[]).slice(0,12),max=Math.max(1,...a.map(x=>+x.points||0));
+  return a.map(x=>'<div class="bar-row geo-bar"><label>'+esc((x.city_name?x.city_name+' — ':'')+(x.region_name||''))+'</label><div class="bar"><i style="width:'+Math.max(2,Math.round(100*(+x.points||0)/max))+'%"></i></div><b>'+n(x.points)+'</b></div>').join('')||'<div class="sub">لا توجد بيانات جغرافية.</div>';
+}
+function geographyPanel(x){
+  const g=x.geography||{},s=g.summary||{},regions=g.regions||[],cities=g.cities||[],points=g.points||[];
+  const regionCities=geoRegion?cities.filter(c=>c.region_name===geoRegion):cities;
+  if(geoCity && !regionCities.some(c=>c.city_name===geoCity))geoCity='';
+  const filtered=points.filter(p=>(!geoRegion||p.region_name===geoRegion)&&(!geoCity||p.city_name===geoCity));
+  const cityOpts=geoOptions(regionCities,'city_name',geoCity);
+  return '<section class="panel geo-panel"><div class="panel-head"><div><h3>الخريطة التشغيلية للمواقع الفعلية</h3><div class="sub">إثراء جغرافي للـVirtual Points المتعلمة من المسحات. الفلاتر أدناه تغيّر عرض المواقع فقط ولا تغيّر مؤشرات الأداء أو الرصد.</div></div><span class="tag ok">'+n(s.verified_city_region)+' / '+n(s.total_points)+' محدد جغرافياً</span></div>'+
+    '<div class="geo-summary">'+
+      kpi('المواقع الفعلية',n(s.total_points),'Virtual Points')+
+      kpi('المواقع المثبتة',n(s.established),'ESTABLISHED')+
+      kpi('المناطق الإدارية',n(s.regions),'')+
+      kpi('المدن',n(s.cities),'')+
+    '</div>'+
+    '<div class="geo-controls"><label>المنطقة<select id="geoRegion">'+geoOptions(regions,'region_name',geoRegion)+'</select></label><label>المدينة<select id="geoCity">'+cityOpts+'</select></label><button type="button" id="geoReset">مسح الفلاتر</button><span>'+n(filtered.length)+' موقع معروض</span></div>'+
+    '<div class="grid2 geo-grid"><div><h4 class="detail-title">التوزيع حسب المدن</h4>'+geoDistribution(regionCities)+'</div><div><h4 class="detail-title">المواقع المطابقة</h4><div id="geoPoints">'+geoPointCards(filtered)+'</div></div></div>'+
+  '</section>';
+}
+function bindGeography(x){
+  const r=document.getElementById('geoRegion'),c=document.getElementById('geoCity'),reset=document.getElementById('geoReset');
+  if(r)r.onchange=()=>{geoRegion=r.value;geoCity='';render(x)};
+  if(c)c.onchange=()=>{geoCity=c.value;render(x)};
+  if(reset)reset.onclick=()=>{geoRegion='';geoCity='';render(x)};
+}
+function detailGeography(points){
+  if(!points||!points.length)return '<div class="sub">لا توجد Virtual Points متعلمة لهذا QR حتى الآن.</div>';
+  return '<div class="detail-geo-points">'+points.map(p=>
+    '<article class="geo-card detail-geo-card"><div class="geo-card-head"><div><span class="tag '+(p.virtual_point_status==='ESTABLISHED'?'ok':'')+'">'+esc(geoStatusName(p.virtual_point_status))+'</span><h4>'+esc(p.city_name||'غير محدد')+' — '+esc(p.region_name||'')+'</h4></div><b>'+esc(p.virtual_point_id)+'</b></div>'+
+    '<div class="geo-line"><span>'+esc(p.governorate_name||p.locality_name||'')+'</span><span>'+n(p.scan_count)+' مسحة</span><span>'+n(p.active_days)+' يوم نشاط</span></div>'+
+    (p.maps_url?'<a class="geo-map-link" href="'+esc(p.maps_url)+'" target="_blank" rel="noopener">فتح الموقع على الخريطة</a>':'')+
+    '</article>'
+  ).join('')+'</div>';
+}
+
 function render(x){
+  lastDashboard=x;
   const s=x.summary||{},v=x.virtual_points||{},st=x.storage||{},w=x.workflow||{},raw=x.review_queue||[],id=x.identity_review||[],ph=x.photo_device_review||[],gap=x.identity_gap||{},m=shadowIndex(x);
   const shadowCards=[];
   const suppressed=[];
@@ -159,7 +216,7 @@ async function openDetail(cp){
   try{
     const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({key:k,hours,action:'checkpoint_detail',checkpoint_code:cp}),cache:'no-store'}),x=await r.json();
     if(!r.ok||!x.ok)throw new Error(x.message||'تعذر تحميل التفاصيل');
-    const s=x.summary||{},people=x.people||[],rows=x.scans||[],devices=x.device_identity_patterns||[];
+    const s=x.summary||{},people=x.people||[],rows=x.scans||[],devices=x.device_identity_patterns||[],geoPoints=x.geography_points||[];
     document.getElementById('detailBody').className='';
     document.getElementById('detailBody').innerHTML=
       '<div class="detail-kpis">'+
