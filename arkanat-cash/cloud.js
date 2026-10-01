@@ -266,6 +266,8 @@
   function restHeaders(extra){
     return Object.assign({
       "apikey":cfg.supabasePublishableKey,
+      "Authorization":"Bearer "+cfg.supabasePublishableKey,
+      "Accept":"application/json",
       "Content-Type":"application/json"
     },extra||{});
   }
