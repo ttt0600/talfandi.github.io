@@ -329,20 +329,32 @@
 
   api.loadState = async function(){
     if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
-    const [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
+
+    // Core financial data must never be blocked by a failure in an auxiliary table.
+    const [rq,tx]=await Promise.all([
       selectAllRows("cash_requests","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}]),
-      selectAllRows("cash_transactions","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}]),
-      selectAllRows("cash_imports","created_at"),
-      selectAllRows("cash_audit_log","event_time"),
-      selectAllRows("cash_transaction_evidence","created_at"),
-      selectAllRows("cash_custody_accounts","holder_name"),
-      selectAllRows("cash_settlement_controls","period_start"),
-      selectAllRows("cash_request_components","created_at"),
-      selectAllRows("cash_account_period_balances","period_month"),
-      selectAllRows("cash_data_quality_issues","created_at"),
-      selectAllRows("cash_employee_advances","source_row"),
-      selectAllRows("cash_employee_advance_history","period_month","source_row")
+      selectAllRows("cash_transactions","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}])
     ]);
+
+    const warnings=[];
+    async function optional(table,orderCol,secondOrderCol){
+      try{return await selectAllRows(table,orderCol,secondOrderCol)}
+      catch(e){warnings.push(table+": "+(e&&e.message?e.message:String(e)));return []}
+    }
+
+    const [im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
+      optional("cash_imports","created_at"),
+      optional("cash_audit_log","event_time"),
+      optional("cash_transaction_evidence","created_at"),
+      optional("cash_custody_accounts","holder_name"),
+      optional("cash_settlement_controls","period_start"),
+      optional("cash_request_components","created_at"),
+      optional("cash_account_period_balances","period_month"),
+      optional("cash_data_quality_issues","created_at"),
+      optional("cash_employee_advances","source_row"),
+      optional("cash_employee_advance_history","period_month","source_row")
+    ]);
+
     return {
       requests:rq.map(requestFromDb),
       transactions:tx.map(txnFromDb),
@@ -355,7 +367,8 @@
       periodBalances:pb.map(periodBalanceFromDb),
       qualityIssues:qi.map(qualityIssueFromDb),
       employeeAdvances:ea.map(employeeAdvanceFromDb),
-      advanceHistory:eh.map(employeeAdvanceHistoryFromDb)
+      advanceHistory:eh.map(employeeAdvanceHistoryFromDb),
+      _warnings:warnings
     };
   };
 
