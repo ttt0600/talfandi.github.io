@@ -61,8 +61,8 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
 @media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
 </style>
-<script src="./config.js?v=1.9.3"></script>
-<script src="./cloud.js?v=1.9.3"></script>
+<script src="./config.js?v=1.9.4"></script>
+<script src="./cloud.js?v=1.9.4"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -79,7 +79,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.9.3</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.9.4</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -375,15 +375,15 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.9.3 — المبالغ تظهر حسب الشهر المعروض، مع إظهار قيمة طلبات العهد المفتوحة أيضاً.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.9.4 — تحميل كامل لبيانات البوابة المشتركة قبل عرض مؤشرات الشهر.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.9.3',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.9.3';
-var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,portalAccess=null,adminUsersCache=[];
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.9.4',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.9.4';
+var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,cloudDataLoaded=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
 function ensureAccountsFromState(){
@@ -507,6 +507,8 @@ function duplicates(){
 var map={},d=[];
 state.transactions.forEach(function(t){if(t.status==='ملغى'||t.type==='تغذية عهدة')return;var k=[t.dateRaw||t.date,num(t.amount),t.absent,t.cover,t.supervisor,t.site,t.description].map(function(x){return String(x||'').trim()}).join('|');if(map[k])d.push([map[k],t]);else map[k]=t});
 return d}
+function homeDataPending(){var cfg=window.ARKANAT_CASH_CONFIG||{};return cfg.mode==='supabase'&&cfg.openAccessMode&&!cloudDataLoaded}
+function homeLoadingHtml(){return '<div class="empty">جار تحميل بيانات العهد والمصروفات المشتركة…</div>'}
 function currentMonthKey(){return new Date().toISOString().slice(0,7)}
 var homeMonthUserSelected=false;
 function defaultDataMonth(){
@@ -539,13 +541,14 @@ function latestHolderBalances(month){
  return m
 }
 function renderKpis(){
+ var el=document.getElementById('kpis'),note=document.getElementById('homeMonthNote');
+ if(homeDataPending()){if(el)el.innerHTML='<div class="card" style="grid-column:1/-1"><strong>جار تحميل البيانات المشتركة…</strong><div class="sub">لن تظهر أرقام صفرية قبل اكتمال التحميل.</div></div>';if(note)note.textContent='جار تحميل بيانات البوابة المشتركة…';return}
  var month=dashboardMonth(),monthly=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&String(t.date||'').slice(0,7)===month}),balances=latestHolderBalances(month),
  balanceSum=Object.keys(balances).reduce(function(s,k){return s+(balances[k].balance==null?0:balances[k].balance)},0),
  spent=monthly.filter(isExpense).reduce(function(s,t){return s+num(t.amount)},0),
  funded=monthly.filter(function(t){return t.type==='تغذية عهدة'||t.type==='تحويل وارد'}).reduce(function(s,t){return s+num(t.amount)},0),
  openRequests=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'&&r.status!=='ممول'&&r.status!=='مرفوض'&&num(r.amount)>0}),
- openRequestAmount=openRequests.reduce(function(s,r){return s+num(r.amount)},0),
- note=document.getElementById('homeMonthNote');
+ openRequestAmount=openRequests.reduce(function(s,r){return s+num(r.amount)},0);
  if(note)note.textContent='المبالغ المعروضة تخص '+month+'، ويمكن تغيير الشهر من هنا.';
  var data=[
   ['العهد التي استلمها المشرفون',money(funded),'مبالغ دخلت دفاتر المشرفين خلال الشهر'],
@@ -553,21 +556,23 @@ function renderKpis(){
   ['المتبقي مع المشرفين',money(balanceSum),'حسب آخر رصيد مسجل لكل مشرف'],
   ['طلبات بانتظار التسليم',money(openRequestAmount),openRequests.length.toLocaleString('ar-SA')+' طلب/طلبات لم تظهر كعهدة مستلمة بعد']
  ];
- var el=document.getElementById('kpis');if(el)el.innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
+ if(el)el.innerHTML=data.map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('')
 }
 window.renderHome=function(){renderKpis();renderSpendSummary();renderTopAnalytics();renderBalances();renderRecent()}
 function renderSpendSummary(){
+ var el=document.getElementById('spendSummary');if(!el)return;if(homeDataPending()){el.innerHTML=homeLoadingHtml();return}
  var m={},total=0,month=dashboardMonth();state.transactions.forEach(function(t){
   if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t)||String(t.date||'').slice(0,7)!==month)return;
   var k=t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory)||t.type||'أخرى',v=num(t.amount);
   if(k==='مصروف تشغيلي')k='مصروفات تشغيلية';if(k==='تغطيات')k='تغطيات';if(k==='وقود')k='وقود';
   m[k]=(m[k]||0)+v;total+=v
  });
- var a=Object.keys(m).map(function(k){return {k:k,v:m[k]}}).sort(function(x,y){return y.v-x.v}).slice(0,7),el=document.getElementById('spendSummary');
- if(!el)return;if(!a.length){el.innerHTML='<div class="empty">لا توجد مصروفات مسجلة للشهر '+esc(month)+'. غيّر «الشهر المعروض» لرؤية شهر آخر.</div>';return}
+ var a=Object.keys(m).map(function(k){return {k:k,v:m[k]}}).sort(function(x,y){return y.v-x.v}).slice(0,7);
+ if(!a.length){el.innerHTML='<div class="empty">لا توجد مصروفات مسجلة للشهر '+esc(month)+'. غيّر «الشهر المعروض» لرؤية شهر آخر.</div>';return}
  el.innerHTML='<div class="inbox">'+a.map(function(x){var pct=total?Math.round(x.v/total*100):0;return '<div class="item"><div><strong>'+esc(x.k)+'</strong><small>'+pct+'٪ من المصروف</small></div><strong class="money">'+money(x.v)+'</strong></div>'}).join('')+'</div>'
 }
 function renderTopAnalytics(){
+ var h=document.getElementById('topHolders'),s=document.getElementById('topSites');if(homeDataPending()){if(h)h.innerHTML=homeLoadingHtml();if(s)s.innerHTML=homeLoadingHtml();return}
  var month=dashboardMonth(),holders={},sites={};
  state.transactions.forEach(function(t){
    if(t.snapshotStatus==='superseded'||t.status==='ملغى'||!isExpense(t)||String(t.date||'').slice(0,7)!==month)return;
@@ -578,7 +583,7 @@ function renderTopAnalytics(){
    if(!a.length)return '<div class="empty">لا توجد بيانات في هذا الشهر.</div>';
    return '<div class="inbox">'+a.map(function(x){return '<div class="item" '+(clickable?'style="cursor:pointer" onclick="openHolderLedger(\''+esc(x.k).replaceAll("'","\\'")+'\')"':'')+'><div><strong>'+esc(x.k)+'</strong></div><strong class="money">'+money(x.v)+'</strong></div>'}).join('')+'</div>'
  }
- var h=document.getElementById('topHolders'),s=document.getElementById('topSites');if(h)h.innerHTML=html(holders,true);if(s)s.innerHTML=html(sites,false)
+ if(h)h.innerHTML=html(holders,true);if(s)s.innerHTML=html(sites,false)
 }
 function evidenceFor(txId){return (state.evidence||[]).filter(function(e){return e.transactionId===txId})}
 function evidenceCount(txId){return evidenceFor(txId).length}
@@ -788,14 +793,14 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  var oldMeta=state.meta||{};
- state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.9.3',operator:(access&&access.display_name)||oldMeta.operator||''}};
- persistLocal();cloudHydrating=false;
+ state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.9.4',operator:(access&&access.display_name)||oldMeta.operator||''}};
+ cloudDataLoaded=true;persistLocal();cloudHydrating=false;
 }
 async function loadRemoteState(){
  if(!cloudUsable())return;
- setSyncState('تحميل…','warn');
+ setSyncState('تحميل البيانات…','warn');
  try{var remote=await ArkanatCashCloud.loadState();applyRemoteState(remote,ArkanatCashCloud.access);setSyncState('متزامن','ok')}
- catch(e){console.error(e);setSyncState('تعذر','warn');toast('تعذر تحميل البيانات المشتركة')}
+ catch(e){console.error(e);cloudDataLoaded=false;setSyncState('تعذر التحميل','warn');renderAll();toast('تعذر تحميل البيانات المشتركة — حاول تحديث الصفحة')}
 }
 window.refreshCloud=async function(){
  var cfg=window.ARKANAT_CASH_CONFIG||{};
@@ -835,6 +840,7 @@ async function bootstrapCloud(){
    showAuthGate(false);renderAll();setSyncState('محلي فقط','warn');return
  }
  if(cfg.mode!=='supabase'){cloudReady=false;showAuthGate(false);renderAll();return}
+ setSyncState('تحميل البيانات…','warn');
  try{
    var r=await ArkanatCashCloud.init();
    if(cfg.openAccessMode){
@@ -1623,7 +1629,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+new Date().toISOString().slice(0,10)+'
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.9.3',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.9.4',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
