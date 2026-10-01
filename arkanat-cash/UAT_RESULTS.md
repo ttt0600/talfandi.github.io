@@ -296,3 +296,17 @@
 | Pagination | ترتيب ثابت created_at + id | PASS |
 | Cache قديم في المتصفح | no-cache + versioned cloud/config scripts | PASS |
 | JavaScript | index/cloud/config بدون أخطاء Syntax | PASS |
+
+
+## تحقق إصلاح التحميل — v1.9.7
+
+| الاختبار | النتيجة | الحالة |
+|---|---|---|
+| openAccess لا يحتاج jsDelivr | Direct REST | PASS |
+| بيانات الإنتاج موجودة | 2,331 حركة حالية و12 طلباً حالياً وقت التحقق | PASS |
+| سبتمبر 2026 | 1,493 حركة حالية | PASS |
+| مهلة الشبكة | لا يوجد انتظار غير محدود | PASS |
+| تحميل أكثر من 1000 صف | Pagination + parallel remaining pages | PASS |
+| كتابة البيانات في openAccess | REST upsert | PASS |
+| المرفقات في openAccess | Native Storage REST | PASS |
+| JavaScript | index.html وcloud.js بدون أخطاء Syntax | PASS |
