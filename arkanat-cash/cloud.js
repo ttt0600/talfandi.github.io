@@ -332,8 +332,8 @@
 
     // Core financial data must never be blocked by a failure in an auxiliary table.
     const [rq,tx]=await Promise.all([
-      selectAllRows("cash_requests","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}]),
-      selectAllRows("cash_transactions","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}])
+      selectAllRows("cash_requests","created_at","id",[{op:"eq",col:"snapshot_status",val:"current"}]),
+      selectAllRows("cash_transactions","created_at","id",[{op:"eq",col:"snapshot_status",val:"current"}])
     ]);
 
     const warnings=[];
