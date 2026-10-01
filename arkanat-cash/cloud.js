@@ -259,9 +259,68 @@
   }
 
 
+  function fetchTimeout(url,options,ms){
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),ms||15000);
+    return fetch(url,Object.assign({},options||{},{signal:controller.signal})).finally(()=>clearTimeout(timer));
+  }
+  function restHeaders(extra){
+    return Object.assign({
+      "apikey":cfg.supabasePublishableKey,
+      "Content-Type":"application/json"
+    },extra||{});
+  }
+  async function restPage(table,params,from,to,wantCount){
+    const qs=new URLSearchParams(params||{});
+    const res=await fetchTimeout(cfg.supabaseUrl+"/rest/v1/"+table+"?"+qs.toString(),{
+      headers:restHeaders(Object.assign(
+        {"Range-Unit":"items","Range":String(from)+"-"+String(to)},
+        wantCount?{"Prefer":"count=exact"}:{}
+      ))
+    },12000);
+    if(!res.ok) throw new Error(table+" HTTP "+res.status+" "+(await res.text()).slice(0,250));
+    const rows=await res.json(),cr=res.headers.get("content-range")||"";
+    const m=cr.match(/\/(\d+)$/);
+    return {rows:rows||[],total:m?Number(m[1]):null};
+  }
+  async function restSelectAll(table,orderCol,secondOrderCol,filters){
+    const pageSize=1000,params={select:"*"};
+    (filters||[]).forEach(f=>{if(f&&f.op==="eq")params[f.col]="eq."+f.val});
+    const orders=[];if(orderCol)orders.push(orderCol+".asc");if(secondOrderCol)orders.push(secondOrderCol+".asc");
+    if(orders.length)params.order=orders.join(",");
+    const first=await restPage(table,params,0,pageSize-1,true),out=first.rows.slice();
+    if(first.total!=null&&first.total>pageSize){
+      const jobs=[];
+      for(let from=pageSize;from<first.total;from+=pageSize)jobs.push(restPage(table,params,from,Math.min(from+pageSize-1,first.total-1),false));
+      const pages=await Promise.all(jobs);pages.forEach(p=>out.push(...p.rows));
+    }else if(first.total==null&&first.rows.length===pageSize){
+      for(let from=pageSize;;from+=pageSize){
+        const p=await restPage(table,params,from,from+pageSize-1,false);out.push(...p.rows);if(p.rows.length<pageSize)break;
+      }
+    }
+    return out;
+  }
+  async function restUpsert(table,rows,onConflict){
+    if(!rows||!rows.length)return;
+    const qs=new URLSearchParams();if(onConflict)qs.set("on_conflict",onConflict);
+    const res=await fetchTimeout(cfg.supabaseUrl+"/rest/v1/"+table+(qs.toString()?"?"+qs.toString():""),{
+      method:"POST",
+      headers:restHeaders({"Prefer":"resolution=merge-duplicates,return=minimal"}),
+      body:JSON.stringify(rows)
+    },15000);
+    if(!res.ok) throw new Error(table+" HTTP "+res.status+" "+(await res.text()).slice(0,250));
+  }
+
   api.init = async function(){
     if(api.mode!=="supabase") return {mode:"local",ready:false};
     if(!cfg.supabaseUrl || !cfg.supabasePublishableKey) throw new Error("إعدادات قاعدة البيانات المشتركة غير مكتملة");
+
+    // الوصول المفتوح لا يعتمد على CDN أو مكتبة خارجية. هذا يمنع تعليق البوابة
+    // إذا تأخر jsDelivr أو تعذر تحميل supabase-js.
+    if(api.openAccess){
+      api.ready=true;api.session=null;api.client=null;
+      return {mode:"supabase",ready:true,session:null,openAccess:true,nativeRest:true};
+    }
+
     await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
     api.client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{
       auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
@@ -273,7 +332,7 @@
       api.session=session||null;
       window.dispatchEvent(new CustomEvent("cash-cloud-auth",{detail:{session:api.session}}));
     });
-    return {mode:"supabase",ready:true,session:api.session,openAccess:api.openAccess};
+    return {mode:"supabase",ready:true,session:api.session,openAccess:false};
   };
 
   api.signInWithPassword = async function(email,password){
@@ -312,6 +371,7 @@
   };
 
   async function selectAllRows(table,orderCol,secondOrderCol,filters){
+    if(api.openAccess)return restSelectAll(table,orderCol,secondOrderCol,filters);
     const pageSize=1000,out=[];
     for(let from=0;;from+=pageSize){
       let q=api.client.from(table).select("*").range(from,from+pageSize-1);
@@ -328,7 +388,7 @@
   }
 
   api.loadState = async function(){
-    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
 
     // Core financial data must never be blocked by a failure in an auxiliary table.
     const [rq,tx]=await Promise.all([
@@ -373,7 +433,7 @@
   };
 
   api.loadHistoryState = async function(){
-    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const [rq,tx]=await Promise.all([
       selectAllRows("cash_requests","created_at",null,[{op:"eq",col:"snapshot_status",val:"superseded"}]),
       selectAllRows("cash_transactions","created_at",null,[{op:"eq",col:"snapshot_status",val:"superseded"}])
@@ -382,7 +442,7 @@
   };
 
   api.syncState = async function(state){
-    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const email=(api.session&&api.session.user&&api.session.user.email)||"";
     const requests=(state.requests||[]).map(x=>requestToDb(x,email));
     const transactions=(state.transactions||[]).map(x=>txnToDb(x,email));
@@ -394,6 +454,20 @@
     const qualityIssues=(state.qualityIssues||[]).map(x=>qualityIssueToDb(x,email));
     const employeeAdvances=(state.employeeAdvances||[]).map(x=>employeeAdvanceToDb(x,email));
     const advanceHistory=(state.advanceHistory||[]).map(x=>employeeAdvanceHistoryToDb(x,email));
+    if(api.openAccess){
+      for(const rows of chunk(requests,250))await restUpsert("cash_requests",rows,"id");
+      for(const rows of chunk(transactions,250))await restUpsert("cash_transactions",rows,"id");
+      for(const rows of chunk(imports,100))await restUpsert("cash_imports",rows,"id");
+      for(const rows of chunk(audit,250))await restUpsert("cash_audit_log",rows,"id");
+      for(const rows of chunk(evidence,250))await restUpsert("cash_transaction_evidence",rows,"id");
+      for(const rows of chunk(accounts,250))await restUpsert("cash_custody_accounts",rows,"account_key");
+      for(const rows of chunk(requestComponents,250))await restUpsert("cash_request_components",rows,"id");
+      for(const rows of chunk(qualityIssues,250))await restUpsert("cash_data_quality_issues",rows,"id");
+      for(const rows of chunk(employeeAdvances,250))await restUpsert("cash_employee_advances",rows,"id");
+      for(const rows of chunk(advanceHistory,250))await restUpsert("cash_employee_advance_history",rows,"id");
+      return {requests:requests.length,transactions:transactions.length,imports:imports.length,audit:audit.length,evidence:evidence.length,accounts:accounts.length,requestComponents:requestComponents.length,qualityIssues:qualityIssues.length,employeeAdvances:employeeAdvances.length,advanceHistory:advanceHistory.length};
+    }
+
     for(const rows of chunk(requests,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_requests").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(transactions,250)){ if(!rows.length) continue; const {error}=await api.client.from("cash_transactions").upsert(rows,{onConflict:"id"}); if(error) throw error; }
     for(const rows of chunk(imports,100)){ if(!rows.length) continue; const {error}=await api.client.from("cash_imports").upsert(rows,{onConflict:"id"}); if(error) throw error; }
@@ -408,7 +482,7 @@
   };
 
   api.uploadEvidenceFile = async function(transactionId,file){
-    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
     if(!file) throw new Error("لم يتم اختيار ملف");
     const allowed=["application/pdf","image/jpeg","image/png","image/webp","image/heic","image/heif"];
     if(file.type && !allowed.includes(file.type)) throw new Error("نوع الملف غير مدعوم. استخدم PDF أو صورة.");
@@ -416,6 +490,15 @@
     const safe=String(file.name||"attachment").replace(/[^\p{L}\p{N}._-]+/gu,"-").slice(-120);
     const uid=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+"-"+Math.random().toString(36).slice(2);
     const path=String(transactionId||"unlinked").replace(/[^a-zA-Z0-9._-]+/g,"-")+"/"+Date.now()+"-"+uid+"-"+safe;
+    if(api.openAccess){
+      const res=await fetchTimeout(cfg.supabaseUrl+"/storage/v1/object/cash-evidence/"+encodeURI(path),{
+        method:"POST",
+        headers:{"apikey":cfg.supabasePublishableKey,"Content-Type":file.type||"application/octet-stream","x-upsert":"false"},
+        body:file
+      },20000);
+      if(!res.ok)throw new Error("تعذر رفع المرفق HTTP "+res.status);
+      return {storagePath:path,fileName:file.name||safe,mimeType:file.type||"",fileSize:file.size||0};
+    }
     const {error}=await api.client.storage.from("cash-evidence").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type||undefined});
     if(error) throw error;
     return {storagePath:path,fileName:file.name||safe,mimeType:file.type||"",fileSize:file.size||0};
@@ -424,6 +507,16 @@
   api.getEvidenceUrl = async function(evidence){
     if(!evidence) throw new Error("المستند غير موجود");
     if(evidence.storagePath){
+      if(api.openAccess){
+        const res=await fetchTimeout(cfg.supabaseUrl+"/storage/v1/object/sign/cash-evidence/"+encodeURI(evidence.storagePath),{
+          method:"POST",headers:restHeaders(),body:JSON.stringify({expiresIn:3600})
+        },12000);
+        if(!res.ok)throw new Error("تعذر فتح المرفق HTTP "+res.status);
+        const data=await res.json();
+        if(!data.signedURL&&!data.signedUrl)return "";
+        const u=data.signedURL||data.signedUrl;
+        return /^https?:/.test(u)?u:cfg.supabaseUrl+"/storage/v1"+u;
+      }
       const {data,error}=await api.client.storage.from("cash-evidence").createSignedUrl(evidence.storagePath,3600);
       if(error) throw error;
       return data&&data.signedUrl?data.signedUrl:"";
@@ -432,7 +525,7 @@
   };
 
   api.deleteEvidenceFile = async function(evidence){
-    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
     if(!evidence||!evidence.storagePath) return true;
     const {error}=await api.client.storage.from("cash-evidence").remove([evidence.storagePath]);
     if(error) throw error;
@@ -440,7 +533,7 @@
   };
 
   api.adminUsers = async function(action,payload={}){
-    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const res=await fetch(cfg.supabaseUrl+"/functions/v1/cash-user-admin",{
       method:"POST",
       headers:{
@@ -461,7 +554,14 @@
   };
 
   api.isRemoteEmpty = async function(){
-    if(!api.client || (!api.session && !api.openAccess)) return true;
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) return true;
+    if(api.openAccess){
+      const [r,t]=await Promise.all([
+        restPage("cash_requests",{select:"id"},0,0,true),
+        restPage("cash_transactions",{select:"id"},0,0,true)
+      ]);
+      return (r.total||0)===0&&(t.total||0)===0;
+    }
     const [r,t]=await Promise.all([
       api.client.from("cash_requests").select("id",{count:"exact",head:true}),
       api.client.from("cash_transactions").select("id",{count:"exact",head:true})
