@@ -311,10 +311,11 @@
     return api.access;
   };
 
-  async function selectAllRows(table,orderCol,secondOrderCol){
+  async function selectAllRows(table,orderCol,secondOrderCol,filters){
     const pageSize=1000,out=[];
     for(let from=0;;from+=pageSize){
       let q=api.client.from(table).select("*").range(from,from+pageSize-1);
+      (filters||[]).forEach(f=>{ if(f&&f.op==="eq")q=q.eq(f.col,f.val); });
       if(orderCol)q=q.order(orderCol,{ascending:true});
       if(secondOrderCol)q=q.order(secondOrderCol,{ascending:true});
       const {data,error}=await q;
@@ -329,8 +330,8 @@
   api.loadState = async function(){
     if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
-      selectAllRows("cash_requests","created_at"),
-      selectAllRows("cash_transactions","created_at"),
+      selectAllRows("cash_requests","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}]),
+      selectAllRows("cash_transactions","created_at",null,[{op:"eq",col:"snapshot_status",val:"current"}]),
       selectAllRows("cash_imports","created_at"),
       selectAllRows("cash_audit_log","event_time"),
       selectAllRows("cash_transaction_evidence","created_at"),
@@ -356,6 +357,15 @@
       employeeAdvances:ea.map(employeeAdvanceFromDb),
       advanceHistory:eh.map(employeeAdvanceHistoryFromDb)
     };
+  };
+
+  api.loadHistoryState = async function(){
+    if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
+    const [rq,tx]=await Promise.all([
+      selectAllRows("cash_requests","created_at",null,[{op:"eq",col:"snapshot_status",val:"superseded"}]),
+      selectAllRows("cash_transactions","created_at",null,[{op:"eq",col:"snapshot_status",val:"superseded"}])
+    ]);
+    return {requests:rq.map(requestFromDb),transactions:tx.map(txnFromDb)};
   };
 
   api.syncState = async function(state){
