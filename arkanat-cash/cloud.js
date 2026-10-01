@@ -311,36 +311,50 @@
     return api.access;
   };
 
+  async function selectAllRows(table,orderCol,secondOrderCol){
+    const pageSize=1000,out=[];
+    for(let from=0;;from+=pageSize){
+      let q=api.client.from(table).select("*").range(from,from+pageSize-1);
+      if(orderCol)q=q.order(orderCol,{ascending:true});
+      if(secondOrderCol)q=q.order(secondOrderCol,{ascending:true});
+      const {data,error}=await q;
+      if(error) throw error;
+      const rows=data||[];
+      out.push(...rows);
+      if(rows.length<pageSize)break;
+    }
+    return out;
+  }
+
   api.loadState = async function(){
     if(!api.client || (!api.session && !api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
-      api.client.from("cash_requests").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_transactions").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_imports").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_audit_log").select("*").order("event_time",{ascending:true}),
-      api.client.from("cash_transaction_evidence").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_custody_accounts").select("*").order("holder_name",{ascending:true}),
-      api.client.from("cash_settlement_controls").select("*").order("period_start",{ascending:true}),
-      api.client.from("cash_request_components").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_account_period_balances").select("*").order("period_month",{ascending:true}),
-      api.client.from("cash_data_quality_issues").select("*").order("created_at",{ascending:true}),
-      api.client.from("cash_employee_advances").select("*").order("source_row",{ascending:true}),
-      api.client.from("cash_employee_advance_history").select("*").order("period_month",{ascending:true}).order("source_row",{ascending:true})
+      selectAllRows("cash_requests","created_at"),
+      selectAllRows("cash_transactions","created_at"),
+      selectAllRows("cash_imports","created_at"),
+      selectAllRows("cash_audit_log","event_time"),
+      selectAllRows("cash_transaction_evidence","created_at"),
+      selectAllRows("cash_custody_accounts","holder_name"),
+      selectAllRows("cash_settlement_controls","period_start"),
+      selectAllRows("cash_request_components","created_at"),
+      selectAllRows("cash_account_period_balances","period_month"),
+      selectAllRows("cash_data_quality_issues","created_at"),
+      selectAllRows("cash_employee_advances","source_row"),
+      selectAllRows("cash_employee_advance_history","period_month","source_row")
     ]);
-    for(const x of [rq,tx,im,au,ev,ac,sc,rc,pb,qi,ea,eh]) if(x.error) throw x.error;
     return {
-      requests:(rq.data||[]).map(requestFromDb),
-      transactions:(tx.data||[]).map(txnFromDb),
-      imports:(im.data||[]).map(importFromDb),
-      auditLog:(au.data||[]).map(auditFromDb),
-      evidence:(ev.data||[]).map(evidenceFromDb),
-      accounts:(ac.data||[]).map(accountFromDb),
-      settlementControls:(sc.data||[]).map(settlementFromDb),
-      requestComponents:(rc.data||[]).map(requestComponentFromDb),
-      periodBalances:(pb.data||[]).map(periodBalanceFromDb),
-      qualityIssues:(qi.data||[]).map(qualityIssueFromDb),
-      employeeAdvances:(ea.data||[]).map(employeeAdvanceFromDb),
-      advanceHistory:(eh.data||[]).map(employeeAdvanceHistoryFromDb)
+      requests:rq.map(requestFromDb),
+      transactions:tx.map(txnFromDb),
+      imports:im.map(importFromDb),
+      auditLog:au.map(auditFromDb),
+      evidence:ev.map(evidenceFromDb),
+      accounts:ac.map(accountFromDb),
+      settlementControls:sc.map(settlementFromDb),
+      requestComponents:rc.map(requestComponentFromDb),
+      periodBalances:pb.map(periodBalanceFromDb),
+      qualityIssues:qi.map(qualityIssueFromDb),
+      employeeAdvances:ea.map(employeeAdvanceFromDb),
+      advanceHistory:eh.map(employeeAdvanceHistoryFromDb)
     };
   };
 
