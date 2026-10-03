@@ -133,6 +133,31 @@ function detailGeography(points){
   ).join('')+'</div>';
 }
 
+function visualPanel(v){
+  const w=v.window||{};
+  const coverage=Number(v.analysis_coverage_pct||0);
+  return '<section class="panel visual-panel"><div class="panel-head"><div><h3>التحقق البصري من صور الإثبات — Shadow Mode</h3><div class="sub">طبقة مساندة تقارن المشهد المصور بالبصمة البصرية المتعلمة للموقع. لا تغيّر نقطة الحراسة ولا الحضور ولا تنتج جزاءً تلقائياً.</div></div><span class="tag ok">'+(coverage<20?'قيد بناء خط الأساس':'تحليل مساند')+'</span></div>'+
+    '<div class="visual-grid">'+
+      kpi('الصور المحللة',n(v.analyzed_photos),pct(coverage)+' من الصور')+
+      kpi('مراجع بصرية موثوقة',n(v.trusted_reference_photos),'GPS جيد ومتوافق مع النقطة')+
+      kpi('نقاط بدأ تعلمها بصرياً',n(v.points_touched),'Virtual Points')+
+      kpi('نقاط بخط أساس بصري',n(v.points_with_baseline),'5 مراجع أو أكثر')+
+      kpi('الصورة تدعم النقطة',n(w.supports_point),'ضمن الفترة المحددة','visual-ok')+
+      kpi('مراجعة بصرية',n((w.contradicts_point||0)+(w.matches_other_point||0)+(w.duplicate_review||0)),'إشارة مساندة فقط','visual-review')+
+    '</div><div class="visual-note">التحليل يتم في الخلفية ولا يتم تحميل الصور داخل الصفحة، لذلك لا يضيف عبئاً محسوساً على سرعة الـDashboard.</div></section>';
+}
+function detailVisual(v){
+  v=v||{};
+  return '<div class="detail-visual"><h4 class="detail-title">التحقق البصري لصور هذه النقطة</h4><div class="sub">النتائج مساندة لـGPS وVirtual Points وليست حكماً مستقلاً على الموقع.</div><div class="visual-grid detail-visual-grid">'+
+    kpi('صور محللة',n(v.analyzed),'')+
+    kpi('مراجع موثوقة',n(v.trusted_refs),'')+
+    kpi('متسقة بصرياً',n(v.consistent),'')+
+    kpi('تدعم النقطة',n(v.supports_point),'GPS مختلف لكن المشهد متوافق','visual-ok')+
+    kpi('تناقض بصري',n(v.contradicts_point),'تحتاج مراجعة','visual-review')+
+    kpi('أقرب لنقطة أخرى',n(v.matches_other_point),'تحتاج مراجعة','visual-review')+
+  '</div></div>';
+}
+
 function render(x){
   lastDashboard=x;
   const s=x.summary||{},v=x.virtual_points||{},st=x.storage||{},w=x.workflow||{},raw=x.review_queue||[],id=x.identity_review||[],ph=x.photo_device_review||[],gap=x.identity_gap||{},m=shadowIndex(x);
@@ -165,6 +190,7 @@ function render(x){
     kpi('مطابقة الهوية',pct(s.identity_rate),n(s.identity_ok)+' مسحة مطابقة')+
   '</section>'+
   shadowPanel(x.shadow_engine||{})+
+  visualPanel(x.visual_evidence||{})+
   '<div class="grid2"><section class="panel"><div class="panel-head"><div><h3>قائمة المراجعة بالأولوية</h3><div class="sub">إشارات الموقع والحركة تأتي من Shadow Engine مباشرة؛ بقية الأنماط تبقى إشارات خام تحتاج تحققاً بشرياً.</div></div><span class="tag">'+n(shadowCards.length+rawNonShadow.length)+' مجموعة</span></div><div class="queue">'+(queueHtml||'<div class="sub">لا توجد حالات تحتاج مراجعة ضمن القواعد الحالية.</div>')+'</div></section><section class="panel"><h3>الإشارات الخام — للمرجع</h3><div class="sub">تبقى للأثر التدقيقي ولا تُقرأ كمخالفات مؤكدة.</div>'+bars(x.anomalies)+'</section></div>'+
   (suppressed.length?'<section class="panel suppressed-panel"><div class="panel-head"><div><h3>إشارات قديمة استبعدها التحليل الجديد</h3><div class="sub">لا تظهر ضمن الأولويات الحالية، وتبقى محفوظة للمقارنة والتدقيق.</div></div><span class="tag ok">'+n(suppressed.length)+' مجموعة</span></div><div class="queue">'+suppressed.slice(0,10).map(z=>suppressedCard(z.kind,z.cp,z.s)).join('')+'</div></section>':'')+
   '<div class="grid2"><section class="panel"><h3>حركة الرصد</h3><div class="sub">بتوقيت السعودية.</div>'+trend(x.trend)+'</section><section class="panel"><h3>نضج نقاط الرصد</h3><div class="kpis small-grid">'+kpi('مثبتة',n(v.established),'Established')+kpi('مؤقتة',n(v.provisional),'Provisional')+kpi('الإجمالي',n(v.total),'نقاط افتراضية')+'</div><div class="sub panel-foot">تخزين أدلة الرصد: '+Number(st.gb||0).toFixed(3)+' GB · '+n(st.objects)+' ملف.</div></section></div>'+
@@ -229,6 +255,7 @@ async function openDetail(cp){
       '</div>'+
       '<h4 class="detail-title">المواقع الفعلية المستخرجة من هذا QR</h4><div class="sub">قد يمثل QR الواحد أكثر من موقع حراسة فعلي، لذلك تُعرض جميع Virtual Points المتعلمة منه.</div>'+detailGeography(geoPoints)+
       detailShadow(x.shadow)+
+      detailVisual(x.visual_evidence)+
       '<h4 class="detail-title">بصمات أجهزة مرتبطة بأكثر من هوية</h4><div class="sub">هذا القسم يوضح البصمة الواحدة فعلياً ومن استخدمها؛ وهو أدق من التجميع الخام على مستوى QR.</div>'+devicePatterns(devices)+
       '<h4 class="detail-title">أكثر الأشخاص ظهوراً</h4><div class="people-grid">'+
         people.slice(0,24).map(p=>'<div class="person-card '+(p.unmatched?'unmatched':'')+'"><b>'+esc(p.person_label||p.employee_id||'غير مطابق')+'</b><span>'+n(p.scans)+' مسحات · '+pct(p.photo_rate)+' صور · '+n(p.devices)+' بصمة جهاز</span>'+(p.unmatched?'<em>لا يوجد EMP_ID مطابق</em>':'')+'</div>').join('')+
