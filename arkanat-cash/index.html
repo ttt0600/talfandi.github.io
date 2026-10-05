@@ -65,8 +65,8 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
 @media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
 </style>
-<script src="./config.js?v=1.11.1"></script>
-<script src="./cloud.js?v=1.11.1"></script>
+<script src="./config.js?v=1.11.2"></script>
+<script src="./cloud.js?v=1.11.2"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -83,7 +83,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.11.1</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.11.2</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -160,7 +160,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 <section id="requests" class="view">
 <div class="titlebar"><div><h2>طلبات العهد والصرف</h2><div class="subtitle">تدعم ملفات طلب العهدة وطلب الصرف: القيمة، البيان، المشرف، الآيبان، اسم الحساب، الملاحظات</div></div><div class="actions"><button class="btn" onclick="toggleSheetFullscreen('requestSheetBox')">ملء الشاشة</button></div></div>
 <div class="sheetbox" id="requestSheetBox">
-<div class="sheetbar batchbar"><div><strong>طلبات جديدة</strong><br><small>الصفوف ذات القيمة صفر أو الفارغة لن تحفظ كطلبات جديدة</small></div><div class="field compact"><label>تاريخ الطلبات</label><input id="requestPageDate" type="date"></div></div>
+<div class="sheetbar batchbar"><div><strong>طلبات جديدة</strong><br><small>الصق صفوف Excel مباشرة؛ الصفوف ذات القيمة صفر أو الفارغة لن تحفظ كطلبات جديدة.</small></div><div class="actions"><div class="field compact"><label>نوع الطلب</label><div class="segmented" id="requestKindSegments" role="group" aria-label="نوع الطلب"><button type="button" class="segbtn active" data-request-kind="custody" aria-pressed="true" data-write-action onclick="setRequestBatchKind('custody')">طلب عهدة</button><button type="button" class="segbtn" data-request-kind="disbursement" aria-pressed="false" data-write-action onclick="setRequestBatchKind('disbursement')">طلب صرف</button></div><input id="requestBatchKind" type="hidden" value="custody"></div><div class="field compact"><label>تاريخ الطلبات</label><input id="requestPageDate" type="date"></div></div></div>
 <div class="sheet-scroll">
 <table class="sheet-grid batch-grid" id="requestBatchTable" style="min-width:980px"><thead><tr>
 <th>#</th><th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th>
@@ -170,7 +170,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </div>
 <div class="card"><div class="formgrid">
 <div class="field"><label>بحث</label><input id="requestSearch" placeholder="مشرف أو بيان..." oninput="renderRequests()"></div>
-<div class="field"><label>عرض</label><select id="requestView" onchange="renderRequests()"><option value="open">الطلبات الحالية</option><option value="all">كل الطلبات</option></select></div>
+<div class="field"><label>عرض الطلبات</label><div class="segmented" id="requestViewSegments" role="group" aria-label="عرض الطلبات"><button type="button" class="segbtn active" data-request-view="open" aria-pressed="true" onclick="setRequestView('open')">الحالية</button><button type="button" class="segbtn" data-request-view="all" aria-pressed="false" onclick="setRequestView('all')">الكل</button></div><input id="requestView" type="hidden" value="open"></div>
 </div></div>
 <div id="requestList"></div>
 </section>
@@ -375,14 +375,14 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.11.1 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.11.2 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.11.1',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.11.1';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.11.2',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.11.2';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,cloudDataLoaded=false,cloudLoadError=false,cloudHistoryLoaded=false,cloudHistoryLoading=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -678,6 +678,16 @@ window.setLedgerHistoryMode=function(mode){
  document.querySelectorAll('#ledgerHistorySegments .segbtn').forEach(function(b){var on=b.dataset.history===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
  renderLedger()
 }
+window.setRequestBatchKind=function(kind,opts){
+ kind=kind==='disbursement'?'disbursement':'custody';opts=opts||{};var hidden=document.getElementById('requestBatchKind');if(hidden)hidden.value=kind;
+ document.querySelectorAll('#requestKindSegments .segbtn').forEach(function(b){var on=b.dataset.requestKind===kind;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
+ if(!opts.silent){toast(kind==='disbursement'?'نوع الإدخال: طلب صرف':'نوع الإدخال: طلب عهدة')}
+}
+window.setRequestView=function(mode){
+ mode=mode==='all'?'all':'open';var hidden=document.getElementById('requestView');if(hidden)hidden.value=mode;
+ document.querySelectorAll('#requestViewSegments .segbtn').forEach(function(b){var on=b.dataset.requestView===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
+ renderRequests()
+}
 window.setBatchBookType=function(type,opts){
  type=type==='vehicle'?'vehicle':'coverage';opts=opts||{};var hidden=document.getElementById('batchBookType'),old=hidden?hidden.value:'coverage',changed=old!==type;
  if(changed&&!opts.keepRows&&!opts.silent){
@@ -882,7 +892,7 @@ function applyRemoteState(remote,access){
      qualityIssues:Array.isArray(remote.qualityIssues)?remote.qualityIssues:(state.qualityIssues||[]),
      employeeAdvances:Array.isArray(remote.employeeAdvances)?remote.employeeAdvances:(state.employeeAdvances||[]),
      advanceHistory:Array.isArray(remote.advanceHistory)?remote.advanceHistory:(state.advanceHistory||[]),
-     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.11.1',operator:(access&&access.display_name)||oldMeta.operator||''}
+     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.11.2',operator:(access&&access.display_name)||oldMeta.operator||''}
    };
    if(Array.isArray(remote.transactions))cloudDataLoaded=true;
    cloudLoadError=false;cloudHistoryLoaded=false;persistLocal();
@@ -1181,15 +1191,16 @@ function requestRowHtml(i){return '<tr data-row="'+i+'"><td class="rownum">'+(i+
 window.resetRequestBatch=function(){var b=document.getElementById('requestBatchBody');if(!b)return;b.innerHTML='';for(var i=0;i<6;i++)b.insertAdjacentHTML('beforeend',requestRowHtml(i))}
 window.addRequestRows=function(n){var b=document.getElementById('requestBatchBody');if(!b)return;var s=b.querySelectorAll('tr').length;for(var i=0;i<n;i++)b.insertAdjacentHTML('beforeend',requestRowHtml(s+i))}
 window.saveRequestBatch=function(){
- var date=(document.getElementById('requestPageDate')||{}).value||batchToday(),rows=[].slice.call(document.querySelectorAll('#requestBatchBody tr')),saved=0,zeros=0,dupes=0;
- rows.forEach(function(row){var g=function(n){return ((row.querySelector('[name="'+n+'"]')||{}).value||'').trim()},amt=num(g('amount')),sup=g('supervisor'),purpose=g('purpose');if(!amt){if(sup||purpose)zeros++;return}if(!sup||!purpose)return;
-   var d={id:id('REQ'),date:date,dateRaw:date,amount:amt,purpose:purpose,supervisor:sup,iban:g('iban'),beneficiary:g('beneficiary'),notes:g('notes'),custodyCategory:inferCustodyCategory('request_snapshot',purpose,''),region:'',site:'',status:'جديد',createdAt:new Date().toISOString(),source:'إدخال دفعي من البوابة',sourceChannel:'مباشر'};
-   d.accountKey=makeAccountKey('',d.supervisor,d.custodyCategory);d.recordFingerprint=requestKey(d);
+ var date=(document.getElementById('requestPageDate')||{}).value||batchToday(),kind=(document.getElementById('requestBatchKind')||{}).value||'custody',profile=kind==='disbursement'?'disbursement_request':'request_snapshot',rows=[].slice.call(document.querySelectorAll('#requestBatchBody tr')),saved=0,zeros=0,dupes=0;
+ rows.forEach(function(row){var g=function(n){return ((row.querySelector('[name="'+n+'"]')||{}).value||'').trim()},amt=num(g('amount')),sup=g('supervisor'),purpose=g('purpose'),notes=g('notes');if(!amt){if(sup||purpose)zeros++;return}if(!sup||!purpose)return;
+   var region=typeof inferRegionFromText==='function'?inferRegionFromText(purpose+' '+notes):'',cat=inferCustodyCategory(profile,purpose+' '+notes,'');
+   var d={id:id('REQ'),date:date,dateRaw:date,dateStatus:'parsed',amount:amt,purpose:purpose,supervisor:sup,iban:g('iban'),beneficiary:g('beneficiary'),notes:notes,custodyCategory:cat,region:region,site:'',status:'جديد',requestKind:kind==='disbursement'?'صرف مباشر':'بسيط',createdAt:new Date().toISOString(),source:'إدخال دفعي من البوابة',sourceChannel:'مباشر'};
+   d.accountKey=makeAccountKey(region,d.supervisor,d.custodyCategory);d.recordFingerprint=requestKey(d);
    if(state.requests.some(function(r){return r.snapshotStatus!=='superseded'&&requestKey(r)===d.recordFingerprint})){dupes++;return}
    captureQualityIssuesForRequest(d);state.requests.push(d);saved++
  });
  if(!saved){toast(zeros?'لا توجد طلبات بقيمة أكبر من صفر للحفظ':'لا توجد طلبات مكتملة للحفظ');return}
- audit('إضافة طلبات عهد دفعة واحدة','RequestBatch',id('REQBATCH'),saved+' طلب بتاريخ '+date);save();refreshHolderOptions();renderRequests();resetRequestBatch();toast('تم حفظ '+saved+' طلب'+(zeros?' · تم تجاهل '+zeros+' صف بقيمة صفر':'')+(dupes?' · '+dupes+' مكرر':''))
+ audit(kind==='disbursement'?'إضافة طلبات صرف دفعة واحدة':'إضافة طلبات عهد دفعة واحدة','RequestBatch',id('REQBATCH'),saved+' طلب بتاريخ '+date);save();refreshHolderOptions();renderRequests();resetRequestBatch();toast('تم حفظ '+saved+' '+(kind==='disbursement'?'طلب صرف':'طلب عهدة')+(zeros?' · تم تجاهل '+zeros+' صف بقيمة صفر':'')+(dupes?' · '+dupes+' مكرر':''))
 }
 function advanceRowHtml(i){return '<tr data-row="'+i+'"><td class="rownum">'+(i+1)+'</td><td class="namecell"><input data-grid="advance" data-col="0" name="employeeName"></td><td class="moneycell"><input data-grid="advance" data-col="1" name="amount" type="text" inputmode="decimal"></td><td class="sitecell"><input data-grid="advance" data-col="2" name="department"></td><td class="textcell"><input data-grid="advance" data-col="3" name="notes"></td><td class="moneycell"><input data-grid="advance" data-col="4" name="previousBalance" type="text" inputmode="decimal"></td><td class="moneycell"><input data-grid="advance" data-col="5" name="total" type="text" inputmode="decimal"></td><td class="textcell"><input data-grid="advance" data-col="6" name="extraNotes"></td></tr>'}
 window.resetAdvanceBatch=function(){var b=document.getElementById('advanceBatchBody');if(!b)return;b.innerHTML='';for(var i=0;i<6;i++)b.insertAdjacentHTML('beforeend',advanceRowHtml(i))}
@@ -1229,6 +1240,9 @@ function gridPaste(e){
  if(!table||!body)return;
  e.preventDefault();
  var startRow=input.closest('tr'),rows=[].slice.call(body.querySelectorAll('tr')),ri=rows.indexOf(startRow),ci=+input.dataset.col;
+ if(grid==='request'&&ci===0){
+   var rqText=cleanArabic(text);if(textHas(rqText,['طلب صرف']))setRequestBatchKind('disbursement',{silent:true});else if(textHas(rqText,['طلب عهده','طلب عهدة']))setRequestBatchKind('custody',{silent:true});
+ }
  if(grid==='ledger'&&ci===0){
    var ctx=ledgerPasteContext(text);
    if(ctx.type&&ctx.type!==(document.getElementById('batchBookType')||{}).value){setBatchBookType(ctx.type,{silent:true});body=document.getElementById('batchLedgerBody');rows=[].slice.call(body.querySelectorAll('tr'));ri=Math.max(0,Math.min(ri,rows.length-1));input=rows[ri].querySelector('input[data-col="0"]')}
@@ -1266,7 +1280,7 @@ document.addEventListener('paste',gridPaste);
 document.addEventListener('keydown',function(e){
  var x=e.target;if(e.key!=='Enter'||!x.matches('input[data-grid]'))return;e.preventDefault();var body=x.closest('tbody'),rows=[].slice.call(body.querySelectorAll('tr')),row=x.closest('tr'),ri=rows.indexOf(row),ci=+x.dataset.col;if(ri===rows.length-1){if(x.dataset.grid==='ledger')addLedgerBatchRows(1);else if(x.dataset.grid==='request')addRequestRows(1);else addAdvanceRows(1);rows=[].slice.call(body.querySelectorAll('tr'))}var next=[].slice.call(rows[ri+1].querySelectorAll('input[data-grid]'))[ci];if(next)next.focus()
 });
-function renderAll(){var today=batchToday(),m=today.slice(0,7),dataMonth=defaultDataMonth(),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth'),am=document.getElementById('advanceBatchMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=dataMonth;if(hm&&(!hm.value||!homeMonthUserSelected))hm.value=dataMonth;if(am&&!am.value)am.value=m;renderOperator();renderStorageMode();document.querySelectorAll('#batchBookSegments .segbtn').forEach(function(b){var on=b.dataset.book===((document.getElementById('batchBookType')||{}).value||'coverage');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#ledgerHistorySegments .segbtn').forEach(function(b){var on=b.dataset.history===((document.getElementById('ledgerHistoryMode')||{}).value||'current');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();resetAdvanceBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
+function renderAll(){var today=batchToday(),m=today.slice(0,7),dataMonth=defaultDataMonth(),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth'),am=document.getElementById('advanceBatchMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=dataMonth;if(hm&&(!hm.value||!homeMonthUserSelected))hm.value=dataMonth;if(am&&!am.value)am.value=m;renderOperator();renderStorageMode();document.querySelectorAll('#batchBookSegments .segbtn').forEach(function(b){var on=b.dataset.book===((document.getElementById('batchBookType')||{}).value||'coverage');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#ledgerHistorySegments .segbtn').forEach(function(b){var on=b.dataset.history===((document.getElementById('ledgerHistoryMode')||{}).value||'current');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#requestKindSegments .segbtn').forEach(function(b){var on=b.dataset.requestKind===((document.getElementById('requestBatchKind')||{}).value||'custody');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#requestViewSegments .segbtn').forEach(function(b){var on=b.dataset.requestView===((document.getElementById('requestView')||{}).value||'open');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();resetAdvanceBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
 
 document.getElementById('advanceForm').addEventListener('submit',function(e){
  e.preventDefault();if(!canWritePortal()){toast('لا توجد صلاحية لإضافة السلف');return}
@@ -1794,7 +1808,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+batchToday()+'.xlsx')
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+batchToday()+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.11.1',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.11.2',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
