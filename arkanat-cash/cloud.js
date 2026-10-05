@@ -272,17 +272,31 @@
     },extra||{});
   }
   async function restPage(table,params,from,to,wantCount){
-    const qs=new URLSearchParams(params||{});
-    const res=await fetchTimeout(cfg.supabaseUrl+"/rest/v1/"+table+"?"+qs.toString(),{
-      headers:restHeaders(Object.assign(
-        {"Range-Unit":"items","Range":String(from)+"-"+String(to)},
-        wantCount?{"Prefer":"count=exact"}:{}
-      ))
-    },12000);
-    if(!res.ok) throw new Error(table+" HTTP "+res.status+" "+(await res.text()).slice(0,250));
-    const rows=await res.json(),cr=res.headers.get("content-range")||"";
-    const m=cr.match(/\/(\d+)$/);
-    return {rows:rows||[],total:m?Number(m[1]):null};
+    const qs=new URLSearchParams(params||{}),url=cfg.supabaseUrl+"/rest/v1/"+table+"?"+qs.toString();
+    let lastError=null;
+    for(let attempt=1;attempt<=3;attempt++){
+      try{
+        const res=await fetchTimeout(url,{
+          headers:restHeaders(Object.assign(
+            {"Range-Unit":"items","Range":String(from)+"-"+String(to)},
+            wantCount?{"Prefer":"count=exact"}:{}
+          ))
+        },attempt===1?15000:20000);
+        if(res.ok){
+          const rows=await res.json(),cr=res.headers.get("content-range")||"";
+          const m=cr.match(/\/(\d+)$/);
+          return {rows:rows||[],total:m?Number(m[1]):null};
+        }
+        const body=(await res.text()).slice(0,250),err=new Error(table+" HTTP "+res.status+" "+body);
+        lastError=err;
+        if(attempt===3||![408,425,429].includes(res.status)&&res.status<500)throw err;
+      }catch(e){
+        lastError=e;
+        if(attempt===3)throw e;
+      }
+      await new Promise(resolve=>setTimeout(resolve,500*attempt));
+    }
+    throw lastError||new Error(table+" تعذر تحميل الصفحة");
   }
   async function restSelectAll(table,orderCol,secondOrderCol,filters){
     const pageSize=1000,params={select:"*"};
@@ -389,21 +403,35 @@
     return out;
   }
 
-  api.loadState = async function(){
+  api.loadCoreState = async function(){
     if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
-
-    // Core financial data must never be blocked by a failure in an auxiliary table.
-    const [rq,tx]=await Promise.all([
-      selectAllRows("cash_requests","created_at","id",[{op:"eq",col:"snapshot_status",val:"current"}]),
-      selectAllRows("cash_transactions","created_at","id",[{op:"eq",col:"snapshot_status",val:"current"}])
+    const warnings=[];
+    const [txResult,rqResult]=await Promise.allSettled([
+      selectAllRows("cash_transactions","created_at","id",[{op:"eq",col:"snapshot_status",val:"current"}]),
+      selectAllRows("cash_requests","created_at","id",[{op:"eq",col:"snapshot_status",val:"current"}])
     ]);
+    if(txResult.status!=="fulfilled"){
+      const e=txResult.reason;
+      throw new Error("تعذر تحميل الحركات النقدية الأساسية: "+(e&&e.message?e.message:String(e)));
+    }
+    let rq=[];
+    if(rqResult.status==="fulfilled")rq=rqResult.value;
+    else warnings.push("cash_requests: "+(rqResult.reason&&rqResult.reason.message?rqResult.reason.message:String(rqResult.reason)));
+    return {
+      requests:rq.map(requestFromDb),
+      transactions:txResult.value.map(txnFromDb),
+      _requestsLoaded:rqResult.status==="fulfilled",
+      _warnings:warnings
+    };
+  };
 
+  api.loadAuxiliaryState = async function(){
+    if((!api.openAccess&&!api.client)||(!api.session&&!api.openAccess)) throw new Error("يجب تسجيل الدخول");
     const warnings=[];
     async function optional(table,orderCol,secondOrderCol){
       try{return await selectAllRows(table,orderCol,secondOrderCol)}
       catch(e){warnings.push(table+": "+(e&&e.message?e.message:String(e)));return []}
     }
-
     const [im,au,ev,ac,sc,rc,pb,qi,ea,eh]=await Promise.all([
       optional("cash_imports","created_at"),
       optional("cash_audit_log","event_time"),
@@ -416,10 +444,7 @@
       optional("cash_employee_advances","source_row"),
       optional("cash_employee_advance_history","period_month","source_row")
     ]);
-
     return {
-      requests:rq.map(requestFromDb),
-      transactions:tx.map(txnFromDb),
       imports:im.map(importFromDb),
       auditLog:au.map(auditFromDb),
       evidence:ev.map(evidenceFromDb),
@@ -432,6 +457,12 @@
       advanceHistory:eh.map(employeeAdvanceHistoryFromDb),
       _warnings:warnings
     };
+  };
+
+  api.loadState = async function(){
+    const core=await api.loadCoreState();
+    const aux=await api.loadAuxiliaryState();
+    return {...core,...aux,_warnings:[...(core._warnings||[]),...(aux._warnings||[])]};
   };
 
   api.loadHistoryState = async function(){
