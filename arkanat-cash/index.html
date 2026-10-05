@@ -82,7 +82,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.9.8</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.9.9</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -378,7 +378,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.9.8 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.9.9 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
@@ -829,25 +829,55 @@ function showAuthGate(show,msg){
 function applyRemoteState(remote,access){
  cloudHydrating=true;
  try{
-   var oldMeta=state.meta||{};
-   state={requests:remote.requests||[],transactions:remote.transactions||[],imports:remote.imports||[],auditLog:remote.auditLog||[],evidence:remote.evidence||[],accounts:remote.accounts||[],settlementControls:remote.settlementControls||[],requestComponents:remote.requestComponents||[],periodBalances:remote.periodBalances||[],qualityIssues:remote.qualityIssues||[],employeeAdvances:remote.employeeAdvances||[],advanceHistory:remote.advanceHistory||[],meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.9.8',operator:(access&&access.display_name)||oldMeta.operator||''}};
-   cloudDataLoaded=true;cloudLoadError=false;cloudHistoryLoaded=false;persistLocal();
+   var oldMeta=state.meta||{},oldRequests=state.requests||[],oldTransactions=state.transactions||[];
+   state={
+     requests:remote._requestsLoaded===false?oldRequests:(Array.isArray(remote.requests)?remote.requests:oldRequests),
+     transactions:Array.isArray(remote.transactions)?remote.transactions:oldTransactions,
+     imports:Array.isArray(remote.imports)?remote.imports:(state.imports||[]),
+     auditLog:Array.isArray(remote.auditLog)?remote.auditLog:(state.auditLog||[]),
+     evidence:Array.isArray(remote.evidence)?remote.evidence:(state.evidence||[]),
+     accounts:Array.isArray(remote.accounts)?remote.accounts:(state.accounts||[]),
+     settlementControls:Array.isArray(remote.settlementControls)?remote.settlementControls:(state.settlementControls||[]),
+     requestComponents:Array.isArray(remote.requestComponents)?remote.requestComponents:(state.requestComponents||[]),
+     periodBalances:Array.isArray(remote.periodBalances)?remote.periodBalances:(state.periodBalances||[]),
+     qualityIssues:Array.isArray(remote.qualityIssues)?remote.qualityIssues:(state.qualityIssues||[]),
+     employeeAdvances:Array.isArray(remote.employeeAdvances)?remote.employeeAdvances:(state.employeeAdvances||[]),
+     advanceHistory:Array.isArray(remote.advanceHistory)?remote.advanceHistory:(state.advanceHistory||[]),
+     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.9.9',operator:(access&&access.display_name)||oldMeta.operator||''}
+   };
+   if(Array.isArray(remote.transactions))cloudDataLoaded=true;
+   cloudLoadError=false;cloudHistoryLoaded=false;persistLocal();
  }finally{cloudHydrating=false}
 }
 async function loadRemoteState(){
- if(!cloudUsable())return;
- setSyncState('تحميل البيانات…','warn');
+ if(!cloudUsable())return false;
+ setSyncState('تحميل الحركات…','warn');
  try{
-   var remote=await ArkanatCashCloud.loadState();
-   if(!remote||!Array.isArray(remote.transactions)||!Array.isArray(remote.requests))throw new Error('استجابة البيانات الأساسية غير مكتملة');
-   applyRemoteState(remote,ArkanatCashCloud.access);
-   if(remote._warnings&&remote._warnings.length)console.warn('تم تحميل البيانات الأساسية مع تحذيرات مساندة',remote._warnings);
-   setSyncState('متزامن','ok')
+   var core=ArkanatCashCloud.loadCoreState?await ArkanatCashCloud.loadCoreState():await ArkanatCashCloud.loadState();
+   if(!core||!Array.isArray(core.transactions))throw new Error('استجابة الحركات الأساسية غير مكتملة');
+   applyRemoteState(core,ArkanatCashCloud.access);
+   renderAll();
+   var warnings=(core._warnings||[]).slice();
+   if(ArkanatCashCloud.loadAuxiliaryState){
+     setSyncState('تحميل التفاصيل…','warn');
+     try{
+       var aux=await ArkanatCashCloud.loadAuxiliaryState();
+       applyRemoteState(aux,ArkanatCashCloud.access);
+       if(aux._warnings&&aux._warnings.length)warnings=warnings.concat(aux._warnings)
+     }catch(auxError){
+       warnings.push('البيانات المساندة: '+(auxError&&auxError.message?auxError.message:String(auxError)))
+     }
+   }
+   renderAll();
+   if(warnings.length){console.warn('تم تحميل الأرقام الأساسية مع تحذيرات مساندة',warnings);setSyncState('متزامن — تفاصيل جزئية','warn')}
+   else setSyncState('متزامن','ok');
+   return true
  }catch(e){
    console.error(e);cloudDataLoaded=false;cloudLoadError=true;cloudHydrating=false;
    setSyncState((state.transactions&&state.transactions.length)?'نسخة محفوظة':'تعذر التحميل','warn');
    renderAll();
-   toast((state.transactions&&state.transactions.length)?'تعذر التحديث الآن — يتم عرض آخر نسخة محفوظة':'تعذر تحميل بيانات البوابة المشتركة. اضغط تحديث بعد ثوانٍ.')
+   toast((state.transactions&&state.transactions.length)?'تعذر التحديث الآن — يتم عرض آخر نسخة محفوظة':'تعذر تحميل الحركات النقدية من القاعدة المشتركة. اضغط تحديث بعد ثوانٍ.');
+   throw e
  }
 }
 async function ensureCloudHistory(){
@@ -868,8 +898,8 @@ window.refreshCloud=async function(){
  var cfg=window.ARKANAT_CASH_CONFIG||{};
  if(cfg.publicUatMode){toast('الوضع التجريبي محلي ولا يتصل بقاعدة الإنتاج');return}
  if(!cloudUsable()){if(!cfg.openAccessMode)showAuthGate(true,'سجل الدخول أولاً');return}
- await loadRemoteState();
- if(cloudDataLoaded)toast('تم تحديث البيانات من القاعدة المشتركة')
+ try{var ok=await loadRemoteState();if(ok&&cloudDataLoaded)toast('تم تحديث البيانات من القاعدة المشتركة')}
+ catch(e){}
 }
 window.signOutCloud=async function(){
  try{await ArkanatCashCloud.signOut()}catch(e){}
@@ -912,7 +942,7 @@ async function bootstrapCloud(){
      if(!state.meta.operator||state.meta.operator==='تجربة مؤقتة')state.meta.operator='مستخدم الرابط';
      var b=document.getElementById('uatBanner');if(b)b.style.display='none';
      var so=document.getElementById('signOutBtn');if(so)so.style.display='none';
-     showAuthGate(false);renderRoleUi();await loadRemoteState();renderAll();setSyncState('متزامن','ok');return
+     showAuthGate(false);renderRoleUi();await loadRemoteState();return
    }
    showAuthGate(true,'جاري الاتصال بقاعدة البيانات المشتركة…');
    if(r.session)await cloudSessionReady();
