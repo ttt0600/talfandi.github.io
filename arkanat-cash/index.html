@@ -65,8 +65,8 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
 @media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
 </style>
-<script src="./config.js?v=1.11.3"></script>
-<script src="./cloud.js?v=1.11.3"></script>
+<script src="./config.js?v=1.12.0"></script>
+<script src="./cloud.js?v=1.12.0"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -83,7 +83,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.11.3</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.12.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -362,7 +362,8 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 <span class="muted">يدعم تلقائياً: كشوف التغطيات، دفاتر الأستاذ مدين/دائن، دفاتر الوقود والمصروفات، طلبات العهد، والملفات متعددة المشرفين.</span><br><br>
 <input id="fileInput" type="file" accept=".xlsx,.xls"></div>
 <div style="margin-top:12px" class="field"><label>طريقة التعامل مع الملف</label>
-<select id="importMode"><option value="snapshot">لقطة محدثة كاملة — تستبدل اللقطة السابقة لنفس الحساب/الفترة</option><option value="delta">حركات إضافية فقط — يضاف الجديد بعد منع التكرار</option></select></div>
+<div class="segmented" id="importModeSegments" role="group" aria-label="طريقة الاستيراد"><button type="button" class="segbtn active" data-import-mode="snapshot" aria-pressed="true" onclick="setImportMode('snapshot')">لقطة كاملة محدثة</button><button type="button" class="segbtn" data-import-mode="delta" aria-pressed="false" onclick="setImportMode('delta')">حركات إضافية فقط</button></div>
+<input id="importMode" type="hidden" value="snapshot"><small class="fieldhint">استخدم «لقطة كاملة محدثة» لملفات التصفية الشهرية وطلبات العهد التي يعاد إرسالها بعد التعديل.</small></div>
 <div id="importResult" style="margin-top:12px"></div>
 </div>
 <div class="card"><h3>تنزيل نسخة من البيانات</h3>
@@ -375,14 +376,14 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.11.3 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.12.0 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.11.3',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.11.3';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.12.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.12.0';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,cloudDataLoaded=false,cloudLoadError=false,cloudHistoryLoaded=false,cloudHistoryLoading=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -688,6 +689,10 @@ window.setRequestView=function(mode){
  document.querySelectorAll('#requestViewSegments .segbtn').forEach(function(b){var on=b.dataset.requestView===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});
  renderRequests()
 }
+window.setImportMode=function(mode){
+ mode=mode==='delta'?'delta':'snapshot';var hidden=document.getElementById('importMode');if(hidden)hidden.value=mode;
+ document.querySelectorAll('#importModeSegments .segbtn').forEach(function(b){var on=b.dataset.importMode===mode;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')})
+}
 window.setBatchBookType=function(type,opts){
  type=type==='vehicle'?'vehicle':'coverage';opts=opts||{};var hidden=document.getElementById('batchBookType'),old=hidden?hidden.value:'coverage',changed=old!==type;
  if(changed&&!opts.keepRows&&!opts.silent){
@@ -892,7 +897,7 @@ function applyRemoteState(remote,access){
      qualityIssues:Array.isArray(remote.qualityIssues)?remote.qualityIssues:(state.qualityIssues||[]),
      employeeAdvances:Array.isArray(remote.employeeAdvances)?remote.employeeAdvances:(state.employeeAdvances||[]),
      advanceHistory:Array.isArray(remote.advanceHistory)?remote.advanceHistory:(state.advanceHistory||[]),
-     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.11.3',operator:(access&&access.display_name)||oldMeta.operator||''}
+     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.12.0',operator:(access&&access.display_name)||oldMeta.operator||''}
    };
    if(Array.isArray(remote.transactions))cloudDataLoaded=true;
    cloudLoadError=false;cloudHistoryLoaded=false;persistLocal();
@@ -1280,7 +1285,7 @@ document.addEventListener('paste',gridPaste);
 document.addEventListener('keydown',function(e){
  var x=e.target;if(e.key!=='Enter'||!x.matches('input[data-grid]'))return;e.preventDefault();var body=x.closest('tbody'),rows=[].slice.call(body.querySelectorAll('tr')),row=x.closest('tr'),ri=rows.indexOf(row),ci=+x.dataset.col;if(ri===rows.length-1){if(x.dataset.grid==='ledger')addLedgerBatchRows(1);else if(x.dataset.grid==='request')addRequestRows(1);else addAdvanceRows(1);rows=[].slice.call(body.querySelectorAll('tr'))}var next=[].slice.call(rows[ri+1].querySelectorAll('input[data-grid]'))[ci];if(next)next.focus()
 });
-function renderAll(){var today=batchToday(),m=today.slice(0,7),dataMonth=defaultDataMonth(),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth'),am=document.getElementById('advanceBatchMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=dataMonth;if(hm&&(!hm.value||!homeMonthUserSelected))hm.value=dataMonth;if(am&&!am.value)am.value=m;renderOperator();renderStorageMode();document.querySelectorAll('#batchBookSegments .segbtn').forEach(function(b){var on=b.dataset.book===((document.getElementById('batchBookType')||{}).value||'coverage');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#ledgerHistorySegments .segbtn').forEach(function(b){var on=b.dataset.history===((document.getElementById('ledgerHistoryMode')||{}).value||'current');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#requestKindSegments .segbtn').forEach(function(b){var on=b.dataset.requestKind===((document.getElementById('requestBatchKind')||{}).value||'custody');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#requestViewSegments .segbtn').forEach(function(b){var on=b.dataset.requestView===((document.getElementById('requestView')||{}).value||'open');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();resetAdvanceBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
+function renderAll(){var today=batchToday(),m=today.slice(0,7),dataMonth=defaultDataMonth(),rd=document.getElementById('requestPageDate'),bd=document.getElementById('batchDefaultDate'),lm=document.getElementById('ledgerMonth'),hm=document.getElementById('homeMonth'),am=document.getElementById('advanceBatchMonth');if(rd&&!rd.value)rd.value=today;if(bd&&!bd.value)bd.value=today;if(lm&&!lm.value)lm.value=dataMonth;if(hm&&(!hm.value||!homeMonthUserSelected))hm.value=dataMonth;if(am&&!am.value)am.value=m;renderOperator();renderStorageMode();document.querySelectorAll('#batchBookSegments .segbtn').forEach(function(b){var on=b.dataset.book===((document.getElementById('batchBookType')||{}).value||'coverage');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#ledgerHistorySegments .segbtn').forEach(function(b){var on=b.dataset.history===((document.getElementById('ledgerHistoryMode')||{}).value||'current');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#requestKindSegments .segbtn').forEach(function(b){var on=b.dataset.requestKind===((document.getElementById('requestBatchKind')||{}).value||'custody');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#requestViewSegments .segbtn').forEach(function(b){var on=b.dataset.requestView===((document.getElementById('requestView')||{}).value||'open');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});document.querySelectorAll('#importModeSegments .segbtn').forEach(function(b){var on=b.dataset.importMode===((document.getElementById('importMode')||{}).value||'snapshot');b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false')});renderKpis();renderRecent();renderSpendSummary();renderTopAnalytics();renderBalances();refreshHolderOptions();resetLedgerBatch();resetRequestBatch();resetAdvanceBatch();renderLedger();renderRequests();renderAdvances();renderReview();renderSettlement();renderExceptions();renderAudit();renderPortalUsers();renderAccounts();renderEvidence();renderImportRegistry();renderRoleUi()}
 
 document.getElementById('advanceForm').addEventListener('submit',function(e){
  e.preventDefault();if(!canWritePortal()){toast('لا توجد صلاحية لإضافة السلف');return}
@@ -1565,7 +1570,10 @@ function openingOrFunding(desc){
 }
 function get(row,idx){return idx==null?'':row[idx]}
 function inferRegionFromText(text){var txt=cleanArabic(text||'');if(txt.indexOf('الشرقي')>=0||txt.indexOf('الدمام')>=0||txt.indexOf('الخبر')>=0||txt.indexOf('الاحساء')>=0)return 'الشرقية';if(txt.indexOf('الغربي')>=0||txt.indexOf('جده')>=0||txt.indexOf('جدة')>=0||txt.indexOf('الطائف')>=0||txt.indexOf('مكه')>=0||txt.indexOf('مكة')>=0||txt.indexOf('ينبع')>=0||txt.indexOf('المدينه')>=0)return 'الغربية';if(txt.indexOf('الرياض')>=0||txt.indexOf('الوسط')>=0)return 'الوسطى';return ''}
-function sheetRegion(title,rows,fileName){return inferRegionFromText((rows[0]||[]).join(' ')+' '+title+' '+(fileName||''))}
+function sheetRegion(title,rows,fileName){
+ var sample=(rows||[]).slice(0,40).map(function(r){return (r||[]).join(' ')}).join(' ');
+ return inferRegionFromText(sample+' '+title+' '+(fileName||''))
+}
 function scopeKey(profile,region,holder,period,sheet,category){return [profile,region||'',holder||'',category||'',period.year||'',period.month||'',sheet||''].join('|')}
 function eventKey(t){return [t.type,t.date||t.dateRaw||'',num(t.amount),cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef)].join('|')}
 function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef)].join('|')}
@@ -1631,7 +1639,19 @@ function parseSheet(wb,sheetName,fileName){
 async function fingerprint(file){try{var b=await file.arrayBuffer(),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}catch(e){return [file.name,file.size,file.lastModified].join('|')}}
 async function prepareImport(file){
  var buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:'array',cellDates:false}),fp=await fingerprint(file),sheets=wb.SheetNames.map(function(n){return parseSheet(wb,n,file.name)});
- pendingImport={file:file,workbook:wb,fingerprint:fp,sheets:sheets,preparedAt:new Date().toISOString()};
+ var regions=[];sheets.forEach(function(sh){if(sh.region&&regions.indexOf(sh.region)<0)regions.push(sh.region)});
+ var workbookRegion=regions.length===1?regions[0]:'';
+ if(workbookRegion){
+   sheets.forEach(function(sh){
+     if(!sh.region){
+       sh.region=workbookRegion;
+       (sh.items||[]).forEach(function(it){it.region=workbookRegion;it.accountKey=makeAccountKey(workbookRegion,it.custodyHolder||it.supervisor,it.custodyCategory||sh.custodyCategory)});
+       (sh.requestTombstones||[]).forEach(function(z){z.region=workbookRegion});
+       sh.scopeKey=scopeKey(sh.profile,workbookRegion,sh.holder,sh.period,sh.sheet,sh.custodyCategory)
+     }
+   })
+ }
+ pendingImport={file:file,workbook:wb,fingerprint:fp,sheets:sheets,workbookRegion:workbookRegion,preparedAt:new Date().toISOString()};
  renderImportPreview()
 }
 function profileLabel(p){return {coverage_list:'كشف تغطيات/صرف أفراد',cash_ledger:'دفتر أستاذ مدين/دائن',expense_ledger:'دفتر وقود/مصروفات',simple_expense_list:'قائمة مصروفات مبسطة',request_snapshot:'طلبات عهدة',disbursement_request:'طلب صرف',unknown:'غير معروف'}[p]||p}
@@ -1702,10 +1722,22 @@ function sameSnapshotAccount(t,sh){
 }
 function renderImportPreview(){
  if(!pendingImport)return;var ds=analyzeImportDuplicates(),html='';
+ var cashSheets=pendingImport.sheets.filter(function(x){return x.profile==='cash_ledger'}),requestSheets=pendingImport.sheets.filter(function(x){return x.profile==='request_snapshot'});
+ if(cashSheets.length>1){
+   var resources=0,outflows=0,closing=0,matched=0,rows=0;
+   cashSheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile);resources+=num(c.resources);outflows+=num(c.outflows);closing+=num(c.balance);rows+=(x.items||[]).length;if(c.status==='مطابق')matched++});
+   var p=cashSheets[0].period||{},period=(p.year&&p.month)?String(p.month).padStart(2,'0')+'/'+p.year:'-';
+   html+='<div class="notice" style="margin-bottom:12px"><strong>تم التعرف على ملف تصفية متعدد المشرفين.</strong> '+cashSheets.length.toLocaleString('ar-SA')+' دفاتر · '+rows.toLocaleString('ar-SA')+' حركة · المنطقة: '+esc(pendingImport.workbookRegion||'تحتاج تحديد')+' · الفترة: '+esc(period)+'</div>';
+   html+='<div class="kpis" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:12px"><div class="kpi"><div class="lab">الموارد/العهد</div><div class="val">'+money(resources)+'</div></div><div class="kpi"><div class="lab">المصروف</div><div class="val">'+money(outflows)+'</div></div><div class="kpi"><div class="lab">الرصيد الختامي</div><div class="val">'+money(closing)+'</div></div><div class="kpi"><div class="lab">دفاتر مطابقة</div><div class="val">'+matched.toLocaleString('ar-SA')+' / '+cashSheets.length.toLocaleString('ar-SA')+'</div></div></div>'
+ }
+ if(requestSheets.length){
+   var positive=requestSheets.reduce(function(n,x){return n+(x.items||[]).filter(function(it){return it.kind==='request'}).length},0),zeros=requestSheets.reduce(function(n,x){return n+(x.requestTombstones||[]).length},0);
+   html+='<div class="notice" style="margin-bottom:12px"><strong>لقطة طلبات عهدة:</strong> طلبات موجبة '+positive.toLocaleString('ar-SA')+' · صفوف صفرية '+zeros.toLocaleString('ar-SA')+'. في وضع «لقطة كاملة محدثة» تعتبر الصفوف الصفرية إلغاءً للطلب المفتوح المطابق في النسخة السابقة، ولا تنشئ حركة مالية.</div>'
+ }
  if(ds.fileDuplicate)html+='<div class="notice bad"><strong>تكرار كامل:</strong> بصمة هذا الملف مطابقة لملف سبق استيراده إلى القاعدة المشتركة. '+(isSuperAdmin()?'يمكن لـ Super Admin فقط تجاوزه مع تسجيل سبب.':'لن يسمح النظام بإعادة استيراده.')+'</div>';
  html+='<div class="kpis" style="margin-bottom:12px"><div class="kpi"><div class="lab">سجلات جديدة</div><div class="val">'+(ds.newRecords+ds.newRequests).toLocaleString('ar-SA')+'</div></div><div class="kpi"><div class="lab">موجودة مسبقاً</div><div class="val">'+(ds.exactDuplicates+ds.duplicateRequests).toLocaleString('ar-SA')+'</div></div><div class="kpi"><div class="lab">تعارضات</div><div class="val">'+(ds.conflicts+ds.requestConflicts).toLocaleString('ar-SA')+'</div><div class="sub">نفس الهوية مع اختلاف مالي</div></div></div>';
  html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>نوع العهدة</th><th>المشرف/النطاق</th><th>السجلات</th><th>الموارد/الطلبات</th><th>الخارج</th><th>الرصيد المحسوب</th><th>مطابقة المصدر</th></tr></thead><tbody>';
- pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=x.profile==='request_snapshot'?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.custodyCategory||inferCustodyCategory(x.profile,pendingImport.file.name,x.sheet))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
+ pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=isRequestProfile(x.profile)?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.custodyCategory||inferCustodyCategory(x.profile,pendingImport.file.name,x.sheet))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
  var warns=[];pendingImport.sheets.forEach(function(x){(x.warnings||[]).forEach(function(w){warns.push(esc(x.sheet)+' — '+esc(w))})});if(warns.length)html+='<div class="notice warn" style="margin-top:10px"><strong>تنبيهات الاستيراد:</strong><br>'+warns.join('<br>')+'</div>';
  var composites=[];pendingImport.sheets.forEach(function(x){(x.items||[]).forEach(function(it){if(it.kind==='request'&&it.requestKind==='مركب')composites.push(esc(it.supervisor)+' — '+money(it.amount)+' — '+(it.componentDrafts||[]).map(function(c){return esc(c.componentType)+' '+money(c.amount)}).join(' + '))})});if(composites.length)html+='<div class="notice" style="margin-top:10px"><strong>طلبات مركبة تم تحليلها تلقائياً:</strong><br>'+composites.join('<br>')+'</div>';
  var tombstoneCount=pendingImport.sheets.reduce(function(s,x){return s+(x.requestTombstones||[]).length},0);if(tombstoneCount)html+='<div class="notice warn" style="margin-top:10px"><strong>صفوف طلبات صفرية:</strong> تم رصد '+tombstoneCount.toLocaleString('ar-SA')+' صفاً كحالة Snapshot. عند اختيار «لقطة محدثة كاملة» تستخدم هذه الصفوف لتحييد الطلبات المفتوحة المطابقة فقط، ولا تمس أي طلب سبق تمويله.</div>';
@@ -1808,7 +1840,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+batchToday()+'.xlsx')
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+batchToday()+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.11.3',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.12.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
