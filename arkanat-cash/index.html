@@ -65,8 +65,8 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
 @media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
 </style>
-<script src="./config.js?v=1.12.0"></script>
-<script src="./cloud.js?v=1.12.0"></script>
+<script src="./config.js?v=1.12.1"></script>
+<script src="./cloud.js?v=1.12.1"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -83,7 +83,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.12.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.12.1</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -376,14 +376,14 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.12.0 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.12.1 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.12.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.12.0';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.12.1',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.12.1';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,cloudDataLoaded=false,cloudLoadError=false,cloudHistoryLoaded=false,cloudHistoryLoading=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -565,11 +565,14 @@ function dashboardMonth(){
 function latestHolderBalances(month){
  var m={},today=batchToday(),limit=month?(month+'-31'):'9999-12-31';if(limit>today)limit=today;
  state.transactions.forEach(function(t){
-  if(t.snapshotStatus==='superseded'||t.status==='ملغى'||String(t.date||'')>limit)return;var h=(t.custodyHolder||t.supervisor||'').trim();if(!h)return;
-  var key=cleanArabic(h),ord=(t.date||'')+'|'+String(t.sourceRow||'').padStart(6,'0')+'|'+(t.createdAt||'');
-  if(!m[key])m[key]={holder:h,balance:null,calc:0,ord:'',last:'',region:t.region||'',category:t.custodyCategory||''};
+  var validDate=t.dateStatus!=='needs_review'&&/^\d{4}-\d{2}-\d{2}$/.test(String(t.date||'')),dateValue=validDate?String(t.date):'';
+  if(t.snapshotStatus==='superseded'||t.status==='ملغى'||(dateValue&&dateValue>limit))return;var h=(t.custodyHolder||t.supervisor||'').trim();if(!h)return;
+  var key=cleanArabic(h),ord=(validDate?'1|'+dateValue:'0|')+String(t.sourceRow||'').padStart(6,'0')+'|'+(t.createdAt||'');
+  if(!m[key])m[key]={holder:h,balance:null,calc:0,ord:'',last:'',lastStatus:'',lastRaw:'',region:t.region||'',category:t.custodyCategory||''};
   m[key].calc+=txnEffect(t);
-  if(t.reportedBalance!=null&&t.reportedBalance!==''&&ord>=m[key].ord){m[key].balance=num(t.reportedBalance);m[key].ord=ord;m[key].last=t.date||t.dateRaw||'';m[key].region=t.region||m[key].region;m[key].category=t.custodyCategory||m[key].category}
+  if(t.reportedBalance!=null&&t.reportedBalance!==''&&ord>=m[key].ord){
+    m[key].balance=num(t.reportedBalance);m[key].ord=ord;m[key].last=dateValue;m[key].lastStatus=validDate?'parsed':'needs_review';m[key].lastRaw=t.dateRaw||'';m[key].region=t.region||m[key].region;m[key].category=t.custodyCategory||m[key].category
+  }
  });
  Object.keys(m).forEach(function(k){if(m[k].balance==null)m[k].balance=m[k].calc});
  return m
@@ -654,7 +657,7 @@ function rowTable(list){
 if(!list.length)return '<div class="empty">لا توجد حركات مسجلة.</div>';
 return '<div class="tablewrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>حامل العهدة / من صرف</th><th>نوع الحركة</th><th>المبلغ</th><th>الموقع</th><th>لمن / من</th><th>السبب / البيان</th><th>الرصيد بعد الحركة</th><th>المرفقات</th><th>الحالة</th></tr></thead><tbody>'+list.map(function(t){
  var who=t.custodyHolder||t.supervisor||'-',person=t.cover||t.absent||t.beneficiary||t.transferTo||'-',why=t.reason||t.description||'-',typeLabel=(t.type==='مصروف تشغيلي'&&t.expenseCategory)?t.expenseCategory:t.type;
- var dateLabel=t.dateStatus==='needs_review'?'⚠ تاريخ يحتاج مراجعة':(t.dateRaw||t.date||'-');return '<tr><td>'+esc(dateLabel)+'</td><td>'+esc(who)+'</td><td>'+esc(typeLabel)+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(person)+'</td><td>'+esc(why)+'</td><td class="money">'+(t.reportedBalance==null||t.reportedBalance===''?'-':money(t.reportedBalance))+'</td><td>'+evidenceButtons(t.id)+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'
+ var dateLabel=portalDate(t.date,t.dateStatus,t.dateRaw);return '<tr><td>'+esc(dateLabel)+'</td><td>'+esc(who)+'</td><td>'+esc(typeLabel)+'</td><td class="money">'+money(t.amount)+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(person)+'</td><td>'+esc(why)+'</td><td class="money">'+(t.reportedBalance==null||t.reportedBalance===''?'-':money(t.reportedBalance))+'</td><td>'+evidenceButtons(t.id)+'</td><td><span class="badge '+(t.status==='يحتاج مراجعة'?'warn':t.status==='معتمد'?'ok':'')+'">'+esc(t.status||'مسجل')+'</span></td></tr>'
 }).join('')+'</tbody></table></div>'
 }
 function renderRecent(){var m=dashboardMonth(),today=batchToday(),a=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.dateStatus!=='needs_review'&&(!t.date||String(t.date)<=today)&&String(t.date||'').slice(0,7)===m}).slice().reverse().slice(0,7);document.getElementById('recent').innerHTML=rowTable(a)}
@@ -663,10 +666,10 @@ function renderBalances(){
  var month=dashboardMonth(),latest=latestHolderBalances(month),rows=Object.keys(latest).map(function(k){
    var x=latest[k],spent=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&t.dateStatus!=='needs_review'&&(!t.date||String(t.date)<=batchToday())&&cleanArabic(t.custodyHolder||t.supervisor)===k&&String(t.date||'').slice(0,7)===month&&isExpense(t)}).reduce(function(s,t){return s+num(t.amount)},0),
    cnt=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&cleanArabic(t.custodyHolder||t.supervisor)===k&&String(t.date||'').slice(0,7)===month}).length;
-   return {holder:x.holder,region:x.region,category:x.category,balance:x.balance,spent:spent,count:cnt,last:x.last}
+   return {holder:x.holder,region:x.region,category:x.category,balance:x.balance,spent:spent,count:cnt,last:x.last,lastStatus:x.lastStatus,lastRaw:x.lastRaw}
  }).filter(function(x){return x.balance!=null||x.count>0}).sort(function(a,b){return num(b.balance)-num(a.balance)});
  if(!rows.length){document.getElementById('balances').innerHTML='<div class="empty">لا توجد أرصدة حالية.</div>';return}
- document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المصروف هذا الشهر</th><th>آخر رصيد</th><th>آخر تاريخ</th><th></th></tr></thead><tbody>'+rows.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td class="money">'+money(x.spent)+'</td><td class="money"><strong>'+(x.balance==null?'-':money(x.balance))+'</strong></td><td>'+esc(x.last||'-')+'</td><td><button class="btn" onclick="openHolderLedger(\''+esc(x.holder).replaceAll("'","\\'")+'\')">فتح الدفتر</button></td></tr>'}).join('')+'</tbody></table></div>'
+ document.getElementById('balances').innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المصروف هذا الشهر</th><th>آخر رصيد</th><th>آخر تاريخ</th><th></th></tr></thead><tbody>'+rows.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td class="money">'+money(x.spent)+'</td><td class="money"><strong>'+(x.balance==null?'-':money(x.balance))+'</strong></td><td>'+esc(portalDate(x.last,x.lastStatus,x.lastRaw))+'</td><td><button class="btn" onclick="openHolderLedger(\''+esc(x.holder).replaceAll("'","\\'")+'\')">فتح الدفتر</button></td></tr>'}).join('')+'</tbody></table></div>'
 }
 function refreshHolderOptions(){
  var names={};(state.transactions||[]).forEach(function(t){if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;[t.custodyHolder,t.supervisor,t.transferTo].forEach(function(n){n=String(n||'').trim();if(n)names[cleanArabic(n)]=n})});
@@ -760,7 +763,7 @@ window.renderLedger=function(){
    running[key]=(running[key]||0)+debit-credit;
    var bal=t.reportedBalance!=null&&t.reportedBalance!==''?num(t.reportedBalance):running[key];
    var main=t.absent||t.description||t.beneficiary||'-',old=t.snapshotStatus==='superseded';
-   return '<tr class="'+(old?'old-ledger-row':'')+'"><td>'+esc(t.dateRaw||t.date||'-')+'</td><td>'+esc(h)+'</td><td>'+esc(t.supervisor||'-')+'</td><td class="money">'+(debit?money(debit):'-')+'</td><td class="money">'+(credit?money(credit):'-')+'</td><td>'+esc(main)+'</td><td>'+esc(t.cover||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.reason||'-')+'</td><td>'+esc(t.notes||'-')+'</td><td class="money"><strong>'+money(bal)+'</strong></td><td><span class="badge history-badge '+(old?'':'ok')+'">'+(old?'سابق':'حالي')+'</span></td><td>'+evidenceButtons(t.id)+'</td></tr>'
+   return '<tr class="'+(old?'old-ledger-row':'')+'"><td>'+esc(portalDate(t.date,t.dateStatus,t.dateRaw))+'</td><td>'+esc(h)+'</td><td>'+esc(t.supervisor||'-')+'</td><td class="money">'+(debit?money(debit):'-')+'</td><td class="money">'+(credit?money(credit):'-')+'</td><td>'+esc(main)+'</td><td>'+esc(t.cover||'-')+'</td><td>'+esc(t.site||'-')+'</td><td>'+esc(t.reason||'-')+'</td><td>'+esc(t.notes||'-')+'</td><td class="money"><strong>'+money(bal)+'</strong></td><td><span class="badge history-badge '+(old?'':'ok')+'">'+(old?'سابق':'حالي')+'</span></td><td>'+evidenceButtons(t.id)+'</td></tr>'
  });
  document.getElementById('ledgerTable').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid"><thead><tr><th>التاريخ</th><th>حامل العهدة</th><th>المشرف التشغيلي</th><th>مدين / وارد</th><th>دائن / منصرف</th><th>الحارس الأساسي / البيان</th><th>الحارس البديل</th><th>الموقع</th><th>الحالة / السبب</th><th>ملاحظات</th><th>الرصيد</th><th>السجل</th><th>مرفقات</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد حركات مطابقة لهذا العرض.</div>';
  updateLedgerBatchBalances()
@@ -813,7 +816,7 @@ function renderRequests(){
   if(mode==='open'&&(num(r.amount)<=0||r.status==='ممول'||r.status==='مرفوض'))return false;
   var s=[r.supervisor,r.purpose,r.iban,r.beneficiary,r.notes].join(' ').toLowerCase();return !q||s.indexOf(q)>=0
  }).slice().reverse();
- var rows=a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded),kind=r.requestKind||'عهدة';return '<tr><td>'+esc(r.date||r.dateRaw||'-')+'</td><td>'+esc(kind)+'</td><td>'+esc(r.custodyCategory||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td>'+esc(friendlyRequestStatus(r.status))+(funded>0?' · تم تسليم '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
+ var rows=a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded),kind=r.requestKind||'عهدة';return '<tr><td>'+esc(portalDate(r.date,r.dateStatus,r.dateRaw))+'</td><td>'+esc(kind)+'</td><td>'+esc(r.custodyCategory||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td>'+esc(friendlyRequestStatus(r.status))+(funded>0?' · تم تسليم '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
  document.getElementById('requestList').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid" style="min-width:1180px"><thead><tr><th>التاريخ</th><th>نوع الطلب</th><th>نوع العهدة/الصرف</th><th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th><th>الحالة</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد طلبات مطابقة.</div>'
 }
 function renderReview(){
@@ -897,7 +900,7 @@ function applyRemoteState(remote,access){
      qualityIssues:Array.isArray(remote.qualityIssues)?remote.qualityIssues:(state.qualityIssues||[]),
      employeeAdvances:Array.isArray(remote.employeeAdvances)?remote.employeeAdvances:(state.employeeAdvances||[]),
      advanceHistory:Array.isArray(remote.advanceHistory)?remote.advanceHistory:(state.advanceHistory||[]),
-     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.12.0',operator:(access&&access.display_name)||oldMeta.operator||''}
+     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.12.1',operator:(access&&access.display_name)||oldMeta.operator||''}
    };
    if(Array.isArray(remote.transactions))cloudDataLoaded=true;
    cloudLoadError=false;cloudHistoryLoaded=false;persistLocal();
@@ -1057,7 +1060,7 @@ function renderAccounts(){
   if(t.type==='رصيد افتتاحي'||t.type==='تغذية عهدة'||t.type==='تحويل وارد')m[key].received+=t.type==='رصيد افتتاحي'?num(t.amount)*(t.openingSign===-1?-1:1):num(t.amount);
   if(isExpense(t)||t.type==='دفعة تحت التسوية'||t.type==='دفع نقدي لفرد')m[key].spent+=num(t.amount);
   if(t.type==='تحويل داخلي'||t.type==='عهدة فرعية مفتوحة'||t.type==='إعادة للشركة')m[key].transferred+=num(t.amount);
-  m[key].balance+=txnEffect(t);if(t.dateStatus!=='needs_review'&&String(t.date||'')>m[key].last)m[key].last=t.date
+  m[key].balance+=txnEffect(t);if(t.dateStatus!=='needs_review'&&/^\d{4}-\d{2}-\d{2}$/.test(String(t.date||''))&&String(t.date)>m[key].last)m[key].last=String(t.date)
  });
  var a=Object.keys(m).map(function(k){return m[k]}).filter(function(x){
   var hay=(x.holder+' '+x.region+' '+x.category).toLowerCase();return (!q||hay.indexOf(q)>=0)&&(!rg||String(x.region||'').toLowerCase().indexOf(rg)>=0)
@@ -1069,7 +1072,7 @@ function renderAccounts(){
   ['إجمالي المصروف',money(totalSpent),'مصروفات وسلف/دفعات'],
   ['إجمالي المتبقي',money(totalBalance),'الرصيد تحت العهد']
  ].map(function(x){return '<div class="kpi"><div class="lab">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="sub">'+x[2]+'</div></div>'}).join('');
- el.innerHTML=a.length?'<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع العهدة</th><th>المبلغ المستلم</th><th>المصروف</th><th>المحوّل لآخرين</th><th>المتبقي</th><th>آخر حركة</th><th></th></tr></thead><tbody>'+a.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.category)+'</td><td class="money">'+money(x.received)+'</td><td class="money">'+money(x.spent)+'</td><td class="money">'+money(x.transferred)+'</td><td class="money"><strong>'+money(x.balance)+'</strong></td><td>'+esc(x.last||'-')+'</td><td><button class="btn" onclick="openHolderLedger(\''+esc(x.holder).replaceAll("'", "\\'")+'\')">تفاصيل</button></td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">لا توجد عهد مطابقة.</div>'
+ el.innerHTML=a.length?'<div class="tablewrap"><table class="tbl"><thead><tr><th>حامل العهدة</th><th>المنطقة</th><th>نوع العهدة</th><th>المبلغ المستلم</th><th>المصروف</th><th>المحوّل لآخرين</th><th>المتبقي</th><th>آخر حركة</th><th></th></tr></thead><tbody>'+a.map(function(x){return '<tr><td><strong>'+esc(x.holder)+'</strong></td><td>'+esc(x.region||'-')+'</td><td>'+esc(x.category)+'</td><td class="money">'+money(x.received)+'</td><td class="money">'+money(x.spent)+'</td><td class="money">'+money(x.transferred)+'</td><td class="money"><strong>'+money(x.balance)+'</strong></td><td>'+esc(portalDate(x.last,'',''))+'</td><td><button class="btn" onclick="openHolderLedger(\''+esc(x.holder).replaceAll("'", "\\'")+'\')">تفاصيل</button></td></tr>'}).join('')+'</tbody></table></div>':'<div class="empty">لا توجد عهد مطابقة.</div>'
 }
 function renderEvidence(){
   var el=document.getElementById('evidenceTable');if(!el)return;var a=(state.evidence||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد مستندات مؤيدة مرتبطة بالحركات حتى الآن.</div>';return}
@@ -1118,6 +1121,16 @@ function holderCurrentBalance(holder){
 }
 function localDateString(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function batchToday(){return localDateString(new Date())}
+function portalDate(value,status,raw){
+ var s=String(value||'').trim(),r=String(raw||'').trim();
+ if(status==='needs_review'&&!/^\d{4}-\d{2}-\d{2}$/.test(s))return '⚠ يحتاج مراجعة';
+ var m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ if(m)return m[3]+'/'+m[2]+'/'+m[1];
+ var ym=s.match(/^(\d{4})-(\d{2})$/);if(ym)return ym[2]+'/'+ym[1];
+ if(!s&&status==='needs_review')return '⚠ يحتاج مراجعة';
+ if(/^\d{4,6}$/.test(s)||/^\d{4,6}$/.test(r))return '⚠ يحتاج مراجعة';
+ return s||r||'-'
+}
 function normalizePastedDate(v){
  v=String(v||'').trim();if(!v)return '';
  if(/^\d{4}-\d{2}-\d{2}$/.test(v))return v;
@@ -1840,7 +1853,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+batchToday()+'.xlsx')
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+batchToday()+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.12.0',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.12.1',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
