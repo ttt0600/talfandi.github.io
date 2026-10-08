@@ -46,7 +46,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
             <div><label for="dept">الإدارة *</label><select id="dept" required><option value="">اختر الإدارة</option><option>الإدارة العامة</option><option>إدارة العمليات</option><option>إدارة الموارد البشرية</option><option>الإدارة المالية</option><option>إدارة المبيعات وتطوير الأعمال</option><option>إدارة العقود</option><option>إدارة التسويق</option><option>إدارة تقنية المعلومات</option><option>إدارة الجودة والامتثال</option><option value="other">إدارة أخرى</option></select><div class="error" id="error-dept"></div></div>
             <div class="full" id="customDeptWrap" hidden><label for="customDept">اسم الإدارة *</label><input id="customDept" maxlength="70" placeholder="اسم الإدارة المعتمد"><div class="error" id="error-customDept"></div></div>
             <div><label for="email">البريد الإلكتروني الوظيفي *</label><input id="email" name="email" type="email" dir="ltr" autocomplete="email" maxlength="110" required placeholder="name@arkanat.com.sa"><div class="error" id="error-email"></div></div>
-            <div><label for="mobile">رقم التواصل <small>(اختياري)</small></label><input id="mobile" type="tel" dir="ltr" autocomplete="tel" maxlength="28" placeholder="+966 5X XXX XXXX"><div class="error" id="error-mobile"></div></div>
+            <div><label for="mobile">رقم الجوال السعودي <small>(اختياري)</small></label><input id="mobile" type="tel" dir="ltr" inputmode="tel" autocomplete="tel-national" maxlength="28" placeholder="0506190555 أو +966 50 619 0555"><div class="hint">يُوحَّد الرقم تلقائياً عند الانتقال للحقل التالي؛ لا تحتاج إلى كتابة مفتاح الدولة.</div><div class="error" id="error-mobile"></div></div>
             <div><label for="ext">التحويلة <small>(اختياري)</small></label><input id="ext" inputmode="numeric" maxlength="8" placeholder="مثلاً 102"><div class="error" id="error-ext"></div></div>
             <div><label for="enName">الاسم بالإنجليزية <small>(اختياري)</small></label><input id="enName" dir="ltr" maxlength="90" placeholder="Mohammed Alotaibi"></div>
           </div>
@@ -99,6 +99,30 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   const val=id=>el(id).value.trim();
   const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const dept=()=>val('dept')==='other'?val('customDept'):val('dept');
+  // Numbers typed in Arabic, Persian or Latin numerals are accepted. Valid mobile
+  // representations: 05XXXXXXXX, 5XXXXXXXX, 9665XXXXXXXX, +9665XXXXXXXX, 009665XXXXXXXX.
+  function normalizeSaudiMobile(raw){
+    if(!String(raw||'').trim())return '';
+    const numeric=String(raw).replace(/[٠-٩]/g,c=>String(c.charCodeAt(0)-0x0660))
+      .replace(/[۰-۹]/g,c=>String(c.charCodeAt(0)-0x06F0))
+      .replace(/[\u200e\u200f\u061c]/g,'').trim();
+    if(!/^\+?[0-9()\s.\-]+$/.test(numeric))return null;
+    let number=numeric.replace(/\D/g,'');
+    if(number.startsWith('00966'))number=number.slice(5);
+    else if(number.startsWith('966'))number=number.slice(3);
+    else if(number.startsWith('0'))number=number.slice(1);
+    if(!/^5\d{8}$/.test(number))return null;
+    return '+966 '+number.slice(0,2)+' '+number.slice(2,5)+' '+number.slice(5);
+  }
+  function formattedMobile(){
+    const value=normalizeSaudiMobile(val('mobile'));
+    return value===null?'':value;
+  }
+  function normalizeMobileField(){
+    const value=normalizeSaudiMobile(val('mobile'));
+    if(value!==null)el('mobile').value=value;
+    return value;
+  }
   let step=1;
   const guides={
     new:{title:'Outlook الجديد أو Outlook على الويب',items:['بعد الضغط على «نسخ التوقيع»، افتح Outlook وانتقل إلى الإعدادات (رمز الترس).','افتح «الحسابات» ثم «التوقيعات» (أو «البريد» ← «إنشاء والرد» بحسب إصدارك).','أنشئ توقيعاً جديداً وألصقه في مربع التوقيع ثم اضغط حفظ.','عيّن التوقيع للرسائل الجديدة والردود إذا رغبت.']},
@@ -115,7 +139,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     if(val('dept')==='other'&&val('customDept').length<2)errors.customDept='اكتب اسم الإدارة.';
     const email=val('email');
     if(!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email))errors.email='أدخل بريداً إلكترونياً صحيحاً.';
-    if(val('mobile')&&!/^[+0-9 ()\-]{7,28}$/.test(val('mobile')))errors.mobile='تحقق من رقم التواصل.';
+    if(val('mobile')&&normalizeSaudiMobile(val('mobile'))===null)errors.mobile='أدخل جوالاً سعودياً صحيحاً، مثل 0506190555.';
     if(val('ext')&&!/^\d{1,8}$/.test(val('ext')))errors.ext='التحويلة أرقام فقط.';
     let first=null;
     fields.forEach(id=>{
@@ -137,7 +161,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     const p=[val('name')];
     if(val('enName'))p.push(val('enName'));
     p.push(val('title'),dept(),'شركة أركانات للحراسات الأمنية',val('email'));
-    if(val('mobile'))p.push(val('mobile'));
+    if(val('mobile'))p.push(formattedMobile());
     if(val('ext'))p.push('تحويلة: '+val('ext'));
     p.push('www.arkanat.com.sa');
     return p.filter(Boolean).join('\n');
@@ -145,9 +169,9 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   function signatureHtml(){
     const name=esc(val('name')),title=esc(val('title')),department=esc(dept()),en=esc(val('enName'));
     const email=esc(val('email')),mailHref='mailto:'+encodeURIComponent(val('email'));
-    const phone=esc(val('mobile')),ext=esc(val('ext'));
+    const phone=esc(formattedMobile()),phoneHref='tel:'+formattedMobile().replace(/\s/g,''),ext=esc(val('ext'));
     const emailPart='<a href="'+mailHref+'" style="font-family:Arial,Tahoma,sans-serif;color:#6F7477;text-decoration:none;">'+email+'</a>';
-    const phonePart=phone?' &nbsp;|&nbsp; <span style="font-family:Arial,Tahoma,sans-serif;">'+phone+'</span>':'';
+    const phonePart=phone?' &nbsp;|&nbsp; <a dir="ltr" href="'+phoneHref+'" style="font-family:Arial,Tahoma,sans-serif;color:#6F7477;text-decoration:none;white-space:nowrap;">'+phone+'</a>':'';
     const extPart=ext?' &nbsp;|&nbsp; <span>تحويلة '+ext+'</span>':'';
     const enLine=en?'<tr><td dir="ltr" align="right" style="font-family:Arial,Tahoma,sans-serif;font-size:11px;line-height:16px;color:#6F7477;text-align:right;">'+en+'</td></tr>':'';
     return '<table role="presentation" dir="rtl" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-spacing:0;background-color:#ffffff;font-family:Tahoma,Arial,sans-serif;color:#191818;">'+
@@ -181,7 +205,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     if(n===2){
       const summary=[
         ['الاسم',val('name')],['المسمى الوظيفي',val('title')],['الإدارة',dept()],
-        ['البريد',val('email')],['رقم التواصل',val('mobile')||'غير مضاف'],['التحويلة',val('ext')||'غير مضافة']
+        ['البريد',val('email')],['رقم الجوال',formattedMobile()||'غير مضاف'],['التحويلة',val('ext')||'غير مضافة']
       ];
       el('summaryBox').replaceChildren();
       summary.forEach(([label,value])=>{const box=document.createElement('div'),b=document.createElement('b'),t=document.createElement('span');b.textContent=label;t.textContent=value;box.append(b,t);el('summaryBox').append(box)});
@@ -236,12 +260,20 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     try{[storeKey,'arkanatSignatureDataV2','arkanatSignatureData'].forEach(k=>localStorage.removeItem(k))}catch(e){}
     fields.forEach(id=>el(id).value='');el('remember').checked=false;updateDept();resetErrors();setStatus('تم حذف البيانات المحفوظة.');setStep(1);
   }
-  el('dataForm').addEventListener('submit',e=>{e.preventDefault();updateDept();if(!validate())return;updateStored();setStep(2)});
+  el('dataForm').addEventListener('submit',e=>{e.preventDefault();updateDept();normalizeMobileField();if(!validate())return;updateStored();setStep(2)});
   fields.forEach(id=>el(id).addEventListener('input',()=>{resetErrors();updateDept();updateStored()}));
   el('dept').addEventListener('change',()=>{updateDept();resetErrors();updateStored()});
   el('remember').addEventListener('change',updateStored);
+  el('mobile').addEventListener('blur',()=>{
+    const normalized=normalizeMobileField();
+    const field=el('mobile'),error=el('error-mobile');
+    const invalid=normalized===null;
+    field.setAttribute('aria-invalid',invalid?'true':'false');
+    error.textContent=invalid?'أدخل جوالاً سعودياً صحيحاً، مثل 0506190555.':'';
+    updateStored();
+  });
   el('editBtn').addEventListener('click',()=>setStep(1));
-  el('installBtn').addEventListener('click',()=>{if(validate())setStep(3);else setStep(1)});
+  el('installBtn').addEventListener('click',()=>{normalizeMobileField();if(validate())setStep(3);else setStep(1)});
   el('backBtn').addEventListener('click',()=>setStep(2));
   el('copyBtn').addEventListener('click',copySignature);
   el('selectBtn').addEventListener('click',()=>{selectSignature();setStatus('التوقيع محدد. انسخه من المتصفح ثم الصقه في البريد.')});
@@ -254,7 +286,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     b.classList.add('selected');b.setAttribute('aria-pressed','true');renderGuide();
   }));
   try{const saved=localStorage.getItem(storeKey);if(saved){const obj=JSON.parse(saved);fields.forEach(id=>{if(typeof obj[id]==='string')el(id).value=obj[id]});el('remember').checked=true}}catch(e){}
-  updateDept();renderGuide();
+  normalizeMobileField();updateDept();renderGuide();
 })();
 </script>
 </body></html>
