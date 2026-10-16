@@ -65,8 +65,8 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
 @media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
 </style>
-<script src="./config.js?v=1.17.1"></script>
-<script src="./cloud.js?v=1.17.1"></script>
+<script src="./config.js?v=1.18.0"></script>
+<script src="./cloud.js?v=1.18.0"></script>
 </head>
 <body>
 <div id="authGate" class="authgate">
@@ -83,7 +83,7 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
   </div>
 </div>
 <div id="uatBanner" class="notice warn" style="display:none;margin:10px 14px 0"><strong>وضع تجربة مؤقت:</strong> تسجيل الدخول معطل حالياً. البيانات والتعديلات في هذا الوضع تحفظ على هذا الجهاز فقط ولا تصل إلى قاعدة البيانات المشتركة.</div>
-<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.17.1</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
+<header><div class="head"><button id="menuToggle" class="menutoggle" type="button" aria-label="فتح القائمة" onclick="toggleSideMenu()">☰</button><div class="brand"><div class="mark">أ</div><div><h1>بوابة العهد النقدية</h1><small>شركة أركانات للحراسات الأمنية — نسخة تشغيلية مستقلة v1.18.0</small></div></div><div class="actions"><button class="pill" style="border:0;color:#fff" onclick="setOperator()">المستخدم: <span id="operatorName">اكتب اسمك</span></button><div class="pill">الحفظ: <span id="syncState">جارٍ الاتصال</span></div><span id="storageMode" style="display:none"></span><span id="userRole" style="display:none"></span><button id="signOutBtn" class="pill" style="border:0;color:#fff;display:none" onclick="signOutCloud()">خروج</button></div></div></header>
 <div class="layout">
 <aside class="side" id="nav" aria-label="القائمة الرئيسية">
 <div class="sidehead"><strong>بوابة العهد</strong><button class="sideclose" type="button" onclick="closeSideMenu()" aria-label="إغلاق القائمة">×</button></div>
@@ -377,14 +377,14 @@ body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f
 </section>
 </main>
 </div>
-<div class="footer">نسخة تشغيلية مستقلة v1.17.1 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
+<div class="footer">نسخة تشغيلية مستقلة v1.18.0 — تحميل مباشر من قاعدة البوابة بدون الاعتماد على CDN خارجي، مع مهلة واضحة وفشل آمن بدل التعليق.</div>
 <div id="toast" class="toast"></div>
 <input id="evidenceUploadInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,image/*" hidden>
 
 <script>
 (function(){
 var KEY='arkanat_cash_portal_v1';
-var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.17.1',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.17.1';
+var state=load()||{requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],employeeAdvances:[],advanceHistory:[],meta:{createdAt:new Date().toISOString(),version:'1.18.0',operator:''}};if(!state.imports)state.imports=[];if(!state.auditLog)state.auditLog=[];if(!state.evidence)state.evidence=[];if(!state.accounts)state.accounts=[];if(!state.settlementControls)state.settlementControls=[];if(!state.requestComponents)state.requestComponents=[];if(!state.periodBalances)state.periodBalances=[];if(!state.qualityIssues)state.qualityIssues=[];if(!state.employeeAdvances)state.employeeAdvances=[];if(!state.advanceHistory)state.advanceHistory=[];if(!state.meta)state.meta={};if(state.meta.operator==null)state.meta.operator='';state.meta.version='1.18.0';
 var cloudReady=false,cloudHydrating=false,cloudSyncTimer=null,cloudSyncRunning=false,cloudDataLoaded=false,cloudLoadError=false,cloudHistoryLoaded=false,cloudHistoryLoading=false,portalAccess=null,adminUsersCache=[];
 
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){return null}}
@@ -942,7 +942,7 @@ function applyRemoteState(remote,access){
      qualityIssues:Array.isArray(remote.qualityIssues)?remote.qualityIssues:(state.qualityIssues||[]),
      employeeAdvances:Array.isArray(remote.employeeAdvances)?remote.employeeAdvances:(state.employeeAdvances||[]),
      advanceHistory:Array.isArray(remote.advanceHistory)?remote.advanceHistory:(state.advanceHistory||[]),
-     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.17.1',operator:(access&&access.display_name)||oldMeta.operator||''}
+     meta:{createdAt:oldMeta.createdAt||new Date().toISOString(),version:'1.18.0',operator:(access&&access.display_name)||oldMeta.operator||''}
    };
    if(Array.isArray(remote.transactions))cloudDataLoaded=true;
    cloudLoadError=false;cloudHistoryLoaded=false;persistLocal();
@@ -1612,13 +1612,16 @@ function extractFileDate(rows,hi,ctx){
  for(var i=0;i<Math.min(Math.max(hi,0)+1,12);i++){var row=rows[i]||[];for(var j=0;j<row.length;j++){var v=row[j];if(v===null||v===''||v===undefined)continue;var d=dateGuess(v,ctx);if(d.date&&d.status!=='needs_review')return d}}
  return {date:'',raw:'',status:'needs_review'}
 }
-function formulaTodayDate(ws,hi){
+function formulaTodayDate(ws,hi,ctx){
  if(!ws||!window.XLSX||!ws['!ref'])return null;
  try{
    var rg=XLSX.utils.decode_range(ws['!ref']),maxR=Math.min(rg.e.r,Math.max(hi,0),11);
    for(var r=rg.s.r;r<=maxR;r++)for(var c=rg.s.c;c<=rg.e.c;c++){
      var cell=ws[XLSX.utils.encode_cell({r:r,c:c})];
-     if(cell&&cell.f&&/^\s*TODAY\s*\(\s*\)\s*$/i.test(String(cell.f)))return {date:batchToday(),raw:'TODAY()',status:'formula_today_frozen'}
+     if(cell&&cell.f&&/^\s*TODAY\s*\(\s*\)\s*$/i.test(String(cell.f))){
+       var cached=cell.v==null?{date:''}:dateGuess(cell.v,ctx);
+       return cached.date?{date:cached.date,raw:'TODAY() cached '+String(cell.v),status:'formula_cached_date'}:{date:'',raw:'TODAY() missing cached date',status:'needs_review'}
+     }
    }
  }catch(e){}
  return null
@@ -1690,7 +1693,7 @@ function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.
 function parseSheet(wb,sheetName,fileName){
  var ws=wb.Sheets[sheetName],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true}),hi=findHeader(rows),ctx=inferPeriod(fileName,rows);
  if(hi<0)return {sheet:sheetName,profile:'unknown',rows:rows,headerIndex:-1,headers:[],map:{},items:[],ignored:rows.length,warnings:['لم يتم التعرف على صف العناوين']};
- var headers=rows[hi],map=colMap(headers);ctx.swapMonthDay=detectMonthDaySwap(rows,hi,map,ctx);var profile=detectProfile(rows,hi,headers,map),holder=normalizeHolderName(extractHolder(rows,hi,sheetName),sheetName),region=sheetRegion(sheetName,rows,fileName),preText=rows.slice(0,hi+1).map(function(x){return (x||[]).join(' ')}).join(' '),category=inferCustodyCategory(profile,fileName+' '+preText,sheetName),items=[],requestTombstones=[],ignored=0,warnings=[],fileDate=formulaTodayDate(ws,hi)||extractFileDate(rows,hi,ctx),summary=sourceSummary(rows);if(ctx.mismatch)warnings.push('تعارض بين فترة اسم الملف والفترة المكتوبة داخل الملف؛ تم اعتماد الفترة الداخلية.');
+ var headers=rows[hi],map=colMap(headers);ctx.swapMonthDay=detectMonthDaySwap(rows,hi,map,ctx);var profile=detectProfile(rows,hi,headers,map),holder=normalizeHolderName(extractHolder(rows,hi,sheetName),sheetName),region=sheetRegion(sheetName,rows,fileName),preText=rows.slice(0,hi+1).map(function(x){return (x||[]).join(' ')}).join(' '),category=inferCustodyCategory(profile,fileName+' '+preText,sheetName),items=[],requestTombstones=[],ignored=0,warnings=[],fileDate=formulaTodayDate(ws,hi,ctx)||extractFileDate(rows,hi,ctx),summary=sourceSummary(rows);if(ctx.mismatch)warnings.push('تعارض بين فترة اسم الملف والفترة المكتوبة داخل الملف؛ تم اعتماد الفترة الداخلية.');
  for(var r=hi+1;r<rows.length;r++){var row=rows[r];if(!row||!row.some(function(v){return v!==null&&v!==''&&v!==undefined})||isFooterRow(row)){ignored++;continue}
    if(isRequestProfile(profile)){
      var amt=num(get(row,map.amount)),reqSup=normalizeHolderName(get(row,map.supervisor),sheetName),purpose=get(row,map.description)||'طلب عهدة',reqCat=inferCustodyCategory(profile,purpose,sheetName);
@@ -1730,7 +1733,17 @@ function parseSheet(wb,sheetName,fileName){
    }
    if(profile==='expense_ledger'){
      var out=num(get(row,map.out)),inn=num(get(row,map.in)),desc4=cleanArabic(get(row,map.description)),dg4=dateGuess(get(row,map.date),ctx),site4=get(row,map.site)||sheetName,su4=normalizeHolderName(get(row,map.supervisor),sheetName)||holder,hold4=holder||su4,cat4=inferCustodyCategory(profile,fileName+' '+desc4,sheetName),acc4=makeAccountKey(region,hold4,cat4);
-     if(!out&&!inn){ignored++;continue}
+     if(!out&&!inn){
+       var startBal=get(row,map.balance);
+       if(isOpening(desc4)&&startBal!==null&&startBal!==''&&isFinite(num(startBal))&&num(startBal)!==0){
+         items.push({kind:'txn',id:id('IMP'),date:dg4.date,dateRaw:dg4.raw,dateStatus:dg4.status,amount:Math.abs(num(startBal)),
+           type:'رصيد افتتاحي',openingSign:num(startBal)<0?-1:1,region:region,custodyHolder:hold4,supervisor:su4,
+           site:site4,description:desc4,reportedBalance:startBal,status:num(startBal)<0?'يحتاج مراجعة':'مسجل',
+           source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:cat4,accountKey:acc4,
+           periodExpense:false,expenseCategory:'تمويل ورصيد'})
+       }else{ignored++}
+       continue
+     }
      if(inn>0){var tinType=openingOrFunding(desc4);items.push({kind:'txn',id:id('IMP'),date:dg4.date,dateRaw:dg4.raw,dateStatus:dg4.status,amount:inn,type:tinType,openingSign:tinType==='رصيد افتتاحي'?1:null,region:region,custodyHolder:hold4,supervisor:su4,site:site4,description:desc4,reportedBalance:get(row,map.balance),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:cat4,accountKey:acc4,periodExpense:false,expenseCategory:'تمويل ورصيد'})}
      if(out>0){
        var priorPersonal=textHas(desc4,['تم دفعهم من حسابه الخاص في العهده السابقه','تم دفعهم من حسابه الخاص في العهدة السابقة','دفعهم من حسابه الخاص في العهده السابقه']);
@@ -1964,7 +1977,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+batchToday()+'.xlsx')
 }
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+batchToday()+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
-window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.17.1',operator:''}};save();toast('تم مسح البيانات')}}
+window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.18.0',operator:''}};save();toast('تم مسح البيانات')}}
 renderAll();entryRules();bootstrapCloud();
 })();
 </script>
