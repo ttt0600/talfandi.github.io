@@ -858,7 +858,7 @@ function renderRequests(){
  }).slice().reverse();
  var rows=a.map(function(r){var funded=requestFundedAmount(r),rem=Math.max(0,num(r.amount)-funded),kind=r.requestKind||'عهدة',
    historical=r.snapshotStatus==='superseded',statusLabel=historical?'سجل سابق — '+friendlyRequestStatus(r.status):friendlyRequestStatus(r.status);
-   return '<tr'+(historical?' class="old-ledger-row"':'')+'><td>'+esc(portalDate(r.date,r.dateStatus,r.dateRaw))+'</td><td>'+esc(kind)+'</td><td>'+esc(r.custodyCategory||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+'</td><td>'+esc(statusLabel)+(funded>0?' · تم تسليم '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
+   return '<tr'+(historical?' class="old-ledger-row"':'')+'><td>'+esc(portalDate(r.date,r.dateStatus,r.dateRaw))+'</td><td>'+esc(kind)+'</td><td>'+esc(r.custodyCategory||'-')+'</td><td class="money">'+money(r.amount)+'</td><td>'+esc(r.purpose||'-')+'</td><td>'+esc(r.supervisor||'-')+'</td><td dir="ltr">'+esc(r.iban||'-')+'</td><td>'+esc(r.beneficiary||'-')+'</td><td>'+esc(r.notes||'-')+requestComponentsHtml(r)+'</td><td>'+esc(statusLabel)+(funded>0?' · تم تسليم '+money(funded)+(rem>0?' · متبقي '+money(rem):''):'')+'</td></tr>'});
  document.getElementById('requestList').innerHTML=rows.length?'<div class="sheetbox"><div class="sheet-scroll"><table class="sheet-grid" style="min-width:1180px"><thead><tr><th>التاريخ</th><th>نوع الطلب</th><th>نوع العهدة/الصرف</th><th>القيمة</th><th>البيان</th><th>المشرف</th><th>رقم الآيبان</th><th>اسم الحساب</th><th>ملاحظات</th><th>الحالة</th></tr></thead><tbody>'+rows.join('')+'</tbody></table></div></div>':'<div class="empty">لا توجد طلبات مطابقة.</div>'
 }
 function renderReview(){
@@ -1433,11 +1433,11 @@ function futureDateStatus(ds){
 }
 function parseCompositeRequestNote(note,total,custodyCategory){
  var raw=String(note||'').trim();if(!raw)return null;
- var oldM=raw.match(/([\d,]+(?:\.\d+)?)\s*(?:قديم|قديمه|قديمة|سابق|سابقه|سابقة)/i);
+ var oldM=raw.match(/([\d,]+(?:\.\d+)?)\s*(?:(?:قديم|قديمه|قديمة|سابق|سابقه|سابقة)|(?:تم\s*دفع(?:هم|ها|ه)?\s*من\s*حساب(?:ه|ها))|(?:دفع(?:هم|ها|ه)?\s*من\s*حساب(?:ه|ها)))/i);
  var newM=raw.match(/([\d,]+(?:\.\d+)?)\s*(?:عهد[هة]\s*)?(?:جديد|جديده|جديدة)/i);
- var dayM=raw.match(/(?:لمده|لمدة|مده|مدة)\s*(\d{1,3})\s*(?:يوم|ايام|أيام)/i);
+ var dayM=raw.match(/(?:لمده|لمدة|مده|مدة)\s*(\d{1,3})\s*(?:يوم|ايام|أيام)/i),weekM=raw.match(/(?:لمده|لمدة|مده|مدة)\s*(?:اسبوع|أسبوع|اسبوعا|أسبوعا)/i);
  if(!oldM||!newM)return null;
- var oldAmt=num(oldM[1]),newAmt=num(newM[1]),days=dayM?Number(dayM[1]):null;
+ var oldAmt=num(oldM[1]),newAmt=num(newM[1]),days=dayM?Number(dayM[1]):(weekM?7:null);
  if(oldAmt<=0||newAmt<=0||Math.abs((oldAmt+newAmt)-num(total))>0.01)return {warning:'تم رصد مكونات محتملة في الملاحظة لكنها لا تطابق إجمالي الطلب.',raw:raw};
  return {requestKind:'مركب',durationDays:days,raw:raw,components:[
    {componentType:'تسوية رصيد سالب/مصروف شخصي سابق',amount:oldAmt,treatment:'تسوية مبلغ دفعه المشرف من حسابه الشخصي',durationDays:null,description:'تعويض مصروف/رصيد سابق مدفوع من الحساب الشخصي',sourceNote:raw,status:'جديد'},
@@ -1759,9 +1759,17 @@ function parseSheet(wb,sheetName,fileName){
  var invalidDates=items.filter(function(x){return x.dateStatus==='needs_review'&&!x.date}).length;if(invalidDates)warnings.push('تم حجب '+invalidDates+' تاريخ غير صالح/شاذ مع الاحتفاظ بالقيمة الأصلية للمراجعة.');
  return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,holder:holder,region:region,custodyCategory:category,period:ctx,fileDate:fileDate,sourceSummary:summary,control:control,scopeKey:scope,items:items,requestTombstones:requestTombstones,ignored:ignored,warnings:warnings}
 }
-async function fingerprint(file){try{var b=await file.arrayBuffer(),h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')}catch(e){return [file.name,file.size,file.lastModified].join('|')}}
+async function fingerprint(file,buf){
+ if(!window.crypto||!window.crypto.subtle||typeof window.crypto.subtle.digest!=='function')throw new Error('تعذر حساب بصمة SHA-256. أوقف الاستيراد لحماية سجل المصادر؛ يرجى استخدام متصفح يدعم الاتصال الآمن.');
+ var digest;
+ try{digest=await window.crypto.subtle.digest('SHA-256',buf||await file.arrayBuffer())}catch(e){throw new Error('تعذر حساب بصمة SHA-256 للملف. لم تُعتمد أي بيانات؛ يرجى إعادة المحاولة.')}
+ var hex=Array.from(new Uint8Array(digest)).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+ if(!/^[0-9a-f]{64}$/.test(hex))throw new Error('بصمة الملف غير صالحة؛ تم إيقاف الاستيراد.');
+ return hex
+}
 async function prepareImport(file){
- var buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:'array',cellDates:false}),fp=await fingerprint(file),sheets=wb.SheetNames.map(function(n){return parseSheet(wb,n,file.name)});
+ pendingImport=null;
+ var buf=await file.arrayBuffer(),fp=await fingerprint(file,buf),wb=XLSX.read(buf,{type:'array',cellDates:false}),sheets=wb.SheetNames.map(function(n){return parseSheet(wb,n,file.name)});
  var regions=[];sheets.forEach(function(sh){if(sh.region&&regions.indexOf(sh.region)<0)regions.push(sh.region)});
  var workbookRegion=regions.length===1?regions[0]:'';
  if(workbookRegion){
@@ -1844,6 +1852,14 @@ function snapshotRegressionWarnings(){
     if(distinct.length>=5&&(sh.items||[]).length<distinct.length){
       result.push({sheet:sh.sheet,message:'دفتر '+sh.sheet+' أصبح '+(sh.items||[]).length+' حركة بعد أن كان '+distinct.length+' حركة. يلزم التحقق من الحذف قبل استبدال اللقطة.'})
     }
+    var openingRows=(sh.items||[]).filter(function(it){return it.type==='رصيد افتتاحي'});
+    if(openingRows.length===1){
+      var op=openingRows[0],key=op.accountKey||makeAccountKey(sh.region,sh.holder,sh.custodyCategory),period=sh.period||{},ym=period.year&&period.month?period.year+'-'+String(period.month).padStart(2,'0'):'';
+      var governing=(state.periodBalances||[]).find(function(pb){return pb.accountKey===key&&String(pb.periodMonth||'').slice(0,7)===ym});
+      if(governing){var proposedOpening=num(op.amount)*(Number(op.openingSign)===-1?-1:1),priorOpening=num(governing.openingBalance);
+        if(Math.abs(proposedOpening-priorOpening)>0.01)result.push({sheet:sh.sheet,message:'تغيّر رصيد أول المدة في '+sh.sheet+' من '+money(priorOpening)+' إلى '+money(proposedOpening)+'. يجب إرفاق سند الترحيل أو التمويل واعتماد التغيير قبل استبدال الدفتر.'})
+      }
+    }
   }
   if(sh.profile==='request_snapshot'&&sh.fileDate&&sh.fileDate.date){
     var d=sh.fileDate.date;
@@ -1867,6 +1883,7 @@ function sameSnapshotAccount(t,sh){
 }
 function renderImportPreview(){
  if(!pendingImport)return;var ds=analyzeImportDuplicates(),html='';
+ html+='<div class="simple-note"><strong>البصمة الرقمية SHA-256:</strong> <code dir="ltr" style="word-break:break-all">'+esc(pendingImport.fingerprint)+'</code></div>';
  var cashSheets=pendingImport.sheets.filter(function(x){return x.profile==='cash_ledger'}),requestSheets=pendingImport.sheets.filter(function(x){return x.profile==='request_snapshot'});
  if(cashSheets.length>1){
    var resources=0,outflows=0,closing=0,matched=0,rows=0;
@@ -1944,7 +1961,7 @@ window.commitPreparedImport=function(){
 }
 function renderImportRegistry(){
  var el=document.getElementById('importRegistry');if(!el)return;var a=(state.imports||[]).slice().reverse();if(!a.length){el.innerHTML='<div class="empty">لا توجد ملفات مستوردة بعد.</div>';return}
- el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المصدر</th><th>التاريخ</th><th>الطريقة</th><th>الحركات</th><th>الطلبات</th><th>مطابقة المصدر</th><th>الشيتات</th></tr></thead><tbody>'+a.map(function(x){var ss=x.sheets||[],ok=ss.filter(function(s){return s.control&&s.control.status==='مطابق'}).length,bad=ss.filter(function(s){return s.control&&s.control.status==='فرق يحتاج مراجعة'}).length,na=ss.length-ok-bad,label=x.quarantined?'استيراد محجوز — لا يدخل بالمؤشرات':bad?('فروقات '+bad):ok?('مطابق '+ok+(na?' / غير متاح '+na:'')):'غير متاح',modeName=x.mode==='reconciliation'?'تصحيح ومطابقة':x.mode==='snapshot'?'لقطة كاملة':'حركات إضافية';return '<tr'+(x.quarantined?' class="old-ledger-row"':'')+'><td>'+esc(x.fileName)+(x.quarantined?'<br><small>السبب: '+esc(x.reason||'تحديد حامل العهدة غير صحيح')+'</small>':'')+'</td><td>'+esc((x.importedAt||'').slice(0,19).replace('T',' '))+'</td><td>'+esc(modeName)+'</td><td>'+Number(x.addedTransactions||0).toLocaleString('ar-SA')+'</td><td>'+Number(x.addedRequests||0).toLocaleString('ar-SA')+'</td><td><span class="badge '+(x.quarantined?'warn':bad?'bad':ok?'ok':'info')+'">'+esc(label)+'</span></td><td>'+esc(ss.map(function(s){return s.sheet+' — '+profileLabel(s.profile)}).join(' | '))+'</td></tr>'}).join('')+'</tbody></table></div>'
+ el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المصدر</th><th>التاريخ</th><th>الطريقة</th><th>الحركات</th><th>الطلبات</th><th>مطابقة المصدر</th><th>الشيتات</th></tr></thead><tbody>'+a.map(function(x){var ss=x.sheets||[],ok=ss.filter(function(s){return s.control&&s.control.status==='مطابق'}).length,bad=ss.filter(function(s){return s.control&&s.control.status==='فرق يحتاج مراجعة'}).length,na=ss.length-ok-bad,held=x.quarantined||x.mode==='review_only'||x.status==='held_no_posting',label=held?'محجوز دون ترحيل':x.mode==='evidence_only'?'مستندات مؤيدة دون مصروف جديد':x.mode==='snapshot_incremental'?'حركات إضافية موثقة':bad?('فروقات '+bad):ok?('مطابق '+ok+(na?' / غير متاح '+na:'')):'غير متاح',modeName=x.mode==='reconciliation'?'تصحيح ومطابقة':x.mode==='review_only'?'مراجعة دون ترحيل':x.mode==='evidence_only'?'مطابقة مستندات':x.mode==='snapshot_incremental'?'لقطة محدثة — الجديد فقط':x.mode==='snapshot'?'لقطة كاملة':'حركات إضافية';return '<tr'+(held?' class="old-ledger-row"':'')+'><td>'+esc(x.fileName)+(x.fingerprint?'<br><small dir="ltr" title="'+esc(x.fingerprint)+'">SHA-256: '+esc(x.fingerprint.slice(0,16))+'…</small>':'')+(x.quarantined?'<br><small>السبب: '+esc(x.reason||'تحديد حامل العهدة غير صحيح')+'</small>':'')+'</td><td>'+esc((x.importedAt||'').slice(0,19).replace('T',' '))+'</td><td>'+esc(modeName)+'</td><td>'+Number(x.addedTransactions||0).toLocaleString('ar-SA')+'</td><td>'+Number(x.addedRequests||0).toLocaleString('ar-SA')+'</td><td><span class="badge '+(held?'warn':bad?'bad':ok?'ok':'info')+'">'+esc(label)+'</span></td><td>'+esc(ss.map(function(s){return s.sheet+' — '+profileLabel(s.profile)}).join(' | '))+'</td></tr>'}).join('')+'</tbody></table></div>'
 }
 document.getElementById('newPortalUserForm').addEventListener('submit',async function(e){
  e.preventDefault();if(!isSuperAdmin())return;var d=Object.fromEntries(new FormData(e.target).entries()),res=document.getElementById('newUserResult');res.innerHTML='<div class="notice">جاري إنشاء المستخدم…</div>';
@@ -1970,7 +1987,7 @@ var wb=XLSX.utils.book_new();
 function txRow(t){return {'رقم الحركة':t.id,'مرجع المصدر':t.legacyNo||'','التاريخ المعتمد':t.date||'','التاريخ كما ورد':t.dateRaw||'','نوع الحركة':t.type,'محفظة العهدة':t.custodyCategory||'','تصنيف المصروف':t.expenseCategory||inferExpenseCategory(t.type,t.description,t.absent,t.reason,t.custodyCategory),'مفتاح حساب العهدة':t.accountKey||'','مصروف فترة؟':t.periodExpense===false?'لا':'نعم','المبلغ':t.amount,'إشارة الرصيد الافتتاحي':t.openingSign||'','أثر الحركة على الرصيد':txnEffect(t),'المنطقة':t.region||'','حامل العهدة':t.custodyHolder||'','المشرف التشغيلي':t.supervisor||'','محول إلى':t.transferTo||'','الموقع':t.site||'','الحارس الغائب':t.absent||'','الحارس المغطي':t.cover||'','السبب':t.reason||'','البيان':t.description||'','مرجع المستند':t.documentRef||'','المركبة':t.vehicle||'','رقم الطلب المرتبط':t.requestId||'','مكوّن الطلب المرتبط':t.requestComponentId||'','وسيلة التمويل':t.fundingMethod||'','مرجع التمويل':t.fundingRef||'','المستفيد':t.beneficiary||'','قناة المصدر':t.sourceChannel||'','مرجع الرسالة':t.sourceReference||'','النص الأصلي':t.sourceMessage||'','الحالة':t.status||'','حالة اللقطة':t.snapshotStatus||'current','مشتق من ملخص المصدر':t.summaryDerived?'نعم':'','مستبعد من مطابقة المصدر':t.controlExclude?'نعم':'','حركة مرتبطة':t.linkedId||'','المصدر':t.sourceFile||t.source||'','الشيت':t.sourceSheet||'','صف المصدر':t.sourceRow||''}}
 var current=state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'}).map(txRow),all=state.transactions.map(txRow);
 var rq=state.requests.filter(function(r){return r.snapshotStatus!=='superseded'}).map(function(r){return {'رقم الطلب':r.id,'التاريخ':r.date,'التاريخ كما ورد':r.dateRaw||'','المنطقة':r.region,'المشرف':r.supervisor,'نوع العهدة':r.custodyCategory||'','نوع الطلب':r.requestKind||'بسيط','مدة الطلب بالأيام':r.requestedPeriodDays==null?'':r.requestedPeriodDays,'مفتاح حساب العهدة':r.accountKey||'','المبلغ':r.amount,'الغرض':r.purpose,'الموقع':r.site||'','صاحب الحساب':r.beneficiary||'','IBAN':r.iban||'','الحالة':r.status,'ممول فعلياً':requestFundedAmount(r),'المتبقي':Math.max(0,num(r.amount)-requestFundedAmount(r)),'قناة الطلب':r.sourceChannel||'','مرجع الرسالة':r.sourceReference||'','نص الطلب الأصلي':r.sourceMessage||'','ملاحظات':r.notes||'','المصدر':r.sourceFile||r.source||'','الشيت':r.sourceSheet||'','صف المصدر':r.sourceRow||''}});
-var im=(state.imports||[]).map(function(x){return {'SRC_ID':x.id,'اسم الملف':x.fileName,'تاريخ الاستيراد':x.importedAt,'الطريقة':x.mode,'حركات مضافة':x.addedTransactions,'طلبات مضافة':x.addedRequests,'لقطات محيدة':x.superseded,'مكررات متجاوزة':x.duplicatesSkipped,'الشيتات':(x.sheets||[]).map(function(s){return s.sheet+' / '+profileLabel(s.profile)}).join(' | ')}})
+var im=(state.imports||[]).map(function(x){return {'SRC_ID':x.id,'اسم الملف':x.fileName,'تاريخ الاستيراد':x.importedAt,'بصمة SHA-256':x.fingerprint||'','الطريقة':x.mode,'حركات مضافة':x.addedTransactions,'طلبات مضافة':x.addedRequests,'لقطات محيدة':x.superseded,'مكررات متجاوزة':x.duplicatesSkipped,'الشيتات':(x.sheets||[]).map(function(s){return s.sheet+' / '+profileLabel(s.profile)}).join(' | ')}})
 var recon=[];(state.imports||[]).forEach(function(x){(x.sheets||[]).forEach(function(s){var c=s.control||{};recon.push({'SRC_ID':x.id,'اسم الملف':x.fileName,'الشيت':s.sheet,'نوع الملف':profileLabel(s.profile),'عدد السجلات':s.count||0,'الموارد المحسوبة':c.resources||0,'الخارج المحسوب':c.outflows||0,'الرصيد المحسوب':c.balance||0,'تمويل مرجعي بالمصدر':c.reportedFunding==null?'':c.reportedFunding,'مصروف مرجعي بالمصدر':c.reportedExpense==null?'':c.reportedExpense,'رصيد ختامي بالمصدر':c.reportedClosing==null?'':c.reportedClosing,'فرق المطابقة':c.diff==null?'':c.diff,'حالة المطابقة':c.status||'غير متاح'})})});
 var siteMap={};state.transactions.filter(function(t){return t.snapshotStatus!=='superseded'&&t.status!=='ملغى'&&isExpense(t)}).forEach(function(t){var month=(t.date||'غير مؤرخ').slice(0,7),key=[month,t.region||'',t.site||'غير محدد'].join('|');if(!siteMap[key])siteMap[key]={month:month,region:t.region||'',site:t.site||'غير محدد',coverage:0,other:0,recovery:0,missing:0,count:0};var x=siteMap[key];x.count++;if(t.type==='تغطية')x.coverage+=num(t.amount);else x.other+=num(t.amount);if(isRecoveryCandidate(t))x.recovery+=num(t.amount);if((t.expenseCategory==='وقود'||t.expenseCategory==='مصروف تشغيلي')&&!t.documentRef&&!evidenceCount(t.id))x.missing++});
 var siteRows=Object.keys(siteMap).map(function(k){var x=siteMap[k];return {'الشهر':x.month,'المنطقة':x.region,'الموقع':x.site,'التغطيات':x.coverage,'مصروفات أخرى':x.other,'الإجمالي':x.coverage+x.other,'مرشح استرداد/خصم':x.recovery,'مستندات ناقصة':x.missing,'عدد الحركات':x.count}});
