@@ -64,6 +64,15 @@ html,body{width:100%;max-width:100%;overflow-x:hidden}.head{width:100%;max-width
 .sheetbox.sheet-full .sheet-scroll{flex:1;max-height:none}.sheetbox.sheet-full .sheetbar,.sheetbox.sheet-full .batchfooter{flex:0 0 auto}
 body.sheet-open{overflow:hidden}.batch-balance.source-mismatch{background:#fff0f0!important;color:var(--bad)}
 @media(max-width:720px){.quickstart{grid-template-columns:1fr}.quickcard{padding:14px}}
+
+/* فرز الجداول الاستعراضية فقط؛ جداول الإدخال والتحرير لا يتغير ترتيبها */
+table.tbl th[data-cash-sort],table.sheet-grid:not(.batch-grid) th[data-cash-sort]{cursor:pointer;user-select:none;white-space:nowrap;touch-action:manipulation}
+table.tbl th[data-cash-sort]::after,table.sheet-grid:not(.batch-grid) th[data-cash-sort]::after{content:"⇅";display:inline-block;color:#657b89;font-size:12px;margin-inline-start:7px}
+table.tbl th[data-cash-sort="asc"]::after,table.sheet-grid:not(.batch-grid) th[data-cash-sort="asc"]::after{content:"↑";color:#0f2438;font-weight:900}
+table.tbl th[data-cash-sort="desc"]::after,table.sheet-grid:not(.batch-grid) th[data-cash-sort="desc"]::after{content:"↓";color:#0f2438;font-weight:900}
+table.tbl th[data-cash-sort]:hover,table.sheet-grid:not(.batch-grid) th[data-cash-sort]:hover{background:#e6edf1}
+table.tbl th[data-cash-sort]:focus-visible,table.sheet-grid:not(.batch-grid) th[data-cash-sort]:focus-visible{outline:2px solid #9c793e;outline-offset:-3px}
+
 </style>
 <script src="./config.js?v=1.18.1"></script>
 <script src="./cloud.js?v=1.18.1"></script>
@@ -444,6 +453,102 @@ async function syncAllNow(){
 function save(){persistLocal();scheduleCloudSync()}
 function audit(action,entityType,entityId,details){state.auditLog.push({id:id('AUD'),at:new Date().toISOString(),operator:(state.meta&&state.meta.operator)||'غير محدد',action:action,entityType:entityType||'',entityId:entityId||'',details:details||''})}
 window.setOperator=function(){var current=(state.meta&&state.meta.operator)||'',v=prompt('اكتب اسم موظف المالية المستخدم لهذه النسخة:',current);if(v===null)return;state.meta.operator=String(v).trim();audit('تحديث مستخدم الجلسة','System','',state.meta.operator||'غير محدد');save()}
+
+/* Table sorting is presentation-only and never changes source records or cash balances. */
+var cashTableSortState=Object.create(null),cashTableSortReady=false;
+function cashSortLatin(s){
+ return String(s==null?'':s).replace(/[٠-٩]/g,function(d){return String(d.charCodeAt(0)-1632)})
+ .replace(/[۰-۹]/g,function(d){return String(d.charCodeAt(0)-1776)})
+ .replace(/\u2212/g,'-').replace(/[\u066C\u00A0]/g,'').replace(/\u066B/g,'.').trim()
+}
+function cashSortType(label){
+ var h=String(label||'');
+ if(/تاريخ|الوقت|الفترة|الشهر|شهر|آخر حركة|آخر تاريخ|وقت/.test(h))return 'date';
+ if(/مبلغ|المبلغ|القيمة|التمويل|مصروف|الصرف|المصروف|الرصيد|رصيد|إجمالي|الاجمالي|الإجمالي|الختامي|الإقفال|المتبقي|المدين|الدائن|مدين|دائن|وارد|منصرف|التغطيات|تغطيات|التحويلات|تحت التسوية|القسط|السلف|العجز|مستندات ناقصة|الحركات|عدد|عدد السجلات|الصفحة|طلبات|الموارد|الخارج/.test(h))return 'number';
+ return 'text'
+}
+function cashSortValue(cell,type){
+ var raw=cell&&cell.getAttribute&&cell.getAttribute('data-sort-value'),s=cashSortLatin(raw!==null&&raw!==undefined?raw:(cell?cell.textContent:''));
+ if(!s||s==='-'||s==='—'||s==='⚠ يحتاج مراجعة')return null;
+ if(type==='date'){
+  var m=s.match(/(\d{4})[-/.](\d{1,2})(?:[-/.](\d{1,2}))?(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m)return Number(m[1])*1e10+Number(m[2])*1e8+Number(m[3]||1)*1e6+Number(m[4]||0)*1e4+Number(m[5]||0)*100+Number(m[6]||0);
+  m=s.match(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})(?:[ T]+(\d{1,2}):(\d{2}))?/);
+  if(m)return Number(m[3])*1e10+Number(m[2])*1e8+Number(m[1])*1e6+Number(m[4]||0)*1e4+Number(m[5]||0)*100;
+  return null
+ }
+ if(type==='number'){
+  var m=s.replace(/,/g,'').match(/-?\d+(?:\.\d+)?/);
+  return m?Number(m[0]):null
+ }
+ return s
+}
+function cashSortTableKey(table){
+ if(table.id)return 'table:'+table.id;
+ var scope=table.parentElement;
+ while(scope&&scope!==document.body&&!scope.id)scope=scope.parentElement;
+ var scopeId=scope&&scope.id?scope.id:'cash-root';
+ var tables=scope&&scope.querySelectorAll?Array.from(scope.querySelectorAll('table.tbl,table.sheet-grid:not(.batch-grid)')):[table];
+ return scopeId+':'+tables.indexOf(table)
+}
+function cashSortApply(table,col,dir){
+ var head=table.tHead&&table.tHead.rows[0],body=table.tBodies&&table.tBodies[0];
+ if(!head||!body||!head.cells[col])return;
+ var type=cashSortType(head.cells[col].textContent),collator=new Intl.Collator('ar',{numeric:true,sensitivity:'base'});
+ var rows=Array.from(body.rows).map(function(row,i){return {row:row,index:i,value:cashSortValue(row.cells[col],type)}});
+ rows.sort(function(a,b){
+  if(a.value===null&&b.value===null)return a.index-b.index;
+  if(a.value===null)return 1;
+  if(b.value===null)return -1;
+  var cmp=type==='text'?collator.compare(a.value,b.value):(a.value<b.value?-1:a.value>b.value?1:0);
+  return (dir==='asc'?cmp:-cmp)||a.index-b.index
+ });
+ var fragment=document.createDocumentFragment();rows.forEach(function(x){fragment.appendChild(x.row)});body.appendChild(fragment);
+ Array.from(head.cells).forEach(function(th,i){
+  if(!th.hasAttribute('data-cash-sort'))return;
+  th.setAttribute('data-cash-sort',i===col?dir:'none');
+  th.setAttribute('aria-sort',i===col?(dir==='asc'?'ascending':'descending'):'none')
+ })
+}
+function cashSortDecorate(){
+ Array.from(document.querySelectorAll('table.tbl,table.sheet-grid:not(.batch-grid)')).forEach(function(table){
+  if(table.hasAttribute('data-cash-sort-ready'))return;
+  var head=table.tHead&&table.tHead.rows[0],body=table.tBodies&&table.tBodies[0];
+  if(!head||!body)return;
+  var candidates=0;
+  Array.from(head.cells).forEach(function(th){
+   var title=(th.textContent||'').trim();
+   if(!title||th.querySelector('input,select,button,textarea')||/^(الإجراءات|الإجراء|#)$/.test(title))return;
+   th.setAttribute('data-cash-sort','none');th.setAttribute('aria-sort','none');
+   th.tabIndex=0;th.title='اضغط للترتيب تصاعدياً أو تنازلياً حسب '+title;
+   candidates++
+  });
+  if(!candidates)return;
+  table.setAttribute('data-cash-sort-ready','1');
+  var prior=cashTableSortState[cashSortTableKey(table)];
+  if(prior&&head.cells[prior.col]&&head.cells[prior.col].hasAttribute('data-cash-sort'))cashSortApply(table,prior.col,prior.dir)
+ })
+}
+function cashSortToggle(th){
+ var table=th&&th.closest('table');
+ if(!table||!table.hasAttribute('data-cash-sort-ready')||!th.hasAttribute('data-cash-sort'))return;
+ var col=th.cellIndex,key=cashSortTableKey(table),prior=cashTableSortState[key];
+ var dir=prior&&prior.col===col&&prior.dir==='asc'?'desc':'asc';
+ cashTableSortState[key]={col:col,dir:dir};cashSortApply(table,col,dir)
+}
+function cashSortInit(){
+ if(cashTableSortReady)return;cashTableSortReady=true;
+ document.addEventListener('click',function(e){var th=e.target.closest&&e.target.closest('th[data-cash-sort]');if(th)cashSortToggle(th)});
+ document.addEventListener('keydown',function(e){
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('th[data-cash-sort]')){
+   e.preventDefault();cashSortToggle(e.target)
+  }
+ });
+ var observer=new MutationObserver(function(){cashSortDecorate()});
+ observer.observe(document.body,{childList:true,subtree:true});
+ cashSortDecorate()
+}
+
 function renderOperator(){var el=document.getElementById('operatorName');if(el)el.textContent=(state.meta&&state.meta.operator)||'غير محدد'}
 function renderStorageMode(){var el=document.getElementById('storageMode');if(!el)return;var cfg=window.ARKANAT_CASH_CONFIG||{mode:'local'};if(cfg.publicUatMode){el.textContent='تجربة محلية';return}if(cfg.mode!=='supabase'){el.textContent='محلي';return}if(cfg.openAccessMode){el.textContent=cloudReady?'مشترك':'غير متصل';return}el.textContent=cloudReady&&window.ArkanatCashCloud&&ArkanatCashCloud.session?'مشترك':'غير متصل'}
 function roleLabel(r){return ({super_admin:'Super Admin',finance_manager:'مدير مالية',finance:'موظف مالية',viewer:'قارئ فقط'})[r]||r||'—'}
@@ -2019,7 +2124,7 @@ XLSX.writeFile(wb,'Arkanat_Cash_Custody_'+batchToday()+'.xlsx')
 window.exportJson=function(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='arkanat_cash_backup_'+batchToday()+'.json';a.click();URL.revokeObjectURL(a.href)}
 document.getElementById('jsonInput').addEventListener('change',function(e){var f=e.target.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(){try{state=JSON.parse(rd.result);save();toast('تمت استعادة النسخة الاحتياطية')}catch(x){toast('ملف النسخة الاحتياطية غير صالح')}};rd.readAsText(f)});
 window.clearData=function(){if(confirm('سيتم حذف النسخة المحلية في هذا المتصفح فقط، ولن تحذف البيانات المشتركة من قاعدة البيانات. هل أنت متأكد؟')){localStorage.removeItem(KEY);state={requests:[],transactions:[],imports:[],auditLog:[],evidence:[],accounts:[],settlementControls:[],requestComponents:[],periodBalances:[],qualityIssues:[],meta:{createdAt:new Date().toISOString(),version:'1.18.1',operator:''}};save();toast('تم مسح البيانات')}}
-renderAll();entryRules();bootstrapCloud();
+cashSortInit();renderAll();entryRules();bootstrapCloud();
 })();
 </script>
 </body>
