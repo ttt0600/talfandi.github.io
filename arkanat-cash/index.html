@@ -1606,6 +1606,13 @@ function inferCustodyCategory(profile,text,sheet){
  if(profile==='cash_ledger'||profile==='coverage_list')return 'تغطيات';
  return 'عام'
 }
+function isUniformProcurement(desc,absent,reason){
+ var z=cleanArabic([desc,absent,reason].join(' '));
+ return textHas(z,['شراء شعارات','شراء شعار','كرفتات','كرفته','كرفات','قيمة بدلة','قيمه بدله','قيمة بدله','زي موحد','زي أمني','زي امني','يونيفورم']);
+}
+function explicitShiftMarker(t){
+ return textHas(String(t.notes||''),['وردية ثانية','ورديه ثانيه','وردية ثانيه','ورديه ثانية','وردية 2','وردية إضافية','ورديه اضافيه'])?'shift-2':''
+}
 function inferExpenseCategory(type,desc,absent,reason,custodyCategory){
  var z=cleanArabic([desc,absent,reason].join(' '));
  if(type==='رصيد افتتاحي'||type==='تغذية عهدة')return 'تمويل ورصيد';
@@ -1684,7 +1691,8 @@ function colMap(headers){
   if(n.indexOf('اسمالحارسالغائب')>=0||n.indexOf('الحارسالاساسي')>=0)m.absent=i;
   if(n.indexOf('اسمالحارسالمغطي')>=0||n.indexOf('الحارسالبديل')>=0)m.cover=i;
   if(n.indexOf('اسمالمشرف')>=0||n==='المشرف')m.supervisor=i;
-  if(n.indexOf('ملاحظات')>=0||n.indexOf('الحاله')>=0)m.reason=i;
+  if(n.indexOf('ملاحظات')>=0)m.notes=i;
+  if(n.indexOf('الحاله')>=0)m.reason=i;
   if(n.indexOf('الفرع')>=0||n.indexOf('الموقع')>=0)m.site=i;
   if(n.indexOf('بيان')>=0)m.description=i;
   if(n.indexOf('منصرفمنالعهد')>=0)m.out=i;
@@ -1806,8 +1814,8 @@ function sheetRegion(title,rows,fileName){
  return inferRegionFromText(sample+' '+title+' '+(fileName||''))
 }
 function scopeKey(profile,region,holder,period,sheet,category){return [profile,region||'',holder||'',category||'',period.year||'',period.month||'',sheet||''].join('|')}
-function eventKey(t){return [t.type,t.date||t.dateRaw||'',num(t.amount),cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef)].join('|')}
-function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef)].join('|')}
+function eventKey(t){return [t.type,t.date||t.dateRaw||'',num(t.amount),cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef),explicitShiftMarker(t)].join('|')}
+function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef),explicitShiftMarker(t)].join('|')}
 function parseSheet(wb,sheetName,fileName){
  var ws=wb.Sheets[sheetName],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true}),hi=findHeader(rows),ctx=inferPeriod(fileName,rows);
  if(hi<0)return {sheet:sheetName,profile:'unknown',rows:rows,headerIndex:-1,headers:[],map:{},items:[],ignored:rows.length,warnings:['لم يتم التعرف على صف العناوين']};
@@ -1817,7 +1825,7 @@ function parseSheet(wb,sheetName,fileName){
      var amt=num(get(row,map.amount)),reqSup=normalizeHolderName(get(row,map.supervisor),sheetName),purpose=get(row,map.description)||'طلب عهدة',reqCat=inferCustodyCategory(profile,purpose,sheetName);
      if(!amt){if(profile==='request_snapshot'&&cleanArabic(reqSup)&&cleanArabic(purpose))requestTombstones.push({region:region,supervisor:reqSup,custodyCategory:reqCat,purpose:purpose,sourceRow:r+1});ignored++;continue}
      if(!cleanArabic(reqSup)){ignored++;continue}
-     var reqDate=get(row,map.date)?dateGuess(get(row,map.date),ctx):fileDate,reqNote=get(row,map.reason)||'',reqRegion=region||inferRegionFromText(purpose+' '+reqNote),comp=parseCompositeRequestNote(reqNote,amt,reqCat);
+     var reqDate=get(row,map.date)?dateGuess(get(row,map.date),ctx):fileDate,reqNote=get(row,map.notes)||get(row,map.reason)||'',reqRegion=region||inferRegionFromText(purpose+' '+reqNote),comp=parseCompositeRequestNote(reqNote,amt,reqCat);
      var rq={kind:'request',id:id('REQ'),legacyNo:get(row,map.legacy),date:reqDate.date,dateRaw:reqDate.raw,dateStatus:reqDate.status,region:reqRegion,supervisor:reqSup,amount:amt,purpose:purpose,site:get(row,map.site)||'',iban:get(row,map.iban),beneficiary:get(row,map.beneficiary),notes:reqNote,sourceMessage:reqNote,status:'جديد',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:reqCat,accountKey:makeAccountKey(reqRegion,reqSup,reqCat),requestKind:profile==='disbursement_request'?'صرف مباشر':(comp&&comp.requestKind||'بسيط'),requestedPeriodDays:comp&&comp.durationDays||null,componentDrafts:comp&&comp.components||[],componentWarning:comp&&comp.warning||'',sourceChannel:'استيراد Excel'};
      if(rq.componentWarning)warnings.push('الصف '+(r+1)+' — '+rq.componentWarning);
      rq.recordFingerprint=requestKey(rq);items.push(rq);continue
@@ -1840,13 +1848,13 @@ function parseSheet(wb,sheetName,fileName){
      continue
    }
    if(profile==='cash_ledger'){
-     var deb=num(get(row,map.debit)),cred=num(get(row,map.credit)),bal=get(row,map.balance),abs3=get(row,map.absent),cov3=get(row,map.cover),rs3=get(row,map.reason),site3=get(row,map.site),desc3=cleanArabic(get(row,map.description)||abs3||rs3),dg3=dateGuess(get(row,map.date),ctx);
+     var deb=num(get(row,map.debit)),cred=num(get(row,map.credit)),bal=get(row,map.balance),abs3=get(row,map.absent),cov3=get(row,map.cover),rs3=get(row,map.reason),note3=get(row,map.notes)||'',site3=get(row,map.site),desc3=cleanArabic(get(row,map.description)||abs3||rs3),dg3=dateGuess(get(row,map.date),ctx);
      if(!dg3.date&&isOpening(desc3)&&ctx&&ctx.year&&ctx.month)dg3={date:ctx.year+'-'+String(ctx.month).padStart(2,'0')+'-01',raw:'',status:'inferred_period_start'};
      if(!deb&&!cred){ignored++;continue}
      var rowSup=normalizeHolderName(get(row,map.supervisor),sheetName)||holder,hold=holder||rowSup,cat3=category||'تغطيات',acc3=makeAccountKey(region,hold,cat3);
      if(deb>0&&cred===0){var tpIn=openingOrFunding(desc3),inCat=tpIn==='تحويل وارد'?'تحويل عهدة':'تمويل ورصيد';items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:deb,type:tpIn,openingSign:tpIn==='رصيد افتتاحي'?1:null,region:region,custodyHolder:hold,supervisor:rowSup,site:site3,description:desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:cat3,accountKey:acc3,periodExpense:false,expenseCategory:inCat,fundingMethod:tpIn==='تحويل وارد'?'تحويل داخلي من عهدة أخرى':''})}
      if(cred>0&&deb===0&&isOpening(desc3)){items.push({kind:'txn',id:id('IMP'),legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:'رصيد افتتاحي',openingSign:-1,region:region,custodyHolder:hold,supervisor:rowSup,site:site3,description:desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:cat3,accountKey:acc3,periodExpense:false,expenseCategory:'تمويل ورصيد',fundingMethod:''})}
-     else if(cred>0){var tpOut=classifyOut(desc3,abs3,cov3,rs3),outId=id('IMP'),dest=tpOut==='عهدة فرعية مفتوحة'?extractSubHolder(desc3):'',exp3=inferExpenseCategory(tpOut,desc3,abs3,rs3,cat3),pe3=['تحويل داخلي','عهدة فرعية مفتوحة','دفعة تحت التسوية'].indexOf(tpOut)<0;items.push({kind:'txn',id:outId,legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:tpOut,region:region,custodyHolder:hold,supervisor:rowSup,transferTo:dest,site:site3,absent:tpOut==='تغطية'?abs3:abs3,cover:tpOut==='تغطية'?cov3:cov3,reason:rs3,description:tpOut==='تغطية'?'تغطية':desc3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:cat3,accountKey:acc3,periodExpense:pe3,expenseCategory:exp3});if(dest){var nd=normalizeHolderName(dest,sheetName);items.push({kind:'txn',id:id('IMP'),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:'تحويل وارد',region:region,custodyHolder:nd,supervisor:nd,description:'رصيد عهدة فرعية من '+(hold||'العهدة الرئيسية'),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,linkedId:outId,controlExclude:true,subcustodySnapshot:true,custodyCategory:cat3,accountKey:makeAccountKey(region,nd,cat3),periodExpense:false,expenseCategory:'تحويل عهدة'})}}
+     else if(cred>0){var uniform=isUniformProcurement(desc3,abs3,rs3),tpOut=uniform?'مصروف تشغيلي':classifyOut(desc3,abs3,cov3,rs3),outId=id('IMP'),dest=tpOut==='عهدة فرعية مفتوحة'?extractSubHolder(desc3):'',exp3=uniform?'مشتريات زي / مخزون تحت المطابقة':inferExpenseCategory(tpOut,desc3,abs3,rs3,cat3),pe3=!uniform&&['تحويل داخلي','عهدة فرعية مفتوحة','دفعة تحت التسوية'].indexOf(tpOut)<0;items.push({kind:'txn',id:outId,legacyNo:get(row,map.legacy),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:tpOut,region:region,custodyHolder:hold,supervisor:rowSup,transferTo:dest,site:site3,absent:tpOut==='تغطية'?abs3:abs3,cover:tpOut==='تغطية'?cov3:cov3,reason:rs3,description:tpOut==='تغطية'?'تغطية':(uniform?[desc3,rs3].filter(Boolean).join(' — '):desc3),notes:note3,reportedBalance:bal,status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,custodyCategory:cat3,accountKey:acc3,periodExpense:pe3,expenseCategory:exp3});if(dest){var nd=normalizeHolderName(dest,sheetName);items.push({kind:'txn',id:id('IMP'),date:dg3.date,dateRaw:dg3.raw,dateStatus:dg3.status,amount:cred,type:'تحويل وارد',region:region,custodyHolder:nd,supervisor:nd,description:'رصيد عهدة فرعية من '+(hold||'العهدة الرئيسية'),status:'مسجل',source:fileName,sourceSheet:sheetName,sourceRow:r+1,linkedId:outId,controlExclude:true,subcustodySnapshot:true,custodyCategory:cat3,accountKey:makeAccountKey(region,nd,cat3),periodExpense:false,expenseCategory:'تحويل عهدة'})}}
      continue
    }
    if(profile==='expense_ledger'){
