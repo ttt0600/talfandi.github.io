@@ -625,6 +625,9 @@ function captureQualityIssuesForTransaction(t,period){
  if(textHas([t.reason,t.description].join(' '),['تخصم من راتبه','تخصم من راتب','تخصم منه','خصم من راتب','نقص من راتب'])){
    upsertQualityIssue({sourceFile:sourceFile,entityType:'Transaction',entityId:t.id,issueCode:'RECOVERY_CANDIDATE',issueTitle:'مرشح استرداد من موظف — لا خصم تلقائي',severity:'عالية',observedValue:[t.absent,t.cover,t.reason,num(t.amount)].filter(function(x){return x!==''&&x!=null}).join(' | '),suggestedAction:'اعتبارها Receivable Candidate فقط حتى اعتماد HR/Finance وربطها بالموظف والمستند المؤيد؛ يمنع إنشاء Payroll Deduction تلقائياً.',metadata:meta})
  }
+ if(t.type==='دفعة تحت التسوية'&&isEquipmentShipping(t.description,t.reason)&&!t.documentRef&&!(state.evidence||[]).some(function(e){return e.transactionId===t.id})){
+   upsertQualityIssue({sourceFile:sourceFile,entityType:'Transaction',entityId:t.id,issueCode:'EQUIPMENT_SHIPPING_EVIDENCE',issueTitle:'شحن أجهزة دون مستند صرف مؤيد',severity:'متوسطة',observedValue:[t.description,t.date,num(t.amount)].join(' | '),suggestedAction:'استكمال إثبات الشحن والاستلام؛ لا تحميل مباشر على مشروع قبل تخصيص التكلفة.',metadata:meta})
+ }
  if(t.dateStatus==='needs_review'){
    var ds=String(t.date||''),m=ds.match(/^(\d{4})-(\d{2})-(\d{2})$/),code='DATE_REVIEW',title='تاريخ يحتاج مراجعة',severity='عالية',suggested='',action='التحقق من التاريخ كما ورد في المصدر قبل الاعتماد.';
    if(m&&year&&month){
@@ -714,8 +717,8 @@ function renderMonthClose(){
  var groups={};
  rows.forEach(function(p){
    var file=p.sourceFile||'مصدر غير محدد',parts=String(p.accountKey||'').split('|'),region=(p.metadata&&p.metadata.region)||parts[0]||'';
-   var key=file+'|'+region;if(!groups[key])groups[key]={file:file,region:region,opening:0,funding:0,expense:0,pending:0,internal:0,closing:0,future:0,heldYears:0,uniformPurchases:0,statuses:[],activity:'',currentMonthExpense:null};
-   var g=groups[key];g.opening+=num(p.openingBalance);g.funding+=num(p.funding);g.expense+=num(p.recognizedExpense);g.pending+=num(p.nonExpenseOutflow);g.internal+=num(p.internalTransfers);g.closing+=num(p.closingBalance);g.future+=num(p.metadata&&p.metadata.futureExpense);g.heldYears+=num(p.metadata&&p.metadata.held2020Amount);g.uniformPurchases+=num(p.metadata&&(p.metadata.separatedUniformPurchase||p.metadata.uniformProcurementAmount));if(p.status)g.statuses.push(String(p.status));
+   var key=file+'|'+region;if(!groups[key])groups[key]={file:file,region:region,opening:0,funding:0,expense:0,pending:0,internal:0,closing:0,future:0,heldYears:0,uniformPurchases:0,logisticsPending:0,statuses:[],activity:'',currentMonthExpense:null};
+   var g=groups[key];g.opening+=num(p.openingBalance);g.funding+=num(p.funding);g.expense+=num(p.recognizedExpense);g.pending+=num(p.nonExpenseOutflow);g.internal+=num(p.internalTransfers);g.closing+=num(p.closingBalance);g.future+=num(p.metadata&&p.metadata.futureExpense);g.heldYears+=num(p.metadata&&p.metadata.held2020Amount);g.uniformPurchases+=num(p.metadata&&(p.metadata.separatedUniformPurchase||p.metadata.uniformProcurementAmount));g.logisticsPending+=num(p.metadata&&p.metadata.bravoShippingPending);if(p.status)g.statuses.push(String(p.status));
    if(p.metadata&&p.metadata.periodExpenseExcludingSeptember!=null)
      g.currentMonthExpense=(g.currentMonthExpense==null?0:g.currentMonthExpense)+num(p.metadata.periodExpenseExcludingSeptember);
    var a=(p.metadata&& (p.metadata.activityThrough||p.metadata.activity_through))||'';if(a>g.activity)g.activity=a
@@ -723,11 +726,11 @@ function renderMonthClose(){
  var a=Object.keys(groups).map(function(k){var g=groups[k],expected=g.opening+g.funding-g.expense-g.pending-g.internal,diff=expected-g.closing,
    hasNote=g.statuses.some(function(x){return x.indexOf('استثناء')>=0||x.indexOf('مراجعة')>=0}),neg=g.closing<0,
    status=Math.abs(diff)>0.01?'فرق يحتاج مراجعة':(hasNote||neg?'مطابق مع ملاحظات':'مطابق');
-   return {file:g.file,region:g.region,opening:g.opening,funding:g.funding,expense:g.expense,pending:g.pending,internal:g.internal,closing:g.closing,future:g.future,heldYears:g.heldYears,uniformPurchases:g.uniformPurchases,diff:diff,status:status,activity:g.activity,currentMonthExpense:g.currentMonthExpense}
+   return {file:g.file,region:g.region,opening:g.opening,funding:g.funding,expense:g.expense,pending:g.pending,internal:g.internal,closing:g.closing,future:g.future,heldYears:g.heldYears,uniformPurchases:g.uniformPurchases,logisticsPending:g.logisticsPending,diff:diff,status:status,activity:g.activity,currentMonthExpense:g.currentMonthExpense}
  }).sort(function(x,y){return Math.abs(y.closing)-Math.abs(x.closing)});
  el.innerHTML='<div class="tablewrap"><table class="tbl"><thead><tr><th>المصدر / المنطقة</th><th>رصيد/ترحيل أول المدة</th><th>التمويل</th><th>مصروف التصفية</th><th>تدفقات غير مصروفية (تسويات/مشتريات)</th><th>تحويلات داخلية</th><th>حركات بتاريخ محجوز</th><th>حركة مستقبلية مؤجلة</th><th>الإقفال حتى تاريخه</th><th>الحالة</th></tr></thead><tbody>'+a.map(function(x){
    var cls=x.status==='مطابق'?'ok':x.status.indexOf('ملاحظات')>=0?'warn':'bad',closeCls=x.closing<0?' style="color:var(--bad)"':'';
-   return '<tr><td><strong>'+esc(x.region||'-')+'</strong><br><small>'+esc(x.file)+'</small>'+(x.activity?'<br><small>حتى '+esc(portalDate(x.activity,'',''))+'</small>':'')+(x.currentMonthExpense!=null?'<br><small>مصروف أكتوبر: '+money(x.currentMonthExpense)+' · حركات فترة سابقة: '+money(x.expense-x.currentMonthExpense)+'</small>':'')+'</td><td class="money">'+money(x.opening)+'</td><td class="money">'+money(x.funding)+'</td><td class="money">'+money(x.expense)+'</td><td class="money">'+money(x.pending)+(x.uniformPurchases?'<br><small>مشتريات زي غير محملة على المشاريع: '+money(x.uniformPurchases)+'</small>':'')+'</td><td class="money">'+money(x.internal)+'</td><td class="money">'+(x.heldYears?'<span class="badge warn">'+money(x.heldYears)+'</span>':'—')+'</td><td class="money">'+(x.future?'<span class="badge warn">'+money(x.future)+'</span>':'—')+'</td><td class="money"'+closeCls+'><strong>'+money(x.closing)+'</strong>'+(x.future?'<br><small>إقفال المصدر بعد الحركة المؤجلة: '+money(x.closing-x.future)+'</small>':'')+(x.heldYears?'<br><small>إقفال المصدر متضمنًا تواريخ محجوزة: '+money(x.closing-x.heldYears)+'</small>':'')+'</td><td><span class="badge '+cls+'">'+esc(x.status)+'</span></td></tr>'
+   return '<tr><td><strong>'+esc(x.region||'-')+'</strong><br><small>'+esc(x.file)+'</small>'+(x.activity?'<br><small>حتى '+esc(portalDate(x.activity,'',''))+'</small>':'')+(x.currentMonthExpense!=null?'<br><small>مصروف أكتوبر: '+money(x.currentMonthExpense)+' · حركات فترة سابقة: '+money(x.expense-x.currentMonthExpense)+'</small>':'')+'</td><td class="money">'+money(x.opening)+'</td><td class="money">'+money(x.funding)+'</td><td class="money">'+money(x.expense)+'</td><td class="money">'+money(x.pending)+(x.uniformPurchases?'<br><small>مشتريات زي غير محملة على المشاريع: '+money(x.uniformPurchases)+'</small>':'')+(x.logisticsPending?'<br><small>شحن أجهزة برافو بانتظار المستندات: '+money(x.logisticsPending)+'</small>':'')+'</td><td class="money">'+money(x.internal)+'</td><td class="money">'+(x.heldYears?'<span class="badge warn">'+money(x.heldYears)+'</span>':'—')+'</td><td class="money">'+(x.future?'<span class="badge warn">'+money(x.future)+'</span>':'—')+'</td><td class="money"'+closeCls+'><strong>'+money(x.closing)+'</strong>'+(x.future?'<br><small>إقفال المصدر بعد الحركة المؤجلة: '+money(x.closing-x.future)+'</small>':'')+(x.heldYears?'<br><small>إقفال المصدر متضمنًا تواريخ محجوزة: '+money(x.closing-x.heldYears)+'</small>':'')+'</td><td><span class="badge '+cls+'">'+esc(x.status)+'</span></td></tr>'
  }).join('')+'</tbody></table></div>'
 }
 function renderSpendSummary(){
@@ -1606,6 +1609,10 @@ function inferCustodyCategory(profile,text,sheet){
  if(profile==='cash_ledger'||profile==='coverage_list')return 'تغطيات';
  return 'عام'
 }
+function isEquipmentShipping(desc,reason){
+ var z=cleanArabic([desc,reason].join(' '));
+ return textHas(z,['شحن اجهزه برافو','شحن أجهزة برافو','استلام شحن اجهزه','استلام شحن أجهزة','شحن اجهزة','شحن أجهزة','شحن اجهزه','توصيل اجهزة برافو','توصيل أجهزة برافو']);
+}
 function isUniformProcurement(desc,absent,reason){
  var z=cleanArabic([desc,absent,reason].join(' '));
  return textHas(z,['شراء شعارات','شراء شعار','كرفتات','كرفته','كرفات','قيمة بدلة','قيمه بدله','قيمة بدله','زي موحد','زي أمني','زي امني','يونيفورم']);
@@ -1615,6 +1622,7 @@ function explicitShiftMarker(t){
 }
 function inferExpenseCategory(type,desc,absent,reason,custodyCategory){
  var z=cleanArabic([desc,absent,reason].join(' '));
+ if(isEquipmentShipping(desc,reason))return 'نقل وشحن أجهزة — تحت التسوية';
  if(type==='رصيد افتتاحي'||type==='تغذية عهدة')return 'تمويل ورصيد';
  if(type==='تحويل داخلي'||type==='تحويل وارد'||type==='عهدة فرعية مفتوحة')return 'تحويل عهدة';
  if(type==='تغطية')return 'تغطيات';
@@ -1786,6 +1794,7 @@ function controlFromSource(items,summary,profile){
 }
 function classifyOut(desc,absent,cover,reason){
  var z=cleanArabic([desc,absent,cover,reason].join(' '));
+ if(isEquipmentShipping(desc,reason))return 'دفعة تحت التسوية';
  if(textHas(z,['رصيد عهده متبقي مع المشرف','رصيد عهدة متبقي مع المشرف']))return 'عهدة فرعية مفتوحة';
  if(textHas(z,['عهده محوله الي','عهدة محولة الى','محوله الي','محولة الى']))return 'تحويل داخلي';
  if(textHas(z,['دفع تحت الحساب','تحت الحساب'])&&textHas(z,['سياره','سيارة','مركبه','مركبة','صيانه','صيانة','ورشه','ورشة','سطحه','سطحة','قطع','كفر','بطاري']))return 'مصروف تشغيلي';
@@ -2054,7 +2063,9 @@ function renderImportPreview(){
  }
  if(cashSheets.length>0){
    var unclassified=cashSheets.reduce(function(sum,x){return sum+(x.items||[]).filter(function(it){return it.type==='دفعة تحت التسوية'}).reduce(function(v,it){return v+num(it.amount)},0)},0);
-   if(unclassified>0)html+='<div class="notice warn" style="margin-bottom:12px">من إجمالي الصرف النقدي يوجد '+money(unclassified)+' تحت التسوية؛ لا تُسجل مصروفاً معترفاً به قبل استكمال المستند المؤيد.</div>'
+   if(unclassified>0)html+='<div class="notice warn" style="margin-bottom:12px">من إجمالي الصرف النقدي يوجد '+money(unclassified)+' تحت التسوية؛ لا تُسجل مصروفاً معترفاً به قبل استكمال المستند المؤيد.</div>';
+   var shipping=cashSheets.reduce(function(sum,x){return sum+(x.items||[]).filter(function(it){return isEquipmentShipping(it.description,it.reason)}).reduce(function(v,it){return v+num(it.amount)},0)},0);
+   if(shipping>0)html+='<div class="notice warn" style="margin-bottom:12px">حركات نقل وشحن الأجهزة: '+money(shipping)+'؛ قيد تسوية مستقل عن أجور التغطيات، ولا تُحمّل مباشرة على مشروع أو مورد دون مستند صرف وتخصيص.</div>'
  }
  if(requestSheets.length){
    var positive=requestSheets.reduce(function(n,x){return n+(x.items||[]).filter(function(it){return it.kind==='request'}).length},0),zeros=requestSheets.reduce(function(n,x){return n+(x.requestTombstones||[]).length},0);
