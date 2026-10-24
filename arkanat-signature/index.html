@@ -23,7 +23,7 @@ input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--bad)}.
 .primary{background:var(--wine);color:white}.secondary{border-color:#DCD4C3;background:#F5F0E6;color:var(--wine)}.outline{border-color:var(--line);background:white;color:#454343}.primary:disabled{opacity:.55;cursor:not-allowed}
 .preview-wrap{background:#FFFDFC;border:1px dashed #D0C6B9;padding:16px 14px;margin:14px 0 5px;border-radius:12px;overflow-x:auto;width:100%}.preview-wrap>div{width:100%}.preview-note{font-size:12px;color:var(--grey);margin:12px 0 0}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.summary div{background:#F8F7F5;border:1px solid #E8E5E0;padding:12px;border-radius:10px;min-width:0;overflow-wrap:anywhere}.summary b{display:block;font-size:11px;color:var(--grey)}.summary span{font-size:13px}
-.client-choices{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:15px 0}.client-choices button{font-size:13px;text-align:center;background:white;border:1px solid #D9D5CD;color:var(--ink)}.client-choices button.selected{border-color:var(--wine);background:#FCF1EF;color:var(--wine)}
+.client-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:15px 0}.client-choices button{font-size:13px;text-align:center;background:white;border:1px solid #D9D5CD;color:var(--ink)}.client-choices button.selected{border-color:var(--wine);background:#FCF1EF;color:var(--wine)}
 .instructions{background:#F8F7F5;border-right:4px solid var(--gold);border-radius:9px;padding:12px 15px;margin-top:9px}.instructions h3{font-size:15px;color:var(--wine);margin:0 0 6px}.instructions ol{padding-right:21px;margin:5px 0;font-size:14px}.instructions li{margin:5px 0}
 .info{padding:12px;border-radius:9px;background:#F7F4EC;border:1px solid #EDE3D1;font-size:12px;color:#625A4D;margin-top:16px}.status{font-size:13px;min-height:23px;margin:8px 0 0;color:var(--ok);font-weight:600}.status.error-text{color:var(--bad)}
 details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summary{cursor:pointer;font-weight:650;color:var(--wine)}.advanced{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px}.advanced button{font-size:12px;background:#F6F4F1;border:1px solid var(--line)}.footer{text-align:center;font-size:12px;color:var(--grey);padding:22px 4px}
@@ -78,12 +78,14 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
         <label>اختر برنامج البريد الإلكتروني:</label>
         <div class="client-choices" role="group" aria-label="برنامج البريد">
           <button type="button" data-client="new" class="selected" aria-pressed="true">Outlook الجديد / الويب</button>
+          <button type="button" data-client="ios" aria-pressed="false">Outlook على iPhone</button>
           <button type="button" data-client="classic" aria-pressed="false">Outlook الكلاسيكي</button>
           <button type="button" data-client="gmail" aria-pressed="false">Gmail</button>
           <button type="button" data-client="apple" aria-pressed="false">Apple Mail / الجوال</button>
         </div>
         <div class="actions"><button class="primary" type="button" id="copyBtn">نسخ التوقيع</button><button class="secondary" type="button" id="selectBtn">تحديد التوقيع يدوياً</button></div>
         <div id="status" class="status" role="status" aria-live="polite"></div>
+        <div id="iosAdvisory" class="info" hidden><strong>ملاحظة خاصة بتطبيق Outlook على iPhone:</strong> للتوقيع التلقائي المتكرر، النسخة النصية أكثر ثباتاً. النسخة المصورة تصلح عند إدراجها في متن رسالة، لكنها لا تحتفظ بروابط الاتصال القابلة للضغط.<div class="actions" style="margin-top:8px"><button type="button" class="secondary" id="iosPlainBtn">نسخ توقيع نصي للجوال</button></div></div>
         <div id="instructions" class="instructions" aria-live="polite"></div>
         <div class="info">التوقيع المنسق HTML هو الخيار الأساسي، ويتضمن نص إخلاء المسؤولية باللغتين. صورة PNG بديل عند الحاجة، لكن الروابط داخل الصورة لا تكون قابلة للضغط. أرسل رسالة تجريبية بعد التثبيت.</div>
 <div style="border:1px solid #E3DED8;border-radius:12px;padding:15px;margin-top:16px;background:#FFFDFC">
@@ -93,7 +95,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
 <button type="button" class="secondary" id="imageBtn">إنشاء صورة التوقيع</button>
 </div>
 <div id="generatedImageWrap" hidden style="margin-top:12px">
-<p class="hint">تعرض الصورة توقيعاً أفقياً مختصراً بأيقونات الرؤية والرسالة والقيم وإخلاء المسؤولية. يمكن حفظها بالضغط المطول على iPhone.</p>
+<p class="hint">صورة محسّنة للقراءة في Outlook: خط أكبر وعرض أضيق. في تطبيق Outlook على iPhone، احتفظ بالنسخة النصية كتوقيع تلقائي؛ واستخدم الصورة في متن الرسائل عند الحاجة.</p>
 <img id="generatedImg" alt="صورة التوقيع" style="max-width:100%;height:auto;border:1px solid #D8D2C9">
 <div class="actions"><button class="outline" type="button" id="saveImageBtn">تنزيل PNG</button></div>
 </div></div>
@@ -145,6 +147,12 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   let step=1;
   const guides={
     new:{title:'Outlook الجديد أو Outlook على الويب',items:['بعد الضغط على «نسخ التوقيع»، افتح Outlook وانتقل إلى الإعدادات (رمز الترس).','افتح «الحسابات» ثم «التوقيعات» (أو «البريد» ← «إنشاء والرد» بحسب إصدارك).','أنشئ توقيعاً جديداً وألصقه في مربع التوقيع ثم اضغط حفظ.','عيّن التوقيع للرسائل الجديدة والردود إذا رغبت.']},
+    ios:{title:'Outlook على iPhone — طريقة موثوقة',items:[
+      'افتح تطبيق Outlook ← صورة الحساب ← الإعدادات ← البريد ← التوقيع.',
+      'تسمح إعدادات التوقيع في تطبيق iPhone بالنص وتنسيق محدود؛ وقد لا تحفظ صورة أو توقيع HTML كامل بالشكل نفسه.',
+      'للتوقيع اليومي استخدم «نسخ توقيع نصي للجوال» أدناه والصقه في خانة التوقيع.',
+      'إذا أردت التصميم المصور، اختر «إنشاء صورة التوقيع» وأدرج الصورة في متن الرسالة عند الحاجة، ثم اختبرها لدى المستلم. النصوص والروابط داخل الصورة ليست تفاعلية.'
+    ]},
     classic:{title:'Outlook الكلاسيكي على Windows',items:['انسخ التوقيع، ثم افتح Outlook.','اذهب إلى «ملف» ← «خيارات» ← «بريد» ← «تواقيع».','اضغط «جديد»، وحدد اسماً للتوقيع، ثم الصقه في مربع التحرير.','اختر الحساب وخيارات التوقيع الافتراضي ثم احفظ.']},
     gmail:{title:'Gmail على المتصفح',items:['انسخ التوقيع وافتح Gmail على الكمبيوتر.','اضغط الإعدادات ← «عرض جميع الإعدادات» ← «عام».','انتقل إلى قسم «التوقيع»، أنشئ توقيعاً جديداً ثم الصقه.','اختر التوقيع الافتراضي، ثم احفظ التغييرات من أسفل الصفحة.']},
     apple:{title:'Apple Mail وتطبيقات الجوال',items:['يفضل تنفيذ النسخ والتثبيت من الكمبيوتر لضمان التنسيق الكامل.','على Mac: افتح Mail ← «الإعدادات» ← «التوقيعات»، واختر الحساب وأنشئ توقيعاً ثم الصقه.','في تطبيقات الجوال قد لا يُحفظ HTML والصورة بالكامل؛ استخدم «نسخ توقيع نصي» من الخيارات المتقدمة إذا لزم.','أرسل رسالة اختبار وتأكد من عرض الاسم والروابط والصورة على جهاز آخر.']}
@@ -299,6 +307,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   function setStatus(t,bad=false){el('status').textContent=t;el('status').classList.toggle('error-text',bad)}
   function renderGuide(){
     const active=document.querySelector('[data-client].selected'),g=guides[active.dataset.client];
+    el('iosAdvisory').hidden=active.dataset.client!=='ios';
     const title=document.createElement('h3');title.textContent=g.title;
     const ol=document.createElement('ol');
     g.items.forEach(t=>{const li=document.createElement('li');li.textContent=t;ol.append(li)});
@@ -366,6 +375,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   el('selectBtn').addEventListener('click',()=>{selectSignature();setStatus('التوقيع محدد. انسخه من المتصفح ثم الصقه في البريد.')});
   el('downloadBtn').addEventListener('click',downloadHtml);
   el('plainBtn').addEventListener('click',()=>copyText(plainText(),'تم نسخ التوقيع النصي.'));
+  el('iosPlainBtn').addEventListener('click',()=>copyText(plainText(),'تم نسخ النسخة النصية المناسبة لأوتلوك الجوال.'));
   el('htmlBtn').addEventListener('click',()=>copyText(signatureHtml(),'تم نسخ كود HTML.'));
   el('clearBtn').addEventListener('click',clearStored);
   document.querySelectorAll('[data-client]').forEach(b=>b.addEventListener('click',()=>{
@@ -387,64 +397,64 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   async function exportPng(){
     if(!validate()){setStep(1);return}
     const dark=el('imageTheme').value==='dark';
-    const W=900,P=28,scale=2,primary=dark?'#FFFFFF':'#6E1216',muted=dark?'#E6DFD8':'#676767';
+    const W=720,P=22,scale=2,primary=dark?'#FFFFFF':'#6E1216',muted=dark?'#E6DFD8':'#595959';
     const fileNames=signatureMode==='full'?[logoWideDark,...icons]:[logoUrl];
     const paths=signatureMode==='full'?fileNames:[fileNames[0]];
     const imgs=await Promise.all(paths.map(src=>loadLogo(src).catch(()=>null)));
     function render(ctx,draw){
       const ink=dark?'#FFFFFF':'#191818',secondary=dark?'#E3DEDA':'#626262';
       ctx.textBaseline='top';ctx.direction='rtl';ctx.textAlign='right';
-      let y=22;
+      let y=20;
       function line(text,x,width,font,color,lineHeight,align='right'){
         ctx.font=font;ctx.fillStyle=color;ctx.textAlign=align;ctx.direction=align==='left'?'ltr':'rtl';
         const arr=wrapCanvasLines(ctx,text,width);
         if(draw)arr.forEach((t,i)=>ctx.fillText(t,x,y+i*lineHeight,width));
         y+=arr.length*lineHeight;return arr.length;
       }
-      const mainX=W-205,mainWidth=W-2*P-180;
+      const mainX=W-216,mainWidth=W-2*P-205;
       if(draw){
         const logo=imgs[0];if(logo){
-          if(dark&&signatureMode==='compact'){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-166,27,143,100)}
-          if(signatureMode==='full')ctx.drawImage(logo,W-185,29,155,65);
-          else ctx.drawImage(logo,W-144,26,110,110);
+          if(dark&&signatureMode==='compact'){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-180,27,158,110)}
+          if(signatureMode==='full')ctx.drawImage(logo,W-208,27,185,80);
+          else ctx.drawImage(logo,W-146,26,122,122);
         }
       }
-      line(val('name'),mainX,mainWidth,'bold 22px Tahoma,Arial,sans-serif',primary,30);
-      if(val('enName'))line(val('enName'),mainX,mainWidth,'13px Arial,Tahoma,sans-serif',muted,19);
-      line(val('title'),mainX,mainWidth,'bold 16px Tahoma,Arial,sans-serif',primary,24);
-      line(dept(),mainX,mainWidth,'14px Tahoma,Arial,sans-serif',secondary,21);
-      line('شركة أركانات للحراسات الأمنية',mainX,mainWidth,'12px Tahoma,Arial,sans-serif',secondary,20);
-      line([val('email'),formattedMobile(),val('ext')?'تحويلة '+val('ext'):''].filter(Boolean).join('  |  '),mainX,mainWidth,'12px Arial,Tahoma,sans-serif',secondary,20);
-      line('www.arkanat.com.sa',mainX,mainWidth,'bold 12px Arial,Tahoma,sans-serif',primary,20);
-      y=Math.max(y+12,171);
+      line(val('name'),mainX,mainWidth,'bold 26px Tahoma,Arial,sans-serif',primary,36);
+      if(val('enName'))line(val('enName'),mainX,mainWidth,'15px Arial,Tahoma,sans-serif',muted,23);
+      line(val('title'),mainX,mainWidth,'bold 18px Tahoma,Arial,sans-serif',primary,28);
+      line(dept(),mainX,mainWidth,'15px Tahoma,Arial,sans-serif',secondary,24);
+      line('شركة أركانات للحراسات الأمنية',mainX,mainWidth,'13px Tahoma,Arial,sans-serif',secondary,22);
+      line([val('email'),formattedMobile(),val('ext')?'تحويلة '+val('ext'):''].filter(Boolean).join('  |  '),mainX,mainWidth,'13px Arial,Tahoma,sans-serif',secondary,23);
+      line('www.arkanat.com.sa',mainX,mainWidth,'bold 14px Arial,Tahoma,sans-serif',primary,23);
+      y=Math.max(y+11,208);
       if(signatureMode==='full'){
         const tileW=(W-2*P)/3;
         const items=[['رؤيتنا',visionShort,imgs[1]],['رسالتنا',missionShort,imgs[2]],['قيمنا',valuesShort,imgs[3]]];
         const heights=items.map(([label,phrase])=>{
-          ctx.font='12px Tahoma,Arial,sans-serif';
-          return Math.max(80,52+wrapCanvasLines(ctx,phrase,tileW-24).length*18);
+          ctx.font='13px Tahoma,Arial,sans-serif';
+          return Math.max(92,59+wrapCanvasLines(ctx,phrase,tileW-22).length*20);
         });
         const rowH=Math.max(...heights);
         if(draw){ctx.fillStyle=dark?'#282224':'#F8F7F5';ctx.fillRect(P,y,W-2*P,rowH)}
         items.forEach(([label,desc,icon],idx)=>{
           const right=W-P-idx*tileW;
           if(draw&&idx){ctx.fillStyle=dark?'#60545A':'#DFD9D0';ctx.fillRect(Math.round(right),y+9,1,rowH-18)}
-          if(draw&&icon)ctx.drawImage(icon,right-40,y+8,28,28);
-          if(draw){ctx.fillStyle=primary;ctx.font='bold 14px Tahoma,Arial,sans-serif';ctx.textAlign='right';ctx.direction='rtl';ctx.fillText(label,right-45,y+14,tileW-50)}
-          ctx.font='12px Tahoma,Arial,sans-serif';
-          const lines=wrapCanvasLines(ctx,desc,tileW-24);
-          if(draw){ctx.fillStyle=secondary;ctx.textAlign='right';ctx.direction='rtl';lines.forEach((t,i)=>ctx.fillText(t,right-12,y+45+i*18,tileW-24))}
+          if(draw&&icon)ctx.drawImage(icon,right-42,y+9,32,32);
+          if(draw){ctx.fillStyle=primary;ctx.font='bold 16px Tahoma,Arial,sans-serif';ctx.textAlign='right';ctx.direction='rtl';ctx.fillText(label,right-49,y+14,tileW-54)}
+          ctx.font='13px Tahoma,Arial,sans-serif';
+          const lines=wrapCanvasLines(ctx,desc,tileW-20);
+          if(draw){ctx.fillStyle=secondary;ctx.textAlign='right';ctx.direction='rtl';lines.forEach((t,i)=>ctx.fillText(t,right-10,y+54+i*20,tileW-20))}
         });
         y+=rowH+10;
       }
       if(draw){ctx.fillStyle='#6E1216';ctx.fillRect(P,y,(W-2*P)*.55,3);ctx.fillStyle='#B69E58';ctx.fillRect(P+(W-2*P)*.55,y,(W-2*P)*.3,3);ctx.fillStyle='#4A0E11';ctx.fillRect(P+(W-2*P)*.85,y,(W-2*P)*.15,3)}
       y+=13;
       const arW=W-2*P;
-      line('تنبيه بإخلاء المسؤولية',W-P,arW,'bold 11px Tahoma,Arial,sans-serif',primary,19);
-      line(disclaimerAr,W-P,arW,'11px Tahoma,Arial,sans-serif',secondary,17);
+      line('تنبيه بإخلاء المسؤولية',W-P,arW,'bold 13px Tahoma,Arial,sans-serif',primary,21);
+      line(disclaimerAr,W-P,arW,'13px Tahoma,Arial,sans-serif',secondary,20);
       y+=4;
-      line('Disclaimer Notice',P,arW,'bold 11px Arial,Tahoma,sans-serif',primary,18,'left');
-      line(disclaimerEn,P,arW,'11px Arial,Tahoma,sans-serif',secondary,16,'left');
+      line('Disclaimer Notice',P,arW,'bold 13px Arial,Tahoma,sans-serif',primary,21,'left');
+      line(disclaimerEn,P,arW,'12.5px Arial,Tahoma,sans-serif',secondary,19,'left');
       return y+16;
     }
     const measure=document.createElement('canvas').getContext('2d');
