@@ -60,7 +60,12 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     <section id="step2" aria-labelledby="heading2" hidden>
       <div class="bar"><h2 id="heading2">2. راجع توقيعك</h2><p>تأكد أن الاسم والمسمى والإدارة ووسائل التواصل صحيحة قبل النسخ.</p></div>
       <div class="content">
-        <div class="summary" id="summaryBox"></div>
+        <label>نوع التوقيع:</label>
+<div class="client-choices" role="group" aria-label="نوع التوقيع" id="signatureChoices" style="grid-template-columns:1fr 1fr;margin:6px 0 14px">
+<button type="button" data-mode="full" class="selected" aria-pressed="true">كامل — للمراسلات الخارجية</button>
+<button type="button" data-mode="compact" aria-pressed="false">مختصر — للمراسلات الداخلية</button>
+</div>
+<div class="summary" id="summaryBox"></div>
         <div class="preview-wrap"><div id="preview" aria-label="معاينة التوقيع"></div></div>
         <p class="preview-note">هذه معاينة داخل المتصفح. قد يختلف عرض الخط أو الصورة قليلاً حسب برنامج البريد وإعدادات المستلم.</p>
         <div class="actions"><button class="secondary" type="button" id="editBtn">تعديل البيانات</button><button class="primary" type="button" id="installBtn">التالي: تثبيت التوقيع</button></div>
@@ -80,7 +85,18 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
         <div class="actions"><button class="primary" type="button" id="copyBtn">نسخ التوقيع</button><button class="secondary" type="button" id="selectBtn">تحديد التوقيع يدوياً</button></div>
         <div id="status" class="status" role="status" aria-live="polite"></div>
         <div id="instructions" class="instructions" aria-live="polite"></div>
-        <div class="info">بعد الحفظ: أرسل رسالة تجريبية إلى بريدك، وافتحها على الكمبيوتر والجوال، وتحقق من الاسم والروابط وظهور الشعار. بعض برامج البريد تحجب الصور الخارجية إلى أن يسمح المستلم بعرضها.</div>
+        <div class="info">يفضل نسخ التوقيع المنسق للحفاظ على النصوص وروابط التواصل. الصورة PNG بديل للبرامج التي لا تحفظ التنسيق، لكن الروابط داخل الصورة غير قابلة للضغط. أرسل رسالة تجريبية بعد الحفظ.</div>
+<div style="border:1px solid #E3DED8;border-radius:12px;padding:15px;margin-top:16px;background:#FFFDFC">
+<label for="imageTheme">تصدير صورة PNG عند الحاجة</label>
+<div class="actions" style="margin-top:7px">
+<select id="imageTheme" style="flex:1;min-width:180px"><option value="light">خلفية فاتحة</option><option value="dark">خلفية داكنة</option></select>
+<button type="button" class="secondary" id="imageBtn">إنشاء صورة التوقيع</button>
+</div>
+<div id="generatedImageWrap" hidden style="margin-top:12px">
+<p class="hint">على iPhone يمكن حفظ الصورة بالضغط المطول عليها.</p>
+<img id="generatedImg" alt="صورة التوقيع" style="max-width:100%;height:auto;border:1px solid #D8D2C9">
+<div class="actions"><button class="outline" type="button" id="saveImageBtn">تنزيل PNG</button></div>
+</div></div>
         <details><summary>خيارات متقدمة — عند الحاجة فقط</summary><p class="hint">تُستخدم هذه الخيارات بمساعدة الدعم التقني عند تعذر النسخ المباشر.</p><div class="advanced"><button type="button" id="downloadBtn">تنزيل ملف HTML</button><button type="button" id="plainBtn">نسخ توقيع نصي</button><button type="button" id="htmlBtn">نسخ كود HTML</button><button type="button" id="clearBtn">حذف البيانات المحفوظة</button></div></details>
         <div class="actions"><button class="outline" type="button" id="backBtn">العودة للمراجعة</button></div>
         <div class="preview-wrap" id="manualSelectionBox"><div id="copyPreview" aria-label="التوقيع الجاهز للنسخ"></div></div>
@@ -95,6 +111,9 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   const fields=['name','title','dept','customDept','email','mobile','ext','enName'];
   const storeKey='arkanat-signature-form-v3';
   const logoUrl='https://ttt0600.github.io/talfandi.github.io/arkanat-signature/logo.png';
+  const logoWideLight='https://ttt0600.github.io/talfandi.github.io/arkanat-signature/logo-horizontal-light-v3.png';
+  const logoWideDark='https://ttt0600.github.io/talfandi.github.io/arkanat-signature/logo-horizontal-dark-v3.png';
+  let signatureMode='full';
   const el=id=>document.getElementById(id);
   const val=id=>el(id).value.trim();
   const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -196,6 +215,35 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
       '<td width="120" height="3" style="width:120px;height:3px;font-size:1px;line-height:1px;">&nbsp;</td></tr></table>'+
       '</td></tr></table>';
   }
+
+  const compactSignatureHtml=signatureHtml;
+  signatureHtml=function(){
+    if(signatureMode==='compact')return compactSignatureHtml();
+    const name=esc(val('name')),title=esc(val('title')),department=esc(dept());
+    const en=esc(val('enName')),email=esc(val('email'));
+    const phone=esc(formattedMobile());
+    const tel='tel:'+formattedMobile().replace(/\s/g,'');
+    const ext=esc(val('ext'));
+    const contact='<a href="mailto:'+encodeURIComponent(val('email'))+'" style="color:#6F7477;text-decoration:none;">'+email+'</a>'+
+       (phone?' &nbsp; | &nbsp; <a href="'+tel+'" dir="ltr" style="text-decoration:none;color:#6F7477;white-space:nowrap;">'+phone+'</a>':'')+
+       (ext?' &nbsp; | &nbsp; تحويلة '+ext:'');
+    return '<table dir="rtl" role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border-spacing:0;background:#ffffff;font-family:Tahoma,Arial,sans-serif;color:#191818;max-width:490px;">'+
+      '<tr><td align="right" style="text-align:right;padding:0 0 5px"><img src="'+logoWideLight+'" width="258" height="108" alt="شركة أركانات للحراسات الأمنية" border="0" style="display:block;width:258px;height:108px;border:0;"></td></tr>'+
+      '<tr><td align="right" style="text-align:right;font:bold 16px/24px Tahoma,Arial,sans-serif;color:#6E1216;">'+name+'</td></tr>'+
+      (en?'<tr><td align="right" dir="ltr" style="text-align:right;color:#6F7477;font:11px/16px Arial,Tahoma,sans-serif;">'+en+'</td></tr>':'')+
+      '<tr><td align="right" style="text-align:right;font:bold 12px/19px Tahoma,Arial,sans-serif;color:#4A0E11;">'+title+'</td></tr>'+
+      '<tr><td align="right" style="text-align:right;font:11px/18px Tahoma,Arial,sans-serif;color:#6F7477;">'+department+'</td></tr>'+
+      '<tr><td align="right" style="text-align:right;font:10px/18px Tahoma,Arial,sans-serif;color:#6F7477;padding-top:6px;">'+contact+'</td></tr>'+
+      '<tr><td dir="ltr" align="right" style="text-align:right;font:11px/19px Arial,Tahoma,sans-serif;"><a href="https://arkanat.com.sa/" style="color:#6E1216;text-decoration:none;font-weight:bold;">www.arkanat.com.sa</a></td></tr>'+
+      '<tr><td align="right" style="text-align:right;font:11px/20px Tahoma,Arial,sans-serif;color:#6E1216;padding-top:4px;">أمانكم هو مهمتنا الأولى</td></tr>'+
+      '<tr><td height="12" style="height:12px;font-size:1px;">&nbsp;</td></tr>'+
+      '<tr><td><table role="presentation" dir="rtl" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>'+
+      '<td bgcolor="#6E1216" height="3" width="135" style="background:#6E1216;width:135px;height:3px;font-size:1px;">&nbsp;</td>'+
+      '<td bgcolor="#B69E58" width="75" style="background:#B69E58;width:75px;height:3px;font-size:1px;">&nbsp;</td>'+
+      '<td bgcolor="#4A0E11" width="40" style="background:#4A0E11;width:40px;height:3px;font-size:1px;">&nbsp;</td>'+
+      '<td width="125" style="width:125px;font-size:1px;">&nbsp;</td></tr></table></td></tr></table>';
+  };
+
   function setStep(n){
     step=n;
     [1,2,3].forEach(i=>{
@@ -211,7 +259,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
       summary.forEach(([label,value])=>{const box=document.createElement('div'),b=document.createElement('b'),t=document.createElement('span');b.textContent=label;t.textContent=value;box.append(b,t);el('summaryBox').append(box)});
       el('preview').innerHTML=signatureHtml();
     }
-    if(n===3){el('copyPreview').innerHTML=signatureHtml();renderGuide();setStatus('')}
+    if(n===3){el('copyPreview').innerHTML=signatureHtml();el('generatedImageWrap').hidden=true;renderGuide();setStatus('')}
     document.querySelector('.steps').scrollIntoView({block:'start',behavior:'auto'});
   }
   function setStatus(t,bad=false){el('status').textContent=t;el('status').classList.toggle('error-text',bad)}
@@ -272,6 +320,11 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     error.textContent=invalid?'أدخل جوالاً سعودياً صحيحاً، مثل 0506190555.':'';
     updateStored();
   });
+  document.querySelectorAll('[data-mode]').forEach(btn=>btn.addEventListener('click',()=>{
+    signatureMode=btn.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(b=>{b.classList.toggle('selected',b===btn);b.setAttribute('aria-pressed',b===btn?'true':'false')});
+    el('preview').innerHTML=signatureHtml();
+  }));
   el('editBtn').addEventListener('click',()=>setStep(1));
   el('installBtn').addEventListener('click',()=>{normalizeMobileField();if(validate())setStep(3);else setStep(1)});
   el('backBtn').addEventListener('click',()=>setStep(2));
@@ -286,6 +339,53 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     b.classList.add('selected');b.setAttribute('aria-pressed','true');renderGuide();
   }));
   try{const saved=localStorage.getItem(storeKey);if(saved){const obj=JSON.parse(saved);fields.forEach(id=>{if(typeof obj[id]==='string')el(id).value=obj[id]});el('remember').checked=true}}catch(e){}
+
+  let outputPngUrl=null;
+  function loadLogo(url){return new Promise((resolve,reject)=>{
+    const img=new Image();img.onload=()=>resolve(img);
+    img.onerror=()=>reject(Error('Logo missing'));img.src=url;
+  })}
+  async function exportPng(){
+    const dark=el('imageTheme').value==='dark';
+    const W=680,H=signatureMode==='full'?410:270;
+    const canvas=document.createElement('canvas');canvas.width=W*2;canvas.height=H*2;
+    const ctx=canvas.getContext('2d');
+    if(!ctx){setStatus('هذا المتصفح لا يدعم إنشاء PNG.',true);return}
+    ctx.scale(2,2);ctx.fillStyle=dark?'#191818':'#FFFFFF';ctx.fillRect(0,0,W,H);
+    ctx.textAlign='right';ctx.textBaseline='top';ctx.direction='rtl';
+    let y=22,x=W-30;
+    try{
+      let im=await loadLogo(signatureMode==='compact'?logoUrl:(dark?logoWideDark:logoWideLight));
+      if(signatureMode==='full'){ctx.drawImage(im,W-345,y,315,132);y+=154}
+      else{ctx.drawImage(im,W-100,y,70,70);x=W-124;y+=8}
+    }catch(e){
+      ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 21px Tahoma,Arial,sans-serif';
+      ctx.fillText('شركة أركانات للحراسات الأمنية',x,y);y+=32;
+    }
+    ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 23px Tahoma,Arial,sans-serif';ctx.fillText(val('name'),x,y);y+=36;
+    ctx.fillStyle=dark?'#F4EBDB':'#4A0E11';ctx.font='bold 17px Tahoma,Arial,sans-serif';ctx.fillText(val('title'),x,y);y+=30;
+    ctx.fillStyle=dark?'#EAE8E4':'#6F7477';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText(dept(),x,y);y+=28;
+    const contact=[val('email'),formattedMobile(),val('ext')?'تحويلة '+val('ext'):''].filter(Boolean);
+    ctx.font='14px Tahoma,Arial,sans-serif';
+    ctx.fillText(contact.join('   |   '),x,y);y+=27;
+    ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 14px Arial,Tahoma,sans-serif';ctx.fillText('www.arkanat.com.sa',x,y);y+=30;
+    if(signatureMode==='full'){ctx.fillStyle=dark?'#EFD5A0':'#6E1216';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText('أمانكم هو مهمتنا الأولى',x,y)}
+    ctx.fillStyle='#6E1216';ctx.fillRect(W-300,H-8,155,4);
+    ctx.fillStyle='#B69E58';ctx.fillRect(W-145,H-8,95,4);
+    ctx.fillStyle='#4A0E11';ctx.fillRect(W-50,H-8,30,4);
+    const uri=canvas.toDataURL('image/png');el('generatedImg').src=uri;el('generatedImageWrap').hidden=false;
+    if(outputPngUrl)URL.revokeObjectURL(outputPngUrl);
+    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+    outputPngUrl=blob?URL.createObjectURL(blob):null;
+    el('saveImageBtn').disabled=!outputPngUrl;
+    setStatus('تم إنشاء صورة التوقيع. تستطيع تنزيلها أو حفظها بالضغط المطول على الصورة.');
+  }
+  el('imageBtn').addEventListener('click',()=>exportPng().catch(()=>setStatus('تعذر إنشاء الصورة. تحقق من تحميل الصفحة ثم أعد المحاولة.',true)));
+  el('saveImageBtn').addEventListener('click',()=>{
+    if(!outputPngUrl)return;
+    const a=document.createElement('a');a.href=outputPngUrl;a.download='Arkanat_Signature_'+signatureMode+'_'+el('imageTheme').value+'.png';document.body.append(a);a.click();a.remove();
+  });
+
   normalizeMobileField();updateDept();renderGuide();
 })();
 </script>
