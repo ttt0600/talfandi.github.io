@@ -10,7 +10,7 @@
 <style>
 :root{--wine:#6E1216;--wine-dark:#4A0E11;--gold:#B69E58;--ivory:#F8F7F5;--ink:#191818;--grey:#6F7477;--line:#E3DED8;--ok:#196F4A;--bad:#B42318}
 *{box-sizing:border-box}body{margin:0;background:#F8F7F5;color:var(--ink);font:15px/1.65 "Segoe UI",Tahoma,Arial,sans-serif}
-.wrap{max-width:1040px;margin:auto;padding:24px 16px 48px}.brand{display:flex;gap:14px;align-items:center;justify-content:flex-start;border-bottom:3px solid var(--gold);padding-bottom:15px;margin-bottom:20px}
+.wrap{max-width:1260px;margin:auto;padding:24px 16px 48px}.brand{display:flex;gap:14px;align-items:center;justify-content:flex-start;border-bottom:3px solid var(--gold);padding-bottom:15px;margin-bottom:20px}
 .brand img{height:62px;width:62px;object-fit:contain}.brand h1{color:var(--wine);font-size:clamp(21px,3.2vw,30px);line-height:1.3;margin:0}.brand p{color:var(--grey);font-size:13px;margin:4px 0 0}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px}.step{display:flex;gap:9px;align-items:center;background:white;border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--grey);font-size:13px}
 .step i{font-style:normal;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#F0ECE7;font-weight:bold}.step.active{border-color:var(--gold);background:#FFFCF5;color:var(--wine);font-weight:bold}.step.active i{background:var(--wine);color:white}.step.done i{background:#E4F1E7;color:var(--ok)}
@@ -21,7 +21,7 @@ input[aria-invalid="true"],select[aria-invalid="true"]{border-color:var(--bad)}.
 .check{display:flex;align-items:flex-start;gap:9px;margin-top:16px;color:var(--grey);font-size:13px}.check input{width:17px;height:17px;min-height:0;margin:4px 0 0;accent-color:var(--wine)}
 .actions{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin-top:22px}button{cursor:pointer;font:inherit;font-weight:650;border-radius:10px;border:1px solid transparent;padding:10px 19px;min-height:44px}button:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .primary{background:var(--wine);color:white}.secondary{border-color:#DCD4C3;background:#F5F0E6;color:var(--wine)}.outline{border-color:var(--line);background:white;color:#454343}.primary:disabled{opacity:.55;cursor:not-allowed}
-.preview-wrap{background:#FFFDFC;border:1px dashed #D0C6B9;padding:22px 15px;margin:14px 0 5px;border-radius:12px;overflow-x:auto}.preview-note{font-size:12px;color:var(--grey);margin:12px 0 0}
+.preview-wrap{background:#FFFDFC;border:1px dashed #D0C6B9;padding:16px 14px;margin:14px 0 5px;border-radius:12px;overflow-x:auto;width:100%}.preview-wrap>div{width:100%}.preview-note{font-size:12px;color:var(--grey);margin:12px 0 0}
 .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.summary div{background:#F8F7F5;border:1px solid #E8E5E0;padding:12px;border-radius:10px;min-width:0;overflow-wrap:anywhere}.summary b{display:block;font-size:11px;color:var(--grey)}.summary span{font-size:13px}
 .client-choices{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:15px 0}.client-choices button{font-size:13px;text-align:center;background:white;border:1px solid #D9D5CD;color:var(--ink)}.client-choices button.selected{border-color:var(--wine);background:#FCF1EF;color:var(--wine)}
 .instructions{background:#F8F7F5;border-right:4px solid var(--gold);border-radius:9px;padding:12px 15px;margin-top:9px}.instructions h3{font-size:15px;color:var(--wine);margin:0 0 6px}.instructions ol{padding-right:21px;margin:5px 0;font-size:14px}.instructions li{margin:5px 0}
@@ -58,12 +58,12 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     </section>
 
     <section id="step2" aria-labelledby="heading2" hidden>
-      <div class="bar"><h2 id="heading2">2. راجع توقيعك</h2><p>تأكد أن الاسم والمسمى والإدارة ووسائل التواصل صحيحة قبل النسخ.</p></div>
+      <div class="bar"><h2 id="heading2">2. راجع توقيعك</h2><p>راجع البيانات والتوقيع بعرض المعاينة؛ النسخة الكاملة تعرض الرؤية والرسالة والقيم وإخلاء المسؤولية.</p></div>
       <div class="content">
         <label>نوع التوقيع:</label>
 <div class="client-choices" role="group" aria-label="نوع التوقيع" id="signatureChoices" style="grid-template-columns:1fr 1fr;margin:6px 0 14px">
-<button type="button" data-mode="full" class="selected" aria-pressed="true">كامل — للمراسلات الخارجية</button>
-<button type="button" data-mode="compact" aria-pressed="false">مختصر — للمراسلات الداخلية</button>
+<button type="button" data-mode="full" class="selected" aria-pressed="true">كامل — الرؤية والرسالة والقيم والإخلاء</button>
+<button type="button" data-mode="compact" aria-pressed="false">مختصر — بيانات الاتصال والإخلاء</button>
 </div>
 <div class="summary" id="summaryBox"></div>
         <div class="preview-wrap"><div id="preview" aria-label="معاينة التوقيع"></div></div>
@@ -85,7 +85,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
         <div class="actions"><button class="primary" type="button" id="copyBtn">نسخ التوقيع</button><button class="secondary" type="button" id="selectBtn">تحديد التوقيع يدوياً</button></div>
         <div id="status" class="status" role="status" aria-live="polite"></div>
         <div id="instructions" class="instructions" aria-live="polite"></div>
-        <div class="info">يفضل نسخ التوقيع المنسق للحفاظ على النصوص وروابط التواصل. الصورة PNG بديل للبرامج التي لا تحفظ التنسيق، لكن الروابط داخل الصورة غير قابلة للضغط. أرسل رسالة تجريبية بعد الحفظ.</div>
+        <div class="info">التوقيع المنسق HTML هو الخيار الأساسي، ويتضمن نص إخلاء المسؤولية باللغتين. صورة PNG بديل عند الحاجة، لكن الروابط داخل الصورة لا تكون قابلة للضغط. أرسل رسالة تجريبية بعد التثبيت.</div>
 <div style="border:1px solid #E3DED8;border-radius:12px;padding:15px;margin-top:16px;background:#FFFDFC">
 <label for="imageTheme">تصدير صورة PNG عند الحاجة</label>
 <div class="actions" style="margin-top:7px">
@@ -183,6 +183,8 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     if(val('mobile'))p.push(formattedMobile());
     if(val('ext'))p.push('تحويلة: '+val('ext'));
     p.push('www.arkanat.com.sa');
+    if(signatureMode==='full')p.push('أمانكم هو مهمتنا الأولى','رؤيتنا: '+visionText,'رسالتنا: '+missionText,'قيمنا: '+valuesText);
+    p.push('تنبيه بإخلاء المسؤولية: '+disclaimerAr,'Disclaimer Notice: '+disclaimerEn);
     return p.filter(Boolean).join('\n');
   }
   function signatureHtml(){
@@ -216,34 +218,61 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
       '</td></tr></table>';
   }
 
+
+  const visionText='أن نكون الشريك الأمثل في تقديم الخدمات الأمنية لمختلف القطاعات والمنظومات.';
+  const missionText='الارتقاء بمستوى الخدمات الأمنية بما يتجاوز تطلعات عملائنا، من خلال تقديم الاستشارات الأمنية المتخصصة، والاستعانة بالكوادر المؤهلة، وتوظيف أحدث الحلول والتقنيات الأمنية.';
+  const valuesText='السلامة  |  المسؤولية  |  العدالة  |  التميز';
+  const disclaimerAr='هذه الرسالة ومرفقاتها معدة لاستخدام المُرسَل إليه المقصود بالرسالة فقط وقد تحتوي على معلومات سرية أو محمية قانونياً. إن لم تكن الشخص المقصود، فإنه يُمنع منعاً باتاً عرض أو نشر أو أي استخدام غير مصرح به للمحتوى. نرجو إخطار المُرسِل عن طريق الرد على هذا البريد الإلكتروني وإتلاف جميع النسخ الموجودة لديك. تُعد التصريحات والآراء المذكورة في الرسالة خاصة بالمُرسِل ولا تمثل بالضرورة رأي شركة أركانات للحراسات الأمنية.';
+  const disclaimerEn='This e-mail message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and privileged information or otherwise protected by law. If you are not the intended recipient, you are notified that any unauthorized review, use, disclosure or distribution is strictly prohibited. Please notify the sender by replying to this email and destroy all copies of the original message. Statements and opinions expressed in this Email are those of the sender, and do not necessarily reflect those of the Arkanat Security Guards CO.';
+  function legalHtml(){
+    return '<table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" dir="rtl" style="width:100%;border-collapse:collapse;table-layout:auto;">'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;padding:11px 12px 3px;border-top:1px solid #D9D3C9;color:#6E1216;font:bold 11px/17px Tahoma,Arial,sans-serif;">تنبيه بإخلاء المسؤولية</td></tr>'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;padding:0 12px 8px;color:#5B5B5B;font:10px/17px Tahoma,Arial,sans-serif;word-break:normal;">'+esc(disclaimerAr)+'</td></tr>'+
+      '<tr><td align="left" dir="ltr" style="text-align:left;padding:5px 12px 3px;color:#6E1216;font:bold 11px/16px Arial,Tahoma,sans-serif;">Disclaimer Notice</td></tr>'+
+      '<tr><td align="left" dir="ltr" style="text-align:left;padding:0 12px 12px;color:#5B5B5B;font:10px/16px Arial,Tahoma,sans-serif;word-break:normal;">'+esc(disclaimerEn)+'</td></tr></table>';
+  }
+  function brandBlockHtml(){
+    const rows=[['رؤيتنا',visionText],['رسالتنا',missionText],['قيمنا',valuesText]];
+    return '<table role="presentation" border="0" width="100%" cellpadding="0" cellspacing="0" dir="rtl" style="width:100%;border-collapse:collapse;background-color:#F8F7F5;">'+
+      rows.map(([label,value],i)=>'<tr>'+
+        '<td align="right" dir="rtl" width="76" valign="top" style="width:76px;text-align:right;vertical-align:top;padding:9px 12px 9px 4px;color:#6E1216;font:bold 11px/18px Tahoma,Arial,sans-serif;'+(i?'border-top:1px solid #E5E0D8;':'')+'">'+esc(label)+'</td>'+
+        '<td align="right" dir="rtl" valign="top" style="text-align:right;vertical-align:top;padding:9px 6px 9px 12px;color:#343434;font:11px/19px Tahoma,Arial,sans-serif;'+(i?'border-top:1px solid #E5E0D8;':'')+'">'+esc(value)+'</td>'+
+        '</tr>').join('')+'</table>';
+  }
   const compactSignatureHtml=signatureHtml;
   signatureHtml=function(){
-    if(signatureMode==='compact')return compactSignatureHtml();
     const name=esc(val('name')),title=esc(val('title')),department=esc(dept());
     const en=esc(val('enName')),email=esc(val('email'));
-    const phone=esc(formattedMobile());
+    const phone=esc(formattedMobile()),ext=esc(val('ext'));
     const tel='tel:'+formattedMobile().replace(/\s/g,'');
-    const ext=esc(val('ext'));
-    const contact='<a href="mailto:'+encodeURIComponent(val('email'))+'" style="color:#6F7477;text-decoration:none;">'+email+'</a>'+
-       (phone?' &nbsp; | &nbsp; <a href="'+tel+'" dir="ltr" style="text-decoration:none;color:#6F7477;white-space:nowrap;">'+phone+'</a>':'')+
-       (ext?' &nbsp; | &nbsp; تحويلة '+ext:'');
-    return '<table dir="rtl" role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border-spacing:0;background:#ffffff;font-family:Tahoma,Arial,sans-serif;color:#191818;max-width:490px;">'+
-      '<tr><td align="right" style="text-align:right;padding:0 0 5px"><img src="'+logoWideLight+'" width="258" height="108" alt="شركة أركانات للحراسات الأمنية" border="0" style="display:block;width:258px;height:108px;border:0;"></td></tr>'+
-      '<tr><td align="right" style="text-align:right;font:bold 16px/24px Tahoma,Arial,sans-serif;color:#6E1216;">'+name+'</td></tr>'+
-      (en?'<tr><td align="right" dir="ltr" style="text-align:right;color:#6F7477;font:11px/16px Arial,Tahoma,sans-serif;">'+en+'</td></tr>':'')+
-      '<tr><td align="right" style="text-align:right;font:bold 12px/19px Tahoma,Arial,sans-serif;color:#4A0E11;">'+title+'</td></tr>'+
-      '<tr><td align="right" style="text-align:right;font:11px/18px Tahoma,Arial,sans-serif;color:#6F7477;">'+department+'</td></tr>'+
-      '<tr><td align="right" style="text-align:right;font:10px/18px Tahoma,Arial,sans-serif;color:#6F7477;padding-top:6px;">'+contact+'</td></tr>'+
-      '<tr><td dir="ltr" align="right" style="text-align:right;font:11px/19px Arial,Tahoma,sans-serif;"><a href="https://arkanat.com.sa/" style="color:#6E1216;text-decoration:none;font-weight:bold;">www.arkanat.com.sa</a></td></tr>'+
-      '<tr><td align="right" style="text-align:right;font:11px/20px Tahoma,Arial,sans-serif;color:#6E1216;padding-top:4px;">أمانكم هو مهمتنا الأولى</td></tr>'+
-      '<tr><td height="12" style="height:12px;font-size:1px;">&nbsp;</td></tr>'+
-      '<tr><td><table role="presentation" dir="rtl" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>'+
-      '<td bgcolor="#6E1216" height="3" width="135" style="background:#6E1216;width:135px;height:3px;font-size:1px;">&nbsp;</td>'+
-      '<td bgcolor="#B69E58" width="75" style="background:#B69E58;width:75px;height:3px;font-size:1px;">&nbsp;</td>'+
-      '<td bgcolor="#4A0E11" width="40" style="background:#4A0E11;width:40px;height:3px;font-size:1px;">&nbsp;</td>'+
-      '<td width="125" style="width:125px;font-size:1px;">&nbsp;</td></tr></table></td></tr></table>';
+    const contact='<a href="mailto:'+encodeURIComponent(val('email'))+'" style="color:#6F7477;text-decoration:none;font-family:Arial,Tahoma,sans-serif;">'+email+'</a>'+
+      (phone?' &nbsp; | &nbsp; <a href="'+tel+'" dir="ltr" style="text-decoration:none;color:#6F7477;white-space:nowrap;">'+phone+'</a>':'')+
+      (ext?' &nbsp; | &nbsp; تحويلة '+ext:'');
+    const accent='<table role="presentation" border="0" cellpadding="0" cellspacing="0" dir="rtl" width="100%" style="width:100%;border-collapse:collapse;"><tr>'+
+      '<td bgcolor="#6E1216" height="3" width="45%" style="background-color:#6E1216;height:3px;width:45%;font-size:1px;line-height:1px;">&nbsp;</td>'+
+      '<td bgcolor="#B69E58" width="30%" style="background-color:#B69E58;height:3px;width:30%;font-size:1px;line-height:1px;">&nbsp;</td>'+
+      '<td bgcolor="#4A0E11" width="25%" style="background-color:#4A0E11;height:3px;width:25%;font-size:1px;line-height:1px;">&nbsp;</td></tr></table>';
+    const info='<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="width:100%;border-collapse:collapse;">'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;font:bold 19px/29px Tahoma,Arial,sans-serif;color:#6E1216;">'+name+'</td></tr>'+
+      (en?'<tr><td align="right" dir="ltr" style="text-align:right;color:#6F7477;font:11px/19px Arial,Tahoma,sans-serif;">'+en+'</td></tr>':'')+
+      '<tr><td align="right" dir="rtl" style="text-align:right;color:#4A0E11;font:bold 13px/22px Tahoma,Arial,sans-serif;">'+title+'</td></tr>'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;color:#6F7477;font:12px/21px Tahoma,Arial,sans-serif;">'+department+'</td></tr>'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;color:#6F7477;padding-top:6px;font:11px/20px Tahoma,Arial,sans-serif;word-break:break-word;">'+contact+'</td></tr>'+
+      '<tr><td align="right" dir="ltr" style="text-align:right;font:11px/20px Arial,Tahoma,sans-serif;"><a href="https://arkanat.com.sa/" style="color:#6E1216;text-decoration:none;font-weight:bold;">www.arkanat.com.sa</a></td></tr></table>';
+    let head='';
+    if(signatureMode==='compact'){
+      head='<tr><td align="right" style="text-align:right;padding:12px 12px 8px;"><img alt="أركانات" src="'+logoUrl+'" width="65" height="65" style="display:block;width:65px;height:65px;border:0;"></td></tr>'+
+        '<tr><td align="right" style="text-align:right;padding:4px 12px 14px;">'+info+'</td></tr>';
+    }else{
+      head='<tr><td align="right" style="text-align:right;padding:12px 12px 4px;"><img alt="شركة أركانات للحراسات الأمنية" src="'+logoWideLight+'" width="270" height="112" style="display:block;width:270px;height:112px;max-width:100%;border:0;outline:none;text-decoration:none;"></td></tr>'+
+        '<tr><td align="right" style="text-align:right;padding:6px 12px 12px;">'+info+'</td></tr>'+
+        '<tr><td align="right" style="text-align:right;padding:4px 12px 12px;color:#6E1216;font:12px/20px Tahoma,Arial,sans-serif;">أمانكم هو مهمتنا الأولى</td></tr>'+
+        '<tr><td>'+brandBlockHtml()+'</td></tr>';
+    }
+    return '<table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" dir="rtl" style="width:100%;max-width:780px;border-collapse:collapse;border-spacing:0;background-color:#FFFFFF;color:#191818;font-family:Tahoma,Arial,sans-serif;table-layout:auto;">'+
+      head+'<tr><td>'+accent+'</td></tr>'+
+      '<tr><td>'+legalHtml()+'</td></tr></table>';
   };
-
   function setStep(n){
     step=n;
     [1,2,3].forEach(i=>{
