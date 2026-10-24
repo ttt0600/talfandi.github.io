@@ -93,7 +93,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
 <button type="button" class="secondary" id="imageBtn">إنشاء صورة التوقيع</button>
 </div>
 <div id="generatedImageWrap" hidden style="margin-top:12px">
-<p class="hint">على iPhone يمكن حفظ الصورة بالضغط المطول عليها.</p>
+<p class="hint">تحتوي الصورة على نص الإخلاء، وتضم النسخة الكاملة الرؤية والرسالة والقيم أيضاً. على iPhone يمكن حفظ الصورة بالضغط المطول عليها.</p>
 <img id="generatedImg" alt="صورة التوقيع" style="max-width:100%;height:auto;border:1px solid #D8D2C9">
 <div class="actions"><button class="outline" type="button" id="saveImageBtn">تنزيل PNG</button></div>
 </div></div>
@@ -369,45 +369,117 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   }));
   try{const saved=localStorage.getItem(storeKey);if(saved){const obj=JSON.parse(saved);fields.forEach(id=>{if(typeof obj[id]==='string')el(id).value=obj[id]});el('remember').checked=true}}catch(e){}
 
+
   let outputPngUrl=null;
   function loadLogo(url){return new Promise((resolve,reject)=>{
     const img=new Image();img.onload=()=>resolve(img);
     img.onerror=()=>reject(Error('Logo missing'));img.src=url;
   })}
+  function wrapCanvasLines(ctx,text,maxWidth){
+    const words=String(text).split(/\s+/).filter(Boolean),out=[];
+    let current='';
+    for(const word of words){
+      const test=current?current+' '+word:word;
+      if(current&&ctx.measureText(test).width>maxWidth){out.push(current);current=word}
+      else current=test;
+    }
+    if(current)out.push(current);
+    return out.length?out:[''];
+  }
   async function exportPng(){
-    const dark=el('imageTheme').value==='dark';
-    const W=680,H=signatureMode==='full'?410:270;
-    const canvas=document.createElement('canvas');canvas.width=W*2;canvas.height=H*2;
+    if(!validate()){setStep(1);return}
+    const dark=el('imageTheme').value==='dark',W=900,P=28,scale=2;
+    const main=dark?'#FFFFFF':'#6E1216';
+    const ink=dark?'#FFFFFF':'#191818';
+    const muted=dark?'#E5DDD7':'#555B5E';
+    const surface=dark?'#262123':'#F8F7F5';
+    let img=null;
+    try{img=await loadLogo(signatureMode==='compact'?logoUrl:(dark?logoWideDark:logoWideLight))}catch(e){}
+    function compose(ctx,draw){
+      let y=24;
+      ctx.textBaseline='top';
+      function textLine(content,x,width,font,color,lineHeight,align='right'){
+        ctx.font=font;ctx.textAlign=align;ctx.direction=align==='left'?'ltr':'rtl';ctx.fillStyle=color;
+        const lines=wrapCanvasLines(ctx,content,width);
+        if(draw)lines.forEach((line,i)=>ctx.fillText(line,x,y+i*lineHeight,width));
+        y+=Math.max(1,lines.length)*lineHeight;
+        return lines.length;
+      }
+      if(signatureMode==='full'){
+        if(draw){
+          if(img){ctx.drawImage(img,W-380,y,350,145)}
+          else{ctx.fillStyle=main;ctx.font='bold 24px Tahoma,Arial,sans-serif';ctx.textAlign='right';ctx.fillText('شركة أركانات للحراسات الأمنية',W-P,y)}
+        }
+        y+=158;
+      }else{
+        if(draw){
+          if(dark){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-118,y,90,88)}
+          if(img)ctx.drawImage(img,W-105,y,74,74);
+        }
+        y+=87;
+      }
+      textLine(val('name'),W-P,W-2*P,'bold 23px Tahoma,Arial,sans-serif',main,34);
+      if(val('enName'))textLine(val('enName'),W-P,W-2*P,'14px Arial,Tahoma,sans-serif',muted,23);
+      textLine(val('title'),W-P,W-2*P,'bold 17px Tahoma,Arial,sans-serif',dark?'#F1E6D2':'#4A0E11',27);
+      textLine(dept(),W-P,W-2*P,'15px Tahoma,Arial,sans-serif',muted,24);
+      y+=5;
+      const parts=[val('email'),formattedMobile(),val('ext')?'تحويلة '+val('ext'):''].filter(Boolean);
+      textLine(parts.join('   |   '),W-P,W-2*P,'14px Arial,Tahoma,sans-serif',muted,22);
+      textLine('www.arkanat.com.sa',W-P,W-2*P,'bold 14px Arial,Tahoma,sans-serif',main,24);
+      if(signatureMode==='full'){
+        textLine('أمانكم هو مهمتنا الأولى',W-P,W-2*P,'14px Tahoma,Arial,sans-serif',main,26);
+        y+=12;
+        for(const [label,value] of [['رؤيتنا',visionText],['رسالتنا',missionText],['قيمنا',valuesText]]){
+          const available=W-2*P-115;
+          ctx.font='14px Tahoma,Arial,sans-serif';
+          const lines=wrapCanvasLines(ctx,value,available);
+          const height=Math.max(46,lines.length*22+20);
+          if(draw){
+            ctx.fillStyle=surface;ctx.fillRect(P,y,W-2*P,height-4);
+            ctx.textAlign='right';ctx.direction='rtl';ctx.font='bold 15px Tahoma,Arial,sans-serif';ctx.fillStyle=main;
+            ctx.fillText(label,W-P-12,y+11,85);
+            ctx.font='14px Tahoma,Arial,sans-serif';ctx.fillStyle=ink;
+            lines.forEach((line,i)=>ctx.fillText(line,W-P-111,y+10+i*22,available));
+          }
+          y+=height;
+        }
+      }
+      y+=13;
+      if(draw){
+        ctx.fillStyle=dark?'#B69E58':'#CFC7B9';ctx.fillRect(P,y,W-2*P,1);
+      }
+      y+=13;
+      textLine('تنبيه بإخلاء المسؤولية',W-P,W-2*P,'bold 15px Tahoma,Arial,sans-serif',main,24);
+      textLine(disclaimerAr,W-P,W-2*P,'13px Tahoma,Arial,sans-serif',muted,22);
+      y+=10;
+      textLine('Disclaimer Notice',P,W-2*P,'bold 15px Arial,Tahoma,sans-serif',main,24,'left');
+      textLine(disclaimerEn,P,W-2*P,'13px Arial,Tahoma,sans-serif',muted,20,'left');
+      y+=20;
+      if(draw){
+        ctx.fillStyle='#6E1216';ctx.fillRect(P,y,Math.round((W-2*P)*.45),4);
+        ctx.fillStyle='#B69E58';ctx.fillRect(P+Math.round((W-2*P)*.45),y,Math.round((W-2*P)*.30),4);
+        ctx.fillStyle='#4A0E11';ctx.fillRect(P+Math.round((W-2*P)*.75),y,Math.round((W-2*P)*.25),4);
+      }
+      return y+25;
+    }
+    const measureCanvas=document.createElement('canvas');
+    const measureCtx=measureCanvas.getContext('2d');
+    if(!measureCtx){setStatus('هذا المتصفح لا يدعم إنشاء PNG.',true);return}
+    const H=Math.ceil(compose(measureCtx,false));
+    const canvas=document.createElement('canvas');
+    canvas.width=W*scale;canvas.height=H*scale;
     const ctx=canvas.getContext('2d');
     if(!ctx){setStatus('هذا المتصفح لا يدعم إنشاء PNG.',true);return}
-    ctx.scale(2,2);ctx.fillStyle=dark?'#191818':'#FFFFFF';ctx.fillRect(0,0,W,H);
-    ctx.textAlign='right';ctx.textBaseline='top';ctx.direction='rtl';
-    let y=22,x=W-30;
-    try{
-      let im=await loadLogo(signatureMode==='compact'?logoUrl:(dark?logoWideDark:logoWideLight));
-      if(signatureMode==='full'){ctx.drawImage(im,W-345,y,315,132);y+=154}
-      else{if(dark){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-110,y-8,92,88)}ctx.drawImage(im,W-100,y,70,70);x=W-124;y+=8}
-    }catch(e){
-      ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 21px Tahoma,Arial,sans-serif';
-      ctx.fillText('شركة أركانات للحراسات الأمنية',x,y);y+=32;
-    }
-    ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 23px Tahoma,Arial,sans-serif';ctx.fillText(val('name'),x,y,signatureMode==='compact'?500:620);y+=36;
-    ctx.fillStyle=dark?'#F4EBDB':'#4A0E11';ctx.font='bold 17px Tahoma,Arial,sans-serif';ctx.fillText(val('title'),x,y,signatureMode==='compact'?500:620);y+=30;
-    ctx.fillStyle=dark?'#EAE8E4':'#6F7477';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText(dept(),x,y,signatureMode==='compact'?500:620);y+=28;
-    const contact=[val('email'),formattedMobile(),val('ext')?'تحويلة '+val('ext'):''].filter(Boolean);
-    ctx.font='14px Tahoma,Arial,sans-serif';
-    ctx.fillText(contact.join('   |   '),x,y,signatureMode==='compact'?500:620);y+=27;
-    ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 14px Arial,Tahoma,sans-serif';ctx.fillText('www.arkanat.com.sa',x,y);y+=30;
-    if(signatureMode==='full'){ctx.fillStyle=dark?'#EFD5A0':'#6E1216';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText('أمانكم هو مهمتنا الأولى',x,y)}
-    ctx.fillStyle='#6E1216';ctx.fillRect(W-300,H-8,155,4);
-    ctx.fillStyle='#B69E58';ctx.fillRect(W-145,H-8,95,4);
-    ctx.fillStyle='#4A0E11';ctx.fillRect(W-50,H-8,30,4);
-    const uri=canvas.toDataURL('image/png');el('generatedImg').src=uri;el('generatedImageWrap').hidden=false;
-    if(outputPngUrl)URL.revokeObjectURL(outputPngUrl);
-    const blob=await new Promise(res=>canvas.toBlob(res,'image/png'));
+    ctx.scale(scale,scale);
+    ctx.fillStyle=dark?'#191818':'#FFFFFF';ctx.fillRect(0,0,W,H);
+    compose(ctx,true);
+    const uri=canvas.toDataURL('image/png');
+    el('generatedImg').src=uri;el('generatedImageWrap').hidden=false;
+    if(outputPngUrl){URL.revokeObjectURL(outputPngUrl);outputPngUrl=null}
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
     outputPngUrl=blob?URL.createObjectURL(blob):null;
     el('saveImageBtn').disabled=!outputPngUrl;
-    setStatus('تم إنشاء صورة التوقيع. تستطيع تنزيلها أو حفظها بالضغط المطول على الصورة.');
+    setStatus('تم إنشاء الصورة متضمنة بيانات الموظف وإخلاء المسؤولية'+(signatureMode==='full'?' والرؤية والرسالة والقيم':'')+'.');
   }
   el('imageBtn').addEventListener('click',()=>exportPng().catch(()=>setStatus('تعذر إنشاء الصورة. تحقق من تحميل الصفحة ثم أعد المحاولة.',true)));
   el('saveImageBtn').addEventListener('click',()=>{
