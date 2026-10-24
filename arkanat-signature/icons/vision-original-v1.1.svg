@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><title>الرؤية - أركانات</title>
+<g fill="none" stroke="#A88736" stroke-linecap="round" stroke-linejoin="round" stroke-width="27">
+<path d="M 116 613 C 101 458 168 304 288 227 C 418 143 606 144 747 256"/>
+<path d="M 840 351 C 916 453 931 586 885 708"/>
+<path d="M 369 332 C 465 268 576 280 673 342"/>
+<path d="M 269 417 C 244 455 228 496 228 542"/>
+<path d="M 350 508 C 401 426 474 387 577 426"/>
+<path d="M 746 423 C 817 525 812 657 736 730"/>
+</g>
+<circle cx="316" cy="377" r="29" fill="#A88736"/><circle cx="227" cy="620" r="29" fill="#A88736"/>
+<path d="M 377 565 C 434 554 475 526 513 505 C 551 526 588 552 649 566 L 649 668 C 649 743 588 814 513 852 C 437 812 377 742 377 668 Z" fill="none" stroke="#6B1115" stroke-width="31" stroke-linejoin="round"/>
+<circle cx="513" cy="675" r="43" fill="#6B1115"/>
+<path d="M 617 485 L 806 293" fill="none" stroke="#6B1115" stroke-width="28" stroke-linecap="round"/>
+<circle cx="822" cy="268" r="38" fill="#6B1115"/>
+</svg>

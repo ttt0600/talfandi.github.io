@@ -237,7 +237,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   const disclaimerAr='هذه الرسالة ومرفقاتها معدة لاستخدام المُرسَل إليه المقصود بالرسالة فقط وقد تحتوي على معلومات سرية أو محمية قانونياً. إن لم تكن الشخص المقصود، فإنه يُمنع منعاً باتاً عرض أو نشر أو أي استخدام غير مصرح به للمحتوى. نرجو إخطار المُرسِل عن طريق الرد على هذا البريد الإلكتروني وإتلاف جميع النسخ الموجودة لديك. تُعد التصريحات والآراء المذكورة في الرسالة خاصة بالمُرسِل ولا تمثل بالضرورة رأي شركة أركانات للحراسات الأمنية.';
   const disclaimerEn='This e-mail message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and privileged information or otherwise protected by law. If you are not the intended recipient, you are notified that any unauthorized review, use, disclosure or distribution is strictly prohibited. Please notify the sender by replying to this email and destroy all copies of the original message. Statements and opinions expressed in this Email are those of the sender, and do not necessarily reflect those of the Arkanat Security Guards CO.';
   const baseIcon='https://ttt0600.github.io/talfandi.github.io/arkanat-signature/';
-  const icons=[baseIcon+'icon-vision-v4.png',baseIcon+'icon-mission-v4.png',baseIcon+'icon-values-v4.png'];
+  const icons=[baseIcon+'icons/vision-email-v1.1.png',baseIcon+'icons/mission-email-v1.1.png',baseIcon+'icons/values-email-v1.1.png'];
   function legalHtml(){
     const ar='<tr><td align="right" dir="rtl" style="text-align:right;padding:8px 9px 3px;border-top:1px solid #E8E4DF;color:#6E1216;font:bold 10px/14px Tahoma,Arial,sans-serif;">تنبيه بإخلاء المسؤولية</td></tr>'+
       '<tr><td align="right" dir="rtl" style="text-align:right;padding:0 9px 7px;color:#7A7A7A;font:9px/14px Tahoma,Arial,sans-serif;">'+esc(disclaimerAr)+'</td></tr>';
@@ -250,9 +250,9 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" dir="rtl" style="width:100%;border-collapse:collapse;table-layout:fixed;background-color:#F8F7F5;"><tr>'+
       data.map(([label,value,src],i)=>'<td width="33%" valign="top" align="right" dir="rtl" style="width:33%;vertical-align:top;text-align:right;padding:7px 7px 9px 4px;'+(i?'border-right:1px solid #E5DFD6;':'')+'">'+
       '<table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="border-collapse:collapse;"><tr>'+
-      '<td width="27" valign="middle" style="width:27px;vertical-align:middle;padding:0 0 0 2px;"><img src="'+src+'" width="24" height="24" border="0" alt="'+label+'" style="display:block;width:24px;height:24px;border:0;"></td>'+
-      '<td valign="middle" align="right" style="vertical-align:middle;text-align:right;color:#6E1216;font:bold 11px/16px Tahoma,Arial,sans-serif;">'+label+'</td></tr></table>'+
-      '<div style="text-align:right;padding:3px 2px 0 0;color:#525252;font:10px/15px Tahoma,Arial,sans-serif;">'+esc(value)+'</div>'+
+      '<td width="40" valign="middle" align="right" style="width:40px;vertical-align:middle;text-align:right;padding:0 0 0 3px;"><img src="'+src+'" width="38" height="38" border="0" alt="'+label+'" style="display:block;width:38px;height:38px;border:0;outline:none;text-decoration:none;"></td></tr>'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;color:#6E1216;padding-top:2px;font:bold 12px/18px Tahoma,Arial,sans-serif;">'+label+'</td></tr></table>'+
+      '<div style="text-align:right;padding:4px 2px 0 0;color:#525252;font:10.5px/16px Tahoma,Arial,sans-serif;">'+esc(value)+'</div>'+
       '</td>').join('')+'</tr></table>';
   }
   function signatureHtml(){
@@ -432,18 +432,18 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
         const items=[['رؤيتنا',visionShort,imgs[1]],['رسالتنا',missionShort,imgs[2]],['قيمنا',valuesShort,imgs[3]]];
         const heights=items.map(([label,phrase])=>{
           ctx.font='13px Tahoma,Arial,sans-serif';
-          return Math.max(92,59+wrapCanvasLines(ctx,phrase,tileW-22).length*20);
+          return Math.max(114,82+wrapCanvasLines(ctx,phrase,tileW-22).length*20);
         });
         const rowH=Math.max(...heights);
         if(draw){ctx.fillStyle=dark?'#282224':'#F8F7F5';ctx.fillRect(P,y,W-2*P,rowH)}
         items.forEach(([label,desc,icon],idx)=>{
           const right=W-P-idx*tileW;
           if(draw&&idx){ctx.fillStyle=dark?'#60545A':'#DFD9D0';ctx.fillRect(Math.round(right),y+9,1,rowH-18)}
-          if(draw&&icon)ctx.drawImage(icon,right-42,y+9,32,32);
-          if(draw){ctx.fillStyle=primary;ctx.font='bold 16px Tahoma,Arial,sans-serif';ctx.textAlign='right';ctx.direction='rtl';ctx.fillText(label,right-49,y+14,tileW-54)}
+          if(draw&&icon)ctx.drawImage(icon,right-50,y+8,42,42);
+          if(draw){ctx.fillStyle=primary;ctx.font='bold 16px Tahoma,Arial,sans-serif';ctx.textAlign='right';ctx.direction='rtl';ctx.fillText(label,right-12,y+49,tileW-22)}
           ctx.font='13px Tahoma,Arial,sans-serif';
           const lines=wrapCanvasLines(ctx,desc,tileW-20);
-          if(draw){ctx.fillStyle=secondary;ctx.textAlign='right';ctx.direction='rtl';lines.forEach((t,i)=>ctx.fillText(t,right-10,y+54+i*20,tileW-20))}
+          if(draw){ctx.fillStyle=secondary;ctx.textAlign='right';ctx.direction='rtl';lines.forEach((t,i)=>ctx.fillText(t,right-10,y+77+i*20,tileW-20))}
         });
         y+=rowH+10;
       }

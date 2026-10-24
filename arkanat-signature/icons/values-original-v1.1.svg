@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><title>القيم - أركانات</title>
+<g fill="none" stroke="#A88736" stroke-width="25" stroke-linecap="round"><path d="M 201 431 A 320 320 0 0 1 431 201"/><path d="M 593 201 A 320 320 0 0 1 823 431"/><path d="M 823 593 A 320 320 0 0 1 593 823"/><path d="M 431 823 A 320 320 0 0 1 201 593"/></g>
+<g fill="#6B1115"><circle cx="512" cy="172" r="43"/><circle cx="852" cy="512" r="43"/><circle cx="512" cy="852" r="43"/><circle cx="172" cy="512" r="43"/></g>
+<path d="M 371 439 C 422 429 475 403 512 379 C 551 402 603 429 653 439 L 653 564 C 653 652 604 718 512 766 C 421 721 371 652 371 564 Z" fill="none" stroke="#6B1115" stroke-width="32" stroke-linejoin="round"/>
+<circle cx="512" cy="563" r="34" fill="#A88736"/>
+</svg>
