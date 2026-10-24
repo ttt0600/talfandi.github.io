@@ -357,17 +357,17 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
     try{
       let im=await loadLogo(signatureMode==='compact'?logoUrl:(dark?logoWideDark:logoWideLight));
       if(signatureMode==='full'){ctx.drawImage(im,W-345,y,315,132);y+=154}
-      else{ctx.drawImage(im,W-100,y,70,70);x=W-124;y+=8}
+      else{if(dark){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-110,y-8,92,88)}ctx.drawImage(im,W-100,y,70,70);x=W-124;y+=8}
     }catch(e){
       ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 21px Tahoma,Arial,sans-serif';
       ctx.fillText('شركة أركانات للحراسات الأمنية',x,y);y+=32;
     }
-    ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 23px Tahoma,Arial,sans-serif';ctx.fillText(val('name'),x,y);y+=36;
-    ctx.fillStyle=dark?'#F4EBDB':'#4A0E11';ctx.font='bold 17px Tahoma,Arial,sans-serif';ctx.fillText(val('title'),x,y);y+=30;
-    ctx.fillStyle=dark?'#EAE8E4':'#6F7477';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText(dept(),x,y);y+=28;
+    ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 23px Tahoma,Arial,sans-serif';ctx.fillText(val('name'),x,y,signatureMode==='compact'?500:620);y+=36;
+    ctx.fillStyle=dark?'#F4EBDB':'#4A0E11';ctx.font='bold 17px Tahoma,Arial,sans-serif';ctx.fillText(val('title'),x,y,signatureMode==='compact'?500:620);y+=30;
+    ctx.fillStyle=dark?'#EAE8E4':'#6F7477';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText(dept(),x,y,signatureMode==='compact'?500:620);y+=28;
     const contact=[val('email'),formattedMobile(),val('ext')?'تحويلة '+val('ext'):''].filter(Boolean);
     ctx.font='14px Tahoma,Arial,sans-serif';
-    ctx.fillText(contact.join('   |   '),x,y);y+=27;
+    ctx.fillText(contact.join('   |   '),x,y,signatureMode==='compact'?500:620);y+=27;
     ctx.fillStyle=dark?'#FFFFFF':'#6E1216';ctx.font='bold 14px Arial,Tahoma,sans-serif';ctx.fillText('www.arkanat.com.sa',x,y);y+=30;
     if(signatureMode==='full'){ctx.fillStyle=dark?'#EFD5A0':'#6E1216';ctx.font='15px Tahoma,Arial,sans-serif';ctx.fillText('أمانكم هو مهمتنا الأولى',x,y)}
     ctx.fillStyle='#6E1216';ctx.fillRect(W-300,H-8,155,4);
