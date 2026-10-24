@@ -226,17 +226,17 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   const disclaimerEn='This e-mail message, including any attachments, is for the sole use of the intended recipient(s) and may contain confidential and privileged information or otherwise protected by law. If you are not the intended recipient, you are notified that any unauthorized review, use, disclosure or distribution is strictly prohibited. Please notify the sender by replying to this email and destroy all copies of the original message. Statements and opinions expressed in this Email are those of the sender, and do not necessarily reflect those of the Arkanat Security Guards CO.';
   function legalHtml(){
     return '<table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" dir="rtl" style="width:100%;border-collapse:collapse;table-layout:auto;">'+
-      '<tr><td align="right" dir="rtl" style="text-align:right;padding:11px 12px 3px;border-top:1px solid #D9D3C9;color:#6E1216;font:bold 11px/17px Tahoma,Arial,sans-serif;">تنبيه بإخلاء المسؤولية</td></tr>'+
-      '<tr><td align="right" dir="rtl" style="text-align:right;padding:0 12px 8px;color:#5B5B5B;font:10px/17px Tahoma,Arial,sans-serif;word-break:normal;">'+esc(disclaimerAr)+'</td></tr>'+
-      '<tr><td align="left" dir="ltr" style="text-align:left;padding:5px 12px 3px;color:#6E1216;font:bold 11px/16px Arial,Tahoma,sans-serif;">Disclaimer Notice</td></tr>'+
-      '<tr><td align="left" dir="ltr" style="text-align:left;padding:0 12px 12px;color:#5B5B5B;font:10px/16px Arial,Tahoma,sans-serif;word-break:normal;">'+esc(disclaimerEn)+'</td></tr></table>';
+      '<tr><td align="right" dir="rtl" style="text-align:right;padding:11px 12px 3px;border-top:1px solid #D9D3C9;color:#6E1216;font:bold 12px/19px Tahoma,Arial,sans-serif;">تنبيه بإخلاء المسؤولية</td></tr>'+
+      '<tr><td align="right" dir="rtl" style="text-align:right;padding:0 12px 8px;color:#5B5B5B;font:12px/20px Tahoma,Arial,sans-serif;word-break:normal;">'+esc(disclaimerAr)+'</td></tr>'+
+      '<tr><td align="left" dir="ltr" style="text-align:left;padding:5px 12px 3px;color:#6E1216;font:bold 12px/19px Arial,Tahoma,sans-serif;">Disclaimer Notice</td></tr>'+
+      '<tr><td align="left" dir="ltr" style="text-align:left;padding:0 12px 12px;color:#5B5B5B;font:11px/18px Arial,Tahoma,sans-serif;word-break:normal;">'+esc(disclaimerEn)+'</td></tr></table>';
   }
   function brandBlockHtml(){
     const rows=[['رؤيتنا',visionText],['رسالتنا',missionText],['قيمنا',valuesText]];
     return '<table role="presentation" border="0" width="100%" cellpadding="0" cellspacing="0" dir="rtl" style="width:100%;border-collapse:collapse;background-color:#F8F7F5;">'+
       rows.map(([label,value],i)=>'<tr>'+
-        '<td align="right" dir="rtl" width="76" valign="top" style="width:76px;text-align:right;vertical-align:top;padding:9px 12px 9px 4px;color:#6E1216;font:bold 11px/18px Tahoma,Arial,sans-serif;'+(i?'border-top:1px solid #E5E0D8;':'')+'">'+esc(label)+'</td>'+
-        '<td align="right" dir="rtl" valign="top" style="text-align:right;vertical-align:top;padding:9px 6px 9px 12px;color:#343434;font:11px/19px Tahoma,Arial,sans-serif;'+(i?'border-top:1px solid #E5E0D8;':'')+'">'+esc(value)+'</td>'+
+        '<td align="right" dir="rtl" width="76" valign="top" style="width:76px;text-align:right;vertical-align:top;padding:9px 12px 9px 4px;color:#6E1216;font:bold 12px/19px Tahoma,Arial,sans-serif;'+(i?'border-top:1px solid #E5E0D8;':'')+'">'+esc(label)+'</td>'+
+        '<td align="right" dir="rtl" valign="top" style="text-align:right;vertical-align:top;padding:9px 6px 9px 12px;color:#343434;font:12px/20px Tahoma,Arial,sans-serif;'+(i?'border-top:1px solid #E5E0D8;':'')+'">'+esc(value)+'</td>'+
         '</tr>').join('')+'</table>';
   }
   const compactSignatureHtml=signatureHtml;
