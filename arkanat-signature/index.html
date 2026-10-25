@@ -258,7 +258,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   function signatureHtml(){
     const name=esc(val('name')),en=esc(val('enName')),title=esc(val('title')),dep=esc(dept()),email=esc(val('email')),phone=esc(formattedMobile()),ext=esc(val('ext'));
     const contact='<a href="mailto:'+encodeURIComponent(val('email'))+'" style="color:#6F7477;text-decoration:none;">'+email+'</a>'+
-      (phone?' &nbsp;|&nbsp; <a href="tel:'+formattedMobile().replace(/\s/g,'')+'" style="color:#6F7477;text-decoration:none;white-space:nowrap;" dir="ltr">'+phone+'</a>':'')+
+      (phone?' &nbsp;|&nbsp; <a href="tel:'+formattedMobile().replace(/\s/g,'')+'" style="color:#6F7477;text-decoration:none;white-space:nowrap;direction:ltr;unicode-bidi:embed;" dir="ltr">&#8206;'+phone+'&#8206;</a>':'')+
       (ext?' &nbsp;|&nbsp; تحويلة '+ext:'');
     const info='<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" dir="rtl" style="width:100%;border-collapse:collapse;">'+
       '<tr><td dir="rtl" align="right" style="text-align:right;color:#6E1216;font:bold 17px/23px Tahoma,Arial,sans-serif;">'+name+'</td></tr>'+
@@ -280,7 +280,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
       '<td height="3" width="55%" bgcolor="#6E1216" style="height:3px;width:55%;background:#6E1216;font-size:1px;">&nbsp;</td>'+
       '<td width="30%" bgcolor="#B69E58" style="width:30%;background:#B69E58;font-size:1px;">&nbsp;</td>'+
       '<td width="15%" bgcolor="#4A0E11" style="width:15%;background:#4A0E11;font-size:1px;">&nbsp;</td></tr></table>';
-    return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" dir="rtl" style="width:100%;max-width:710px;border-collapse:collapse;border-spacing:0;background-color:#ffffff;font-family:Tahoma,Arial,sans-serif;">'+
+    return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" dir="rtl" align="right" style="width:560px;max-width:100%;border-collapse:collapse;border-spacing:0;background-color:#ffffff;font-family:Tahoma,Arial,sans-serif;text-align:right;">'+
       '<tr><td>'+header+'</td></tr>'+
       (signatureMode==='full'?'<tr><td>'+brandTilesHtml()+'</td></tr>':'')+
       '<tr><td>'+accent+'</td></tr><tr><td>'+legalHtml()+'</td></tr></table>';
@@ -397,7 +397,7 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
   async function exportPng(){
     if(!validate()){setStep(1);return}
     const dark=el('imageTheme').value==='dark';
-    const W=720,P=22,scale=2,primary=dark?'#FFFFFF':'#6E1216',muted=dark?'#E6DFD8':'#595959';
+    const W=560,P=20,scale=2,primary=dark?'#FFFFFF':'#6E1216',muted=dark?'#E6DFD8':'#595959';
     const fileNames=signatureMode==='full'?[logoWideDark,...icons]:[logoUrl];
     const paths=signatureMode==='full'?fileNames:[fileNames[0]];
     const imgs=await Promise.all(paths.map(src=>loadLogo(src).catch(()=>null)));
@@ -411,12 +411,12 @@ details{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}summar
         if(draw)arr.forEach((t,i)=>ctx.fillText(t,x,y+i*lineHeight,width));
         y+=arr.length*lineHeight;return arr.length;
       }
-      const mainX=W-216,mainWidth=W-2*P-205;
+      const mainX=W-196,mainWidth=W-2*P-185;
       if(draw){
         const logo=imgs[0];if(logo){
-          if(dark&&signatureMode==='compact'){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-180,27,158,110)}
-          if(signatureMode==='full')ctx.drawImage(logo,W-208,27,185,80);
-          else ctx.drawImage(logo,W-146,26,122,122);
+          if(dark&&signatureMode==='compact'){ctx.fillStyle='#FFFFFF';ctx.fillRect(W-160,27,138,100)}
+          if(signatureMode==='full')ctx.drawImage(logo,W-187,27,164,71);
+          else ctx.drawImage(logo,W-130,26,105,105);
         }
       }
       line(val('name'),mainX,mainWidth,'bold 26px Tahoma,Arial,sans-serif',primary,36);
