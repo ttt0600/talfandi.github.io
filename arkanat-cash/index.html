@@ -1829,6 +1829,14 @@ function sheetRegion(title,rows,fileName){
 function scopeKey(profile,region,holder,period,sheet,category){return [profile,region||'',holder||'',category||'',period.year||'',period.month||'',sheet||''].join('|')}
 function eventKey(t){return [t.type,t.date||t.dateRaw||'',num(t.amount),cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef),explicitShiftMarker(t)].join('|')}
 function eventConflictKey(t){return [t.type,t.date||t.dateRaw||'',cleanArabic(t.accountKey||makeAccountKey(t.region,t.custodyHolder||t.supervisor,t.custodyCategory)),cleanArabic(t.supervisor),cleanArabic(t.absent),cleanArabic(t.cover),cleanArabic(t.site),cleanArabic(t.description||t.reason),cleanArabic(t.documentRef),explicitShiftMarker(t)].join('|')}
+function parseAdvanceSourceNumber(raw){
+ if(raw==null||raw==='')return 0;
+ if(typeof raw==='number')return Number.isFinite(raw)?raw:null;
+ var text=String(raw).replace(/[٠-٩]/g,function(d){return String(d.charCodeAt(0)-1632)}).replace(/[۰-۹]/g,function(d){return String(d.charCodeAt(0)-1776)}).replace(/,/g,'').trim();
+ if(/^\d+(?:\.\d+)?\s*(?:الف|ألف|آلاف)$/.test(text))return Number(text.match(/^\d+(?:\.\d+)?/)[0])*1000;
+ if(/^\d+(?:\.\d+)?$/.test(text))return Number(text);
+ return null
+}
 function parseSheet(wb,sheetName,fileName){
  var ws=wb.Sheets[sheetName],rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true}),hi=findHeader(rows),ctx=inferPeriod(fileName,rows);
  if(hi<0)return {sheet:sheetName,profile:'unknown',rows:rows,headerIndex:-1,headers:[],map:{},items:[],ignored:rows.length,warnings:['لم يتم التعرف على صف العناوين']};
@@ -1838,11 +1846,11 @@ function parseSheet(wb,sheetName,fileName){
    for(var ar=hi+1;ar<rows.length;ar++){
      var entry=rows[ar]||[],name=cleanArabic(get(entry,map.employee));
      if(!name)continue;
-     var current=num(get(entry,map.amount)),prior=num(get(entry,map.priorAdvance)),rawTotal=get(entry,map.totalAdvance);
-     if(current<0||prior<0){invalid++;continue}
+     var current=parseAdvanceSourceNumber(get(entry,map.amount)),prior=parseAdvanceSourceNumber(get(entry,map.priorAdvance)),rawTotal=get(entry,map.totalAdvance);
+     if(current===null||prior===null||current<0||prior<0){invalid++;continue}
      people++;addition+=current;previous+=prior;if(current>0)positive++;
      if((rawTotal===null||rawTotal===''||rawTotal===undefined)&&(current+prior)>0)missing++;
-     else if(rawTotal!==null&&rawTotal!==undefined&&rawTotal!==''&&Math.abs(num(rawTotal)-(current+prior))>0.01)invalid++
+     else if(rawTotal!==null&&rawTotal!==undefined&&rawTotal!==''){var parsedTotal=parseAdvanceSourceNumber(rawTotal);if(parsedTotal===null||Math.abs(parsedTotal-(current+prior))>0.01)invalid++}
    }
    var advanceSummary={month:monthMatch?Number(monthMatch[1]):null,yearConfirmed:false,people:people,positiveRows:positive,newAdvances:addition,priorAdvances:previous,combined:addition+previous,missingTotalCells:missing,invalidTotals:invalid};
    return {sheet:sheetName,profile:profile,rows:rows,headerIndex:hi,headers:headers,map:map,items:[],ignored:0,period:ctx,region:'',holder:'',custodyCategory:'سلف موظفين',advanceSummary:advanceSummary,warnings:['ملف السلف للمطابقة مع قاعدة الموظفين ومسيرات الرواتب فقط؛ لا ينشئ تغذية عهدة أو مصروفاً أو حسم راتب. سنة البيانات غير موثقة في اسم الملف.']}
