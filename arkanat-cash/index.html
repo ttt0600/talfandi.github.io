@@ -1988,9 +1988,11 @@ window.applyManualMapping=function(sheet){
 }
 
 function analyzeImportDuplicates(){
- var out={fileDuplicate:false,newRecords:0,exactDuplicates:0,conflicts:0,newRequests:0,duplicateRequests:0,requestConflicts:0};
+ var out={fileDuplicate:false,duplicateSource:null,newRecords:0,exactDuplicates:0,conflicts:0,newRequests:0,duplicateRequests:0,requestConflicts:0};
  if(!pendingImport)return out;
- out.fileDuplicate=state.imports.some(function(x){return x.fingerprint&&x.fingerprint===pendingImport.fingerprint});
+ var priorImport=(state.imports||[]).find(function(x){return x.fingerprint&&x.fingerprint===pendingImport.fingerprint});
+ out.fileDuplicate=!!priorImport;
+ out.duplicateSource=priorImport?{id:String(priorImport.id||''),fileName:String(priorImport.fileName||''),importedAt:String(priorImport.importedAt||'')}:null;
  var txExact={},txConflict={},rqExact={},rqConflict={};
  state.transactions.forEach(function(t){if(t.snapshotStatus==='superseded'||t.status==='ملغى')return;txExact[eventKey(t)]=1;txConflict[eventConflictKey(t)]=1});
  state.requests.forEach(function(r){if(r.snapshotStatus==='superseded'||r.status==='مرفوض')return;rqExact[requestKey(r)]=1;rqConflict[requestConflictKey(r)]=1});
@@ -2140,7 +2142,10 @@ function renderImportPreview(){
  }
  var swapped=0,prior=0,reviewDates=0;pendingImport.sheets.forEach(function(x){(x.items||[]).forEach(function(it){if(it.dateStatus==='inferred_period_swap')swapped++;else if(it.dateStatus==='prior_period')prior++;else if(it.dateStatus==='needs_review')reviewDates++})});
  if(swapped||prior||reviewDates)html+='<div class="notice '+(reviewDates?'warn':'')+'" style="margin-bottom:12px"><strong>مراجعة التواريخ:</strong> '+(swapped?'تم تصحيح '+swapped.toLocaleString('ar-SA')+' تاريخاً بنمط شهر/يوم وفق فترة الملف. ':'')+(prior?'يوجد '+prior.toLocaleString('ar-SA')+' حركة من الفترة السابقة محفوظة بتاريخها الفعلي. ':'')+(reviewDates?'يوجد '+reviewDates.toLocaleString('ar-SA')+' تاريخاً ما زال يحتاج مراجعة.':'')+'</div>';
- if(ds.fileDuplicate)html+='<div class="notice bad"><strong>تكرار كامل:</strong> بصمة هذا الملف مطابقة لملف سبق استيراده إلى القاعدة المشتركة. '+'لن يسمح النظام بإعادة استيراد البصمة نفسها. إن كان المصدر تصحيحاً معتمداً فيجب إرفاق نسخة مصححة مختلفة ومطابقة الحركات السابقة.'+'</div>';
+ if(ds.fileDuplicate){
+   var origin=ds.duplicateSource||{},renamed=origin.fileName&&origin.fileName!==pendingImport.file.name;
+   html+='<div class="notice bad"><strong>تكرار كامل مؤكد ببصمة SHA-256.</strong> '+(renamed?'اسم الملف مختلف لكن المحتوى مطابق تماماً. ':'')+'<br><strong>الملف المسجل سابقاً:</strong> '+esc(origin.fileName||'مصدر مسجل')+(origin.id?'<br><strong>رقم سجل الاستيراد:</strong> <code>'+esc(origin.id)+'</code>':'')+(origin.importedAt?'<br><strong>تاريخ التسجيل:</strong> '+esc(origin.importedAt.slice(0,19).replace('T',' ')):'')+'<br>لن يسمح النظام بإعادة استيراد الملف أو مضاعفة الطلبات والحركات. إن كان التصحيح مقصوداً فيلزم تقديم مصدر معدل فعلاً ومراجعة فروق الحركات.</div>';
+ }
  html+='<div class="kpis" style="margin-bottom:12px"><div class="kpi"><div class="lab">سجلات جديدة</div><div class="val">'+(ds.newRecords+ds.newRequests).toLocaleString('ar-SA')+'</div></div><div class="kpi"><div class="lab">موجودة مسبقاً</div><div class="val">'+(ds.exactDuplicates+ds.duplicateRequests).toLocaleString('ar-SA')+'</div></div><div class="kpi"><div class="lab">تعارضات</div><div class="val">'+(ds.conflicts+ds.requestConflicts).toLocaleString('ar-SA')+'</div><div class="sub">نفس الهوية مع اختلاف مالي</div></div></div>';
  html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>نوع العهدة</th><th>المشرف/النطاق</th><th>السجلات</th><th>الموارد/الطلبات</th><th>الخارج</th><th>الرصيد المحسوب</th><th>مطابقة المصدر</th></tr></thead><tbody>';
  pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=isRequestProfile(x.profile)?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.custodyCategory||inferCustodyCategory(x.profile,pendingImport.file.name,x.sheet))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
@@ -2173,7 +2178,7 @@ window.commitPreparedImport=function(){
  if(olderRequestSnapshotWarnings().length){toast('هذه لقطة طلبات أقدم من السجل الحالي؛ تحفظ للمراجعة ولا تُرحّل.');return}
  if(pendingImport.sheets.some(function(sh){return sh.profile==='employee_advance_register'})){toast('سجل السلف مخصص لمطابقة الموارد البشرية والرواتب؛ لا يدخل في عهد التشغيل.');return}
  var mode=document.getElementById('importMode').value,ds=analyzeImportDuplicates(),overrideReason='';
- if(ds.fileDuplicate){toast('تم منع إعادة استيراد الملف ذي البصمة المتطابقة حفاظاً على السجلات المالية.');return}
+ if(ds.fileDuplicate){toast('تكرار ملف مطابق تماماً: '+String(ds.duplicateSource&&ds.duplicateSource.fileName||'مسجل سابقاً')+'. لم يُستورد مجدداً.');return}
  var added=0,dupes=0,conflicts=0,superseded=0,reqAdded=0,reqDupes=0,reqConflicts=0;
  pendingImport.sheets.forEach(function(sh){if(sh.profile==='unknown')return;
    if(mode==='snapshot'&&sh.profile==='request_snapshot'&&(sh.requestTombstones||[]).length){
