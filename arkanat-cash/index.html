@@ -2062,6 +2062,30 @@ function sourcePeriodWarnings(){
  });
  return warnings
 }
+function normalizeCashSourceFamily(file){
+ return cleanArabic(String(file||'').replace(/[\u200e\u200f\u2066-\u2069]/g,'').replace(/\.(xlsx|xls)$/i,'').replace(/\s+\d+\s*$/,'').replace(/\s+/g,' ').trim())
+}
+function heldLedgerSnapshotWarnings(){
+ if(!pendingImport||!pendingImport.file||(pendingImport.sheets||[]).every(function(x){return x.profile!=='cash_ledger'&&x.profile!=='expense_ledger'}))return [];
+ var family=normalizeCashSourceFamily(pendingImport.file.name);
+ if(!family)return [];
+ var held=(state.imports||[]).filter(function(x){
+   return (x.mode==='review_only'||x.quarantined)&&x.fingerprint!==pendingImport.fingerprint&&normalizeCashSourceFamily(x.fileName)===family
+ });
+ return held.length?['يوجد '+held.length+' مصدر سابق محجوز للمراجعة من سلسلة التصفية نفسها؛ يلزم مطابقة الحركات قبل الاستيراد.']:[]
+}
+function sameDayRequestSnapshotWarnings(){
+ if(!pendingImport||!pendingImport.file)return [];
+ var warnings=[];
+ (pendingImport.sheets||[]).forEach(function(sh){
+  if(sh.profile!=='request_snapshot'||!sh.fileDate||!sh.fileDate.date)return;
+  var day=String(sh.fileDate.date),other=(state.requests||[]).filter(function(r){
+   return r.snapshotStatus!=='superseded'&&String(r.date||'')===day&&(!sh.region||!r.region||r.region===sh.region)&&String(r.sourceFile||r.source||'')!==pendingImport.file.name
+  });
+  if(other.length)warnings.push('توجد '+other.length+' طلبات من ملف آخر بتاريخ '+day+'. لا تعتبر الصفوف الصفرية إلغاءً مالياً.')
+ });
+ return warnings
+}
 function olderRequestSnapshotWarnings(){
  if(!pendingImport)return [];
  var warnings=[];
@@ -2150,6 +2174,7 @@ function renderImportPreview(){
  html+='<div class="tablewrap"><table class="tbl"><thead><tr><th>الشيت</th><th>النوع المكتشف</th><th>نوع العهدة</th><th>المشرف/النطاق</th><th>السجلات</th><th>الموارد/الطلبات</th><th>الخارج</th><th>الرصيد المحسوب</th><th>مطابقة المصدر</th></tr></thead><tbody>';
  pendingImport.sheets.forEach(function(x){var c=x.control||controlFromSource(x.items||[],x.sourceSummary||[],x.profile),primary=isRequestProfile(x.profile)?c.requestTotal:c.resources;html+='<tr><td>'+esc(x.sheet)+'</td><td>'+esc(profileLabel(x.profile))+'</td><td>'+esc(x.custodyCategory||inferCustodyCategory(x.profile,pendingImport.file.name,x.sheet))+'</td><td>'+esc(x.holder||x.region||'-')+'</td><td>'+x.items.length.toLocaleString('ar-SA')+'</td><td class="money">'+money(primary)+'</td><td class="money">'+money(c.outflows)+'</td><td class="money">'+money(c.balance)+'</td><td><span class="badge '+(c.status==='مطابق'?'ok':c.status==='فرق يحتاج مراجعة'?'bad':'info')+'">'+esc(c.status)+'</span></td></tr>'});html+='</tbody></table></div>';
  var periodWarnings=sourcePeriodWarnings();if(periodWarnings.length)html+='<div class="notice bad" style="margin-top:10px"><strong>تواريخ تحتاج توثيقاً قبل الاستيراد ('+periodWarnings.length+'):</strong><br>'+periodWarnings.slice(0,16).map(esc).join('<br>')+(periodWarnings.length>16?'<br>... وبقية الحركات في ملف المصدر':'')+'<br>لن يُرحّل الملف إلى الأرصدة حتى تصحيح التواريخ أو استكمال مستنداتها.</div>';
+ var heldSources=heldLedgerSnapshotWarnings(),sameDay=sameDayRequestSnapshotWarnings();if(heldSources.length||sameDay.length)html+='<div class="notice bad"><strong>توقف المطابقة قبل الترحيل:</strong><br>'+heldSources.concat(sameDay).map(esc).join('<br>')+'</div>';
  var historical=olderRequestSnapshotWarnings();if(historical.length)html+='<div class="notice bad"><strong>لقطة طلبات تاريخية:</strong><br>'+historical.map(esc).join('<br>')+'<br>لا تُستورد كلقطة حاكمة؛ تحفظ للمطابقة فقط.</div>';
  var invalidYears=sourceWrongYearWarnings();if(invalidYears.length)html+='<div class="notice bad" style="margin-top:10px"><strong>حركات بتاريخ خارج فترة التصفية:</strong><br>'+invalidYears.map(esc).join('<br>')+'<br>لن يُعتمد استيراد الدفتر قبل تصحيح التاريخ في المصدر والتحقق منه.</div>';
  var repeats=sourceRepeatedMovements();if(repeats.length)html+='<div class="notice bad" style="margin-top:10px"><strong>استيراد حركات متشابهة محجوز للمراجعة:</strong> '+repeats.map(function(w){return esc(w)}).join('<br>')+'. قد تكون ورديات مستقلة أو تكراراً في المصدر؛ يلزم تأكيد هوية كل حركة قبل الترحيل.</div>';
@@ -2160,7 +2185,7 @@ function renderImportPreview(){
  var synth=pendingImport.sheets.filter(function(x){return x.profile==='coverage_list'&&x.control&&x.control.status==='مطابق'&&x.control.reportedFunding!==null});if(synth.length)html+='<div class="notice warn" style="margin-top:10px"><strong>تمويل مجمع من ملخص المصدر:</strong> في «اللقطة الكاملة» يضاف مبلغ العهدة المرجعي كسجل تمويل غير موزع حتى تتوفر تفاصيل التغذيات الفردية. '+synth.map(function(x){return esc(x.sheet)+': '+money(x.control.reportedFunding)}).join(' | ')+'</div>';
  var known=pendingImport.sheets.filter(function(x){return x.profile!=='unknown'}).reduce(function(a,x){return a+x.items.length},0),
  badHolders=pendingImport.sheets.filter(function(x){return (x.profile==='cash_ledger'||x.profile==='expense_ledger')&&isSuspiciousHolder(x.holder)}),
- regressions=snapshotRegressionWarnings(),blocked=(ds.fileDuplicate)||badHolders.length>0||regressions.length>0||sourceRepeatedMovements().length>0||sourceWrongYearWarnings().length>0||sourcePeriodWarnings().length>0||olderRequestSnapshotWarnings().length>0||pendingImport.sheets.some(function(sh){return sh.profile==='employee_advance_register'});
+ regressions=snapshotRegressionWarnings(),blocked=(ds.fileDuplicate)||badHolders.length>0||regressions.length>0||sourceRepeatedMovements().length>0||sourceWrongYearWarnings().length>0||sourcePeriodWarnings().length>0||olderRequestSnapshotWarnings().length>0||heldLedgerSnapshotWarnings().length>0||sameDayRequestSnapshotWarnings().length>0||pendingImport.sheets.some(function(sh){return sh.profile==='employee_advance_register'});
  if(badHolders.length)html+='<div class="notice bad" style="margin-top:12px"><strong>الاستيراد موقوف:</strong> تعذر تحديد حامل العهدة بشكل صحيح في '+badHolders.map(function(x){return esc(x.sheet)}).join('، ')+'. راجع ترويسة الملف أو بيانات العهدة قبل الاعتماد؛ لن تنسب الحركة إلى اسم عمود أو عنوان.</div>';
  if(regressions.length)html+='<div class="notice bad" style="margin-top:12px"><strong>اللقطة موقوفة:</strong> '+regressions.map(function(x){return esc(x.message)}).join('<br>')+'</div>';
  html+='<div class="actions" style="margin-top:12px"><button class="btn primary" '+(known&&!blocked?'':'disabled')+' onclick="commitPreparedImport()">'+(ds.fileDuplicate&&isSuperAdmin()?'تجاوز Super Admin واستيراد الملف':'اعتماد الاستيراد')+'</button></div>';
@@ -2176,6 +2201,7 @@ window.commitPreparedImport=function(){
  if(sourceWrongYearWarnings().length){toast('الاستيراد موقوف: تواريخ Excel خارج سنة التسوية؛ صحح المصدر بعد التحقق.');return}
  if(sourcePeriodWarnings().length){toast('الاستيراد موقوف: تواريخ خارج فترة الملف أو مستقبلية أو بلا سنة؛ راجع الحركات في المعاينة.');return}
  if(olderRequestSnapshotWarnings().length){toast('هذه لقطة طلبات أقدم من السجل الحالي؛ تحفظ للمراجعة ولا تُرحّل.');return}
+ if(heldLedgerSnapshotWarnings().length||sameDayRequestSnapshotWarnings().length){toast('الاستيراد متوقف: توجد لقطات لنفس السلسلة أو التاريخ تحتاج مطابقة واعتماداً.');return}
  if(pendingImport.sheets.some(function(sh){return sh.profile==='employee_advance_register'})){toast('سجل السلف مخصص لمطابقة الموارد البشرية والرواتب؛ لا يدخل في عهد التشغيل.');return}
  var mode=document.getElementById('importMode').value,ds=analyzeImportDuplicates(),overrideReason='';
  if(ds.fileDuplicate){toast('تكرار ملف مطابق تماماً: '+String(ds.duplicateSource&&ds.duplicateSource.fileName||'مسجل سابقاً')+'. لم يُستورد مجدداً.');return}
